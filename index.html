@@ -5,16 +5,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="facebook-domain-verification" content="y43on9p6ky253k5to2d6wpe9ificg5" />
-        <link rel="apple-touch-icon" sizes="180x180" href="../glorifier/favicon_io/apple-touch-icon.png">
-        <link rel="icon" type="image/png" sizes="32x32" href="../glorifier/favicon_io/favicon-32x32.png">
-        <link rel="icon" type="image/png" sizes="16x16" href="../glorifier/favicon_io/favicon-16x16.png">
-        <link rel="manifest" href="../glorifier/favicon_io/site.webmanifest">
-        <link rel="icon" href="../glorifier/favicon_io/favicon.ico">
-        <link rel="icon" href="../glorifier/favicon_io/">
-        <link rel="shortcut icon" href="../glorifier/favicon_io/favicon.ico" type="image/x-icon">
-       <link rel="shortcut icon" href="favicon.ico" type="image/x-icon">
+        <link rel="stylesheet" href="./scss/custom.scss">
         <title>John-Paul_Portfolio</title>
-        <link rel="shortcut icon" href="../glorifier/favicon_io/favicon.ico" type="image/x-icon">
         <!-- Google Tag Manager -->
         <script>(function (w, d, s, l, i) {
                 w[l] = w[l] || []; w[l].push({
@@ -36,7 +28,7 @@
                 <!-- fabicon -->
     </head>
 
-    <body class="container-fluid fluid responsive-img">
+    <body class="container-fluid fluid responsive-img text-center">
             <!-- Google Tag Manager (noscript) -->
             <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-WR2T293" height="0" width="0"
                     style="display:none;visibility:hidden"></iframe></noscript>
@@ -56,7 +48,7 @@
                     <!-- navbrand logo -->
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
                         aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon"></span>
+                        <span class="navbar-toggler-icon" id="tabEl"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
                         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
@@ -95,10 +87,10 @@
                         <div class="content section-padding valign" style="margin-left: 10%; margin-top: 50px;">
                             <div class="caption">
                                 <h2>Hi, I'm <span class="teal">John Paul V. Arlos</span></h2>
-                                <h5 style="color:#630d0d">A <span class="typing" style="font-weight: 300; color:#004d40"></span>
+                                <h5 style="color:#630d0d"><i class="fa-solid fa-user"></i><span class="typing" style="font-weight: 300; color:#004d40"></span>
                                 </h5>
                                 <!-- <h5 style="color:#00796b">A <span class="typing" style="font-weight: 300; color:#fff"></span></h5> -->
-                                <h5>Self-driven, quick starter, passionate programmer with a curious mind who enjoys solving a
+                                <h5>Self-driven passionate programmer with a curious mind who enjoys solving a
                                     complex and challenging real-world problems.</h5>
                             </div>
                             <div class="social">
@@ -178,7 +170,7 @@
                                 <div class="col s12 m2">
                                     <a href="https://glorifier-services.business.site/" target="_blank"><img alt="glorifier logo"
                                             src="https://scontent.fmnl33-2.fna.fbcdn.net/v/t39.30808-6/313366621_1517564245322145_1357952584148258506_n.jpg?_nc_cat=105&ccb=1-7&_nc_sid=09cbfe&_nc_eui2=AeFn4FwzYoHjIYKDofm_T3q-vE5Kt8PneYq8Tkq3w-d5imwE0ifxsYpQGPFRgYqhihtORdsKSL2h765nBrTtNDCd&_nc_ohc=wiB4NDdiA98AX8u0e_V&_nc_zt=23&_nc_ht=scontent.fmnl33-2.fna&oh=00_AfAj64hrQ5RWnHxHkhuTge_EhGdkxsUD49T4TG5531fjKg&oe=63E8F49E"
-                                            class="responsive-img center-block img-fluid" /></a>
+                                            class="responsive-img center-block img-fluid object-fit-contain border rounded" /></a>
                                 </div>
                                 <!-- <div class="col s12 m10"> -->
                                 <div class="col s12 m10">
@@ -228,7 +220,7 @@
                             <div class="card medium">
                                 <div class="card-image waves-effect waves-block waves-light">
                                     <img alt="Screenshot of  web app" src="https://openclipart.org/image/800px/225955"
-                                        style="height: 100%; width: 100%" class="activator img-fluid" />
+                                        style="height: 100%; width: 100%" class="activator img-fluid object-fit-contain border rounded" />
                                 </div>
                                 <div class="card-content">
                                     <span class="card-title activator teal-text hoverline">First Website<i
@@ -266,7 +258,7 @@
             </section>
             
             <!------------------------------------- Fifth Section: Skills --------------------------------------------->
-            <section id="skills" class="section scrollspy">
+            <section id="skills" class="section scrollspy m-auto d-flex justify-content-evenly">
                 <h3 class="page-title white-text teal">Skills</h3>
                 <div class="container">
                     <!-- -----------------------------------Languages and Databases---------------- -->
@@ -540,6 +532,14 @@
                     closeOnClick: true // Closes side-nav on <a> clicks, useful for Angular/Meteor
                 })
             })
+        </script>
+        <!-- ---------------------- -->
+        <script>
+            const tabEl = document.querySelector('button[data-bs-toggle="tab"]')
+                tabEl.addEventListener('hide.bs.tab', event => {
+                    event.target // newly activated tab
+                    event.relatedTarget // previous active tab
+                })
         </script>
     </body>
 

@@ -27,6 +27,17 @@
         <script src="jquery-3.6.0.min.js"></script>
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
         <link rel="stylesheet" href="./scss/custom.scss">
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.1/jquery.min.js"></script>
+        <script>
+            $(document).ready(function () {
+                $("#hide").click(function () {
+                    $("li").hide();
+                });
+                $("#show").click(function () {
+                    $("li").show();
+                });
+            });
+        </script>
     </head>
 
     <body class="container-fluid fluid responsive-img text-center">
@@ -41,21 +52,18 @@
                     <!-- nav logo -->
                     <nav class="navbar bg-body-tertiary">
                         <div class="container">
-                            <a class="navbar-brand" href="https://tinyurl.com/glorifier">
-                                <img src="https://tinyurl.com/glorifier" alt="Bootstrap" class="rounded-circle img-fluid" style="width: 7rem;">
+                            <a class="navbar-brand" href="#">
+                                <img src="https://tinyurl.com/glorifier" alt="Bootstrap" class="rounded-circle img-fluid" style="width: 7rem;" id="show">
                             </a>
                         </div>
                     </nav>
                     <!-- navbrand logo end -->
                     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent"
                         aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
-                        <span class="navbar-toggler-icon">
-                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close">
-                            </button>
-                        </span>
+                        <span class="navbar-toggler-icon" id="show"></span>
                     </button>
                     <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="hide">
                             <li class="nav-item">
                                 <a class="nav-link active" aria-current="page" href="#about">About</a>
                             </li>
@@ -74,6 +82,7 @@
                             <li class="nav-item active">
                                 <a class="nav-link" href="https://drive.google.com/file/d/1lOiVYy7zCQ5tF4o_bLM7Ra3KOJLN1F5Q/view?usp=sharing">Resume</a>
                             </li>
+                        </ul>
                     </div>
                 </div>
             </nav>

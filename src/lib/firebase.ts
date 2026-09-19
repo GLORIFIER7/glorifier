@@ -27,9 +27,27 @@ export const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/gmail.settings.sharing',
 ];
 
+export const DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/drive.activity',
+  'https://www.googleapis.com/auth/drive.activity.readonly',
+  'https://www.googleapis.com/auth/drive.appdata',
+  'https://www.googleapis.com/auth/drive.apps.readonly',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.install',
+  'https://www.googleapis.com/auth/drive.meet.readonly',
+  'https://www.googleapis.com/auth/drive.metadata',
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
+  'https://www.googleapis.com/auth/drive.photos.readonly',
+  'https://www.googleapis.com/auth/drive.readonly',
+  'https://www.googleapis.com/auth/drive.scripts',
+];
+
+export const ALL_WORKSPACE_SCOPES = [...GMAIL_SCOPES, ...DRIVE_SCOPES];
+
 export const googleAuthProvider = new GoogleAuthProvider();
-// Add Gmail scopes to provider
-GMAIL_SCOPES.forEach(scope => {
+// Add Workspace scopes (Gmail + Drive) to provider
+ALL_WORKSPACE_SCOPES.forEach(scope => {
   googleAuthProvider.addScope(scope);
 });
 

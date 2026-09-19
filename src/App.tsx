@@ -11,6 +11,7 @@ import { CompensationEngine } from './components/CompensationEngine';
 import { PrivacyTechLab } from './components/PrivacyTechLab';
 import { DataControlDashboard } from './components/DataControlDashboard';
 import { GmailGovernanceTab } from './components/GmailGovernanceTab';
+import { DriveGovernanceTab } from './components/DriveGovernanceTab';
 import { 
   initialStats, 
   initialFootprints, 
@@ -396,6 +397,31 @@ export default function App() {
                 timestamp: 'Just now',
                 buyerName: 'Verified Research Consortia',
                 category: 'email',
+                amountUsd: amount,
+                privacyTier: 'differential-privacy',
+                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+                status: 'settled'
+              };
+              setTransactions(t => [newTx, ...t]);
+            }}
+          />
+        )}
+
+        {activeTab === 'drive' && (
+          <DriveGovernanceTab
+            currentUser={currentUser}
+            onLogin={handleLogin}
+            onAddEarnings={(amount, desc) => {
+              setStats(s => ({
+                ...s,
+                totalEarnedUsd: s.totalEarnedUsd + amount,
+                pendingSettlementUsd: s.pendingSettlementUsd + amount
+              }));
+              const newTx: CompensationTransaction = {
+                id: `tx-drive-${Date.now()}`,
+                timestamp: 'Just now',
+                buyerName: 'Secure Cloud Analytics Group',
+                category: 'drive',
                 amountUsd: amount,
                 privacyTier: 'differential-privacy',
                 txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),

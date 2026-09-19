@@ -196,6 +196,29 @@ export const initialFootprints: DataFootprintSource[] = [
       { field: 'Newsletter Digest', rawValue: 'Subscribed to 6 AI and Systems Engineering digests', anonymizedValue: 'Professional Technical Researcher cohort', noiseLevel: 'k-Anonymity (k=100)' },
       { field: 'Vendor Tracking Pixels', rawValue: '18 marketing trackers identified and blocked', anonymizedValue: 'AdTech Pixel Disarm: 100% neutralized', noiseLevel: 'Privacy Shield Lockdown' }
     ]
+  },
+  {
+    id: 'fp-drive',
+    name: 'Google Drive Cloud Storage',
+    category: 'drive',
+    platform: 'Google Workspace / Drive v3 API',
+    iconName: 'HardDrive',
+    dataPointsMonthly: 14200,
+    marketMonthlyValueUsd: 74.00,
+    userMonthlyCompUsd: 59.20,
+    isMonetized: true,
+    privacyTier: 'differential-privacy',
+    privacyEpsilon: 0.35,
+    status: 'active-monetizing',
+    lastSync: 'Live (Drive API v3 Connected)',
+    description: 'Cloud documents, spreadsheets, presentations, and technical architecture schemas. Raw files remain shielded in your cloud enclave.',
+    leakRiskScore: 68,
+    samples: [
+      { field: 'Financial Modeling Sheet', rawValue: 'Quarterly budget sheet with $18k operating expenses', anonymizedValue: 'DP-Laplace Vector: Enterprise SaaS operating cost distribution (±$2.5k noise)', noiseLevel: 'Laplacian ε=0.35' },
+      { field: 'Architecture Technical Spec', rawValue: 'System design diagram for distributed microservices', anonymizedValue: 'Synthetic Twin: High-scale cloud infrastructure pattern', noiseLevel: 'ZK-Proof Synthesized' },
+      { field: 'Public Shared Link', rawValue: 'Open public view link on product backlog document', anonymizedValue: 'Shadow Link Neutralizer: Access restricted to authorized domain', noiseLevel: 'Enclave Access Control' },
+      { field: 'Contract / Legal Template', rawValue: 'Standard commercial consulting engagement agreement', anonymizedValue: '[ENCLAVE SHIELDED - ZERO RAW EXPOSURE]', noiseLevel: 'Strict Lockdown' }
+    ]
   }
 ];
 

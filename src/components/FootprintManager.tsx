@@ -21,7 +21,8 @@ import {
   FileSearch,
   ExternalLink,
   ChevronDown,
-  Mail
+  Mail,
+  HardDrive
 } from 'lucide-react';
 import { DataFootprintSource, PrivacyTier, DataCategoryType } from '../types';
 
@@ -52,6 +53,7 @@ export const FootprintManager: React.FC<FootprintManagerProps> = ({
       case 'location': return MapPin;
       case 'financial': return Landmark;
       case 'email': return Mail;
+      case 'drive': return HardDrive;
       default: return Database;
     }
   };

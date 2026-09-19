@@ -10,7 +10,35 @@ export type DataCategoryType =
   | 'developer'
   | 'location'
   | 'financial'
-  | 'email';
+  | 'email'
+  | 'drive';
+
+export interface DriveTelemetryMetadata {
+  totalFilesScanned: number;
+  sensitiveDocumentsDetected: number;
+  sharedExternalFilesCount: number;
+  totalStorageBytesGoverned: number;
+  estimatedAggregateYieldUsd: number;
+  lastSyncTimestamp: string;
+}
+
+export interface DriveAnalysisItem {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes?: number;
+  createdTime?: string;
+  modifiedTime?: string;
+  shared: boolean;
+  webViewLink?: string;
+  iconLink?: string;
+  category: 'Documents & Research' | 'Spreadsheets & Finance' | 'Presentations & Strategy' | 'Code & Architecture' | 'Media & Creative' | 'Archival & Other';
+  leakRiskScore: number; // 0 - 100
+  sensitiveSignals: string[];
+  governanceAction: 'Differential Privacy Scrub' | 'ZK-Proof Vector Index' | 'Strict Enclave Lockdown' | 'Safe Public Commons';
+  estimatedYieldUsd: number;
+  differentialPrivacyNoiseLevel: string;
+}
 
 export interface GmailTelemetryMetadata {
   totalMessagesAnalyzed: number;

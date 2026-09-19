@@ -17,7 +17,8 @@ import {
   LogOut,
   User as UserIcon,
   Cloud,
-  Mail
+  Mail,
+  HardDrive
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
@@ -49,6 +50,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: currentUser ? 'Connected' : 'Auth Required' },
+    { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: currentUser ? 'Connected' : 'Auth Required' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },
     { id: 'privacy_lab', label: 'Privacy Tech Lab (PETs)', icon: Lock },
     { id: 'footprints', label: 'Footprint Tiers', icon: Database },

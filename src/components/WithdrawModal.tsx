@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Wallet, 
@@ -7,12 +7,16 @@ import {
   CreditCard, 
   Coins, 
   ShieldCheck, 
-  RefreshCw,
-  ExternalLink,
-  Copy,
-  Check,
-  Zap,
-  Globe,
+  RefreshCw, 
+  Copy, 
+  Check, 
+  Zap, 
+  Plus, 
+  Trash2, 
+  Shield, 
+  ChevronDown, 
+  ChevronUp, 
+  AlertCircle,
   ArrowRight
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
@@ -24,8 +28,19 @@ interface WithdrawModalProps {
   onWithdrawSuccess: (amount: number, method: string, txHash: string) => void;
 }
 
-type StablecoinType = 'USDC' | 'USDT' | 'DAI' | 'PYUSD';
-type CryptoNetwork = 'Base' | 'Solana' | 'Polygon' | 'Arbitrum' | 'Ethereum';
+export type CryptoChain = 'ETH' | 'SOL' | 'BTC';
+export type StablecoinType = 'USDC' | 'USDT' | 'DAI' | 'PYUSD';
+export type CryptoNetwork = 'Base' | 'Solana' | 'Polygon' | 'Arbitrum' | 'Ethereum' | 'Bitcoin';
+
+export interface VerifiedWallet {
+  id: string;
+  chain: CryptoChain;
+  name: string;
+  address: string;
+  isVerified: boolean;
+  verificationMethod: string;
+  addedAt: string;
+}
 
 interface SupportedToken {
   symbol: StablecoinType;
@@ -42,12 +57,43 @@ const SUPPORTED_STABLECOINS: SupportedToken[] = [
   { symbol: 'PYUSD', name: 'PayPal USD', peg: '1:1 USD', iconBg: 'bg-cyan-500/20 text-cyan-400', badgeColor: 'text-cyan-400 border-cyan-500/30' }
 ];
 
-const NETWORKS: { id: CryptoNetwork; name: string; speed: string; gasSubsidy: string; isEVM: boolean }[] = [
-  { id: 'Base', name: 'Base L2', speed: '~1 sec', gasSubsidy: 'Sponsored ($0 gas)', isEVM: true },
-  { id: 'Solana', name: 'Solana SPL', speed: '~400 ms', gasSubsidy: 'Sponsored ($0 gas)', isEVM: false },
-  { id: 'Polygon', name: 'Polygon PoS', speed: '~2 sec', gasSubsidy: 'Sponsored ($0 gas)', isEVM: true },
-  { id: 'Arbitrum', name: 'Arbitrum One', speed: '~1 sec', gasSubsidy: 'Sponsored ($0 gas)', isEVM: true },
-  { id: 'Ethereum', name: 'Ethereum Mainnet', speed: '~12 sec', gasSubsidy: 'Standard Relay', isEVM: true }
+const NETWORKS: { id: CryptoNetwork; name: string; speed: string; gasSubsidy: string; chain: CryptoChain }[] = [
+  { id: 'Base', name: 'Base L2', speed: '~1 sec', gasSubsidy: 'Sponsored ($0 gas)', chain: 'ETH' },
+  { id: 'Solana', name: 'Solana SPL', speed: '~400 ms', gasSubsidy: 'Sponsored ($0 gas)', chain: 'SOL' },
+  { id: 'Polygon', name: 'Polygon PoS', speed: '~2 sec', gasSubsidy: 'Sponsored ($0 gas)', chain: 'ETH' },
+  { id: 'Arbitrum', name: 'Arbitrum One', speed: '~1 sec', gasSubsidy: 'Sponsored ($0 gas)', chain: 'ETH' },
+  { id: 'Ethereum', name: 'Ethereum Mainnet', speed: '~12 sec', gasSubsidy: 'Standard Relay', chain: 'ETH' },
+  { id: 'Bitcoin', name: 'BTC Lightning Relay', speed: '~2 sec', gasSubsidy: 'Zero-fee Taro', chain: 'BTC' }
+];
+
+const DEFAULT_VERIFIED_WALLETS: VerifiedWallet[] = [
+  {
+    id: 'w-eth-primary',
+    chain: 'ETH',
+    name: 'MetaMask - Primary Vault',
+    address: '0x71C5687b372480302E9B41d5F58eE5f242Ec33a9',
+    isVerified: true,
+    verificationMethod: 'EIP-712 Signature Attested',
+    addedAt: 'Verified Sovereign Enclave'
+  },
+  {
+    id: 'w-sol-primary',
+    chain: 'SOL',
+    name: 'Phantom - Sol Enclave',
+    address: '7XhM9pYqK3sL8nQ2vR6wE5tU1zC4jB8aD7fG6hJ5kL4',
+    isVerified: true,
+    verificationMethod: 'Ed25519 Hardware Proof',
+    addedAt: 'Verified Sovereign Enclave'
+  },
+  {
+    id: 'w-btc-primary',
+    chain: 'BTC',
+    name: 'Trezor Cold - Bitcoin SegWit',
+    address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
+    isVerified: true,
+    verificationMethod: 'BIP-84 PSBT Cryptographic Proof',
+    addedAt: 'Verified Sovereign Enclave'
+  }
 ];
 
 export const WithdrawModal: React.FC<WithdrawModalProps> = ({
@@ -58,16 +104,41 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 }) => {
   const [amount, setAmount] = useState<number>(stats.totalEarnedUsd);
   const [payoutCategory, setPayoutCategory] = useState<'crypto' | 'fiat'>('crypto');
-  
+
+  // Connected Wallets State
+  const [connectedWallets, setConnectedWallets] = useState<VerifiedWallet[]>(() => {
+    try {
+      const saved = localStorage.getItem('sovereign_connected_wallets');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {
+      // ignore
+    }
+    return DEFAULT_VERIFIED_WALLETS;
+  });
+
+  const [walletFilter, setWalletFilter] = useState<'ALL' | CryptoChain>('ALL');
+  const [showAddWalletForm, setShowAddWalletForm] = useState(false);
+
+  // New Wallet Form State
+  const [newWalletChain, setNewWalletChain] = useState<CryptoChain>('ETH');
+  const [newWalletName, setNewWalletName] = useState('');
+  const [newWalletAddress, setNewWalletAddress] = useState('');
+  const [addWalletError, setAddWalletError] = useState<string | null>(null);
+  const [isVerifyingNewWallet, setIsVerifyingNewWallet] = useState(false);
+
   // Crypto Configuration
   const [selectedToken, setSelectedToken] = useState<StablecoinType>('USDC');
   const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('Base');
-  const [walletAddress, setWalletAddress] = useState<string>(policy.walletAddress || '');
-  const [isWalletConnecting, setIsWalletConnecting] = useState(false);
-  const [connectedWalletName, setConnectedWalletName] = useState<string | null>(
-    policy.walletAddress ? 'Saved Sovereign Vault' : null
+  const [walletAddress, setWalletAddress] = useState<string>(
+    DEFAULT_VERIFIED_WALLETS[0].address
   );
-  const [showWalletPicker, setShowWalletPicker] = useState(false);
+  const [connectedWalletName, setConnectedWalletName] = useState<string | null>(
+    DEFAULT_VERIFIED_WALLETS[0].name
+  );
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Fiat Configuration
   const [fiatMethod, setFiatMethod] = useState<'stripe_connect' | 'direct_ach'>('stripe_connect');
@@ -85,78 +156,161 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     isCrypto: boolean;
   } | null>(null);
 
-  // Validate address format
-  const isAddressValid = () => {
+  // Sync to local storage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sovereign_connected_wallets', JSON.stringify(connectedWallets));
+    } catch {
+      // ignore
+    }
+  }, [connectedWallets]);
+
+  // Address validation per chain
+  const validateAddress = (addr: string, chain: CryptoChain): boolean => {
+    const trimmed = addr.trim();
+    if (!trimmed) return false;
+    if (chain === 'ETH') {
+      return /^0x[a-fA-F0-9]{40}$/.test(trimmed);
+    }
+    if (chain === 'SOL') {
+      return /^[1-9A-HJ-NP-za-km-z]{32,44}$/.test(trimmed);
+    }
+    if (chain === 'BTC') {
+      // SegWit (bc1q/bc1p), Legacy (1), or P2SH (3)
+      return /^(bc1|[13])[a-zA-HJ-NP-Z0-9]{25,62}$/.test(trimmed);
+    }
+    return false;
+  };
+
+  // Determine active chain based on active wallet address
+  const getActiveAddressChain = (): CryptoChain => {
+    const matched = connectedWallets.find(w => w.address.toLowerCase() === walletAddress.toLowerCase());
+    if (matched) return matched.chain;
+    if (walletAddress.startsWith('0x')) return 'ETH';
+    if (walletAddress.startsWith('bc1') || walletAddress.startsWith('1') || walletAddress.startsWith('3')) return 'BTC';
+    return 'SOL';
+  };
+
+  const isCurrentAddressValid = () => {
     if (payoutCategory === 'fiat') return fiatAccount.trim().length > 3;
     if (!walletAddress.trim()) return false;
-    const isEVM = NETWORKS.find(n => n.id === selectedNetwork)?.isEVM;
-    if (isEVM) {
-      return /^0x[a-fA-F0-9]{40}$/.test(walletAddress.trim());
-    } else {
-      // Solana base58 check
-      return walletAddress.trim().length >= 32 && walletAddress.trim().length <= 44;
+    const chain = getActiveAddressChain();
+    return validateAddress(walletAddress, chain);
+  };
+
+  // Selecting a wallet from the list
+  const handleSelectWallet = (wallet: VerifiedWallet) => {
+    setWalletAddress(wallet.address);
+    setConnectedWalletName(wallet.name);
+
+    // Auto-adjust default network
+    if (wallet.chain === 'ETH') {
+      if (selectedNetwork === 'Solana' || selectedNetwork === 'Bitcoin') {
+        setSelectedNetwork('Base');
+      }
+    } else if (wallet.chain === 'SOL') {
+      setSelectedNetwork('Solana');
+    } else if (wallet.chain === 'BTC') {
+      setSelectedNetwork('Bitcoin');
     }
   };
 
-  // Connect Web3 Wallet Simulation / Injected Detection
-  const handleConnectWallet = async (walletChoice: string) => {
-    setIsWalletConnecting(true);
-    setShowWalletPicker(false);
-    
-    // Check if browser has real provider
-    const win = window as any;
-    try {
-      if (walletChoice === 'MetaMask' && win.ethereum) {
-        const accounts = await win.ethereum.request({ method: 'eth_requestAccounts' });
-        if (accounts && accounts[0]) {
-          setWalletAddress(accounts[0]);
-          setConnectedWalletName('MetaMask');
-          setIsWalletConnecting(false);
-          return;
-        }
-      } else if (walletChoice === 'Phantom' && win.solana) {
-        const resp = await win.solana.connect();
-        if (resp && resp.publicKey) {
-          setWalletAddress(resp.publicKey.toString());
-          setSelectedNetwork('Solana');
-          setConnectedWalletName('Phantom');
-          setIsWalletConnecting(false);
-          return;
-        }
+  // Removing a wallet from the list
+  const handleRemoveWallet = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const target = connectedWallets.find(w => w.id === id);
+    if (!target) return;
+
+    const remaining = connectedWallets.filter(w => w.id !== id);
+    setConnectedWallets(remaining);
+
+    // If active wallet was removed, fallback to first available or empty
+    if (walletAddress.toLowerCase() === target.address.toLowerCase()) {
+      if (remaining.length > 0) {
+        handleSelectWallet(remaining[0]);
+      } else {
+        setWalletAddress('');
+        setConnectedWalletName(null);
       }
-    } catch {
-      // Fallback to simulated instant connector
     }
+  };
+
+  // Adding a new verified wallet
+  const handleAddWallet = () => {
+    setAddWalletError(null);
+    if (!newWalletName.trim()) {
+      setAddWalletError('Please enter a wallet label or account name.');
+      return;
+    }
+    if (!validateAddress(newWalletAddress, newWalletChain)) {
+      if (newWalletChain === 'ETH') {
+        setAddWalletError('Invalid ETH address format. Must begin with 0x followed by 40 hex characters.');
+      } else if (newWalletChain === 'SOL') {
+        setAddWalletError('Invalid SOL address format. Must be 32-44 base58 characters.');
+      } else {
+        setAddWalletError('Invalid BTC address format. Must be a valid SegWit (bc1), Legacy (1), or Script (3) address.');
+      }
+      return;
+    }
+
+    // Check duplicate
+    const exists = connectedWallets.some(
+      w => w.address.toLowerCase() === newWalletAddress.trim().toLowerCase()
+    );
+    if (exists) {
+      setAddWalletError('This wallet address is already added to your verified list.');
+      return;
+    }
+
+    setIsVerifyingNewWallet(true);
 
     setTimeout(() => {
-      let mockAddr = '';
-      if (selectedNetwork === 'Solana' || walletChoice === 'Phantom') {
-        mockAddr = '7XhM9pYqK3sL8nQ2vR6wE5tU1zC4jB8aD7fG6hJ5kL4';
-        setSelectedNetwork('Solana');
-      } else {
-        mockAddr = '0x71C5687b372480302E9B41d5F58eE5f242Ec33a9';
-      }
-      setWalletAddress(mockAddr);
-      setConnectedWalletName(walletChoice);
-      setIsWalletConnecting(false);
-    }, 600);
+      let method = 'ECDSA Signature Attested';
+      if (newWalletChain === 'SOL') method = 'Ed25519 Cryptographic Proof';
+      if (newWalletChain === 'BTC') method = 'BIP-84 PSBT Cryptographic Proof';
+
+      const created: VerifiedWallet = {
+        id: `w-${newWalletChain.toLowerCase()}-${Date.now()}`,
+        chain: newWalletChain,
+        name: newWalletName.trim(),
+        address: newWalletAddress.trim(),
+        isVerified: true,
+        verificationMethod: method,
+        addedAt: 'Verified via Sovereign Protocol'
+      };
+
+      setConnectedWallets(prev => [created, ...prev]);
+      handleSelectWallet(created);
+
+      // Reset form
+      setNewWalletName('');
+      setNewWalletAddress('');
+      setIsVerifyingNewWallet(false);
+      setShowAddWalletForm(false);
+      setAddWalletError(null);
+    }, 650);
   };
 
-  const handleDisconnectWallet = () => {
-    setWalletAddress('');
-    setConnectedWalletName(null);
+  const handleCopyAddress = (id: string, addr: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(addr);
+    setCopiedId(id);
+    setTimeout(() => setCopiedId(null), 1800);
   };
 
   const handleWithdraw = () => {
     if (amount <= 0 || amount > stats.totalEarnedUsd) return;
-    if (!isAddressValid()) return;
+    if (!isCurrentAddressValid()) return;
 
     setIsProcessing(true);
     setTimeout(() => {
       let generatedTx = '';
       if (payoutCategory === 'crypto') {
-        if (selectedNetwork === 'Solana') {
+        const chain = getActiveAddressChain();
+        if (chain === 'SOL') {
           generatedTx = `${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}...${Math.random().toString(36).substring(2, 6)}`;
+        } else if (chain === 'BTC') {
+          generatedTx = `btc_${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 8)}`;
         } else {
           generatedTx = `0x${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`;
         }
@@ -174,7 +328,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
         isCrypto: payoutCategory === 'crypto'
       });
       setIsProcessing(false);
-      onWithdrawSuccess(amount, payoutCategory === 'crypto' ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}` : fiatMethod, generatedTx);
+      onWithdrawSuccess(
+        amount, 
+        payoutCategory === 'crypto' ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}` : fiatMethod, 
+        generatedTx
+      );
     }, 1200);
   };
 
@@ -185,18 +343,50 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     setTimeout(() => setCopiedTx(false), 2000);
   };
 
+  const filteredWallets = connectedWallets.filter(w => {
+    if (walletFilter === 'ALL') return true;
+    return w.chain === walletFilter;
+  });
+
+  const getChainBadge = (chain: CryptoChain) => {
+    switch (chain) {
+      case 'ETH':
+        return {
+          label: 'ETH',
+          badgeClass: 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
+        };
+      case 'SOL':
+        return {
+          label: 'SOL',
+          badgeClass: 'bg-purple-500/15 text-purple-400 border-purple-500/30'
+        };
+      case 'BTC':
+        return {
+          label: 'BTC',
+          badgeClass: 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+        };
+    }
+  };
+
+  const activeChain = getActiveAddressChain();
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4">
+      <div className="w-full max-w-xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
               <Coins className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Disburse Sovereign Data Earnings</h3>
-              <p className="text-[11px] text-slate-400">Direct on-chain stablecoin settlement or fiat payout</p>
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                Disburse Sovereign Data Earnings
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  Instant Clearing
+                </span>
+              </h3>
+              <p className="text-[11px] text-slate-400">Direct on-chain stablecoins or sovereign fiat payout</p>
             </div>
           </div>
           <button 
@@ -209,7 +399,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
         {/* Content */}
         {!settledReceipt ? (
-          <div className="p-5 space-y-4 max-h-[85vh] overflow-y-auto">
+          <div className="p-5 space-y-4 overflow-y-auto grow">
             {/* Balance Bar */}
             <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
               <div>
@@ -229,7 +419,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             {/* Payout Category Selector: Crypto vs Fiat */}
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Payout Method
+                Payout Channel
               </label>
               <div className="grid grid-cols-2 gap-2">
                 <button
@@ -247,11 +437,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-200">Crypto Payout</div>
-                      <div className="text-[10px] text-emerald-400 font-mono">Stablecoin (1:1 Peg)</div>
+                      <div className="text-[10px] text-emerald-400 font-mono">Stablecoins (ETH, SOL, BTC)</div>
                     </div>
                   </div>
                   {payoutCategory === 'crypto' && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
                   )}
                 </button>
 
@@ -270,7 +460,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-slate-200">Fiat Payout</div>
-                      <div className="text-[10px] text-slate-500 font-mono">Bank Wire / ACH</div>
+                      <div className="text-[10px] text-slate-500 font-mono">Bank Wire / Stripe ACH</div>
                     </div>
                   </div>
                   {payoutCategory === 'fiat' && (
@@ -288,7 +478,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 </label>
                 {payoutCategory === 'crypto' && (
                   <span className="text-[10px] font-mono text-slate-400">
-                    Est. {amount.toFixed(2)} {selectedToken} (Zero Slippage)
+                    Est. {amount.toFixed(2)} {selectedToken} (Zero Slippage • 1:1 Peg)
                   </span>
                 )}
               </div>
@@ -311,8 +501,258 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
             {/* CRYPTO PAYOUT SPECIFIC CONTROLS */}
             {payoutCategory === 'crypto' ? (
-              <div className="space-y-3.5 pt-1">
-                {/* Stablecoin Token Selection */}
+              <div className="space-y-4 pt-1">
+                {/* Visual Connected Wallets Section */}
+                <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="w-4 h-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white">Connected Wallets</span>
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                        {connectedWallets.length} Verified
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      {/* Chain Filters */}
+                      <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-[10px] font-mono">
+                        {(['ALL', 'ETH', 'SOL', 'BTC'] as const).map((filter) => (
+                          <button
+                            key={filter}
+                            type="button"
+                            onClick={() => setWalletFilter(filter)}
+                            className={`px-2 py-0.5 rounded transition-colors ${
+                              walletFilter === filter
+                                ? 'bg-slate-800 text-white font-bold'
+                                : 'text-slate-400 hover:text-slate-200'
+                            }`}
+                          >
+                            {filter}
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Add Wallet Button */}
+                      <button
+                        type="button"
+                        onClick={() => setShowAddWalletForm(!showAddWalletForm)}
+                        className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Address</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Add New Wallet Drawer */}
+                  {showAddWalletForm && (
+                    <div className="p-3 bg-slate-900/90 border border-slate-700/70 rounded-xl space-y-2.5 animate-in fade-in zoom-in-95">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1.5">
+                          <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                          Add Verified Chain Address
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddWalletForm(false);
+                            setAddWalletError(null);
+                          }}
+                          className="text-slate-400 hover:text-white p-0.5"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {/* Chain Selector */}
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(['ETH', 'SOL', 'BTC'] as const).map((ch) => {
+                          const badge = getChainBadge(ch);
+                          return (
+                            <button
+                              key={ch}
+                              type="button"
+                              onClick={() => {
+                                setNewWalletChain(ch);
+                                setAddWalletError(null);
+                              }}
+                              className={`py-1.5 px-2 rounded-lg border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all ${
+                                newWalletChain === ch
+                                  ? `${badge.badgeClass} ring-1 ring-emerald-500/20 shadow-sm`
+                                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                              }`}
+                            >
+                              <span>{ch}</span>
+                              <span className="text-[9px] font-normal text-slate-400">
+                                {ch === 'ETH' ? 'EVM' : ch === 'SOL' ? 'SPL' : 'SegWit'}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Label Input */}
+                      <div>
+                        <input
+                          type="text"
+                          value={newWalletName}
+                          onChange={(e) => setNewWalletName(e.target.value)}
+                          placeholder="Wallet Label (e.g. Ledger Cold Vault, Mobile Phantom)"
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-sans"
+                        />
+                      </div>
+
+                      {/* Address Input */}
+                      <div>
+                        <input
+                          type="text"
+                          value={newWalletAddress}
+                          onChange={(e) => {
+                            setNewWalletAddress(e.target.value);
+                            setAddWalletError(null);
+                          }}
+                          placeholder={
+                            newWalletChain === 'ETH'
+                              ? '0x... (42-character Ethereum address)'
+                              : newWalletChain === 'SOL'
+                              ? 'Base58 Solana address (32-44 characters)'
+                              : 'bc1... (Native SegWit / Taproot address)'
+                          }
+                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
+                        />
+                      </div>
+
+                      {addWalletError && (
+                        <div className="flex items-center gap-1.5 text-[10px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-1 rounded-lg">
+                          <AlertCircle className="w-3 h-3 shrink-0" />
+                          <span>{addWalletError}</span>
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowAddWalletForm(false);
+                            setAddWalletError(null);
+                          }}
+                          className="px-2.5 py-1 text-xs text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleAddWallet}
+                          disabled={isVerifyingNewWallet}
+                          className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
+                        >
+                          {isVerifyingNewWallet ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>Attesting Key Proof...</span>
+                            </>
+                          ) : (
+                            <>
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Verify & Connect</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wallets List */}
+                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
+                    {filteredWallets.length === 0 ? (
+                      <div className="py-4 text-center text-xs text-slate-500 font-mono">
+                        No verified {walletFilter} addresses found. Click "+ Add Address" to connect one.
+                      </div>
+                    ) : (
+                      filteredWallets.map((w) => {
+                        const isSelected = walletAddress.toLowerCase() === w.address.toLowerCase();
+                        const badge = getChainBadge(w.chain);
+
+                        return (
+                          <div
+                            key={w.id}
+                            onClick={() => handleSelectWallet(w)}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between group ${
+                              isSelected
+                                ? 'bg-slate-800/90 border-emerald-500 ring-1 ring-emerald-500/20 shadow-sm'
+                                : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              {/* Chain tag */}
+                              <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold shrink-0 ${badge.badgeClass}`}>
+                                {w.chain}
+                              </div>
+
+                              {/* Label and Address */}
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold text-white truncate">
+                                    {w.name}
+                                  </span>
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono shrink-0 flex items-center gap-1">
+                                    <CheckCircle2 className="w-2.5 h-2.5" />
+                                    <span>Verified</span>
+                                  </span>
+                                </div>
+                                <div className="text-[11px] font-mono text-slate-400 truncate mt-0.5 flex items-center gap-1.5">
+                                  <span>
+                                    {w.address.substring(0, 10)}...{w.address.substring(w.address.length - 8)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                              {/* Copy button */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyAddress(w.id, w.address, e)}
+                                title="Copy Address"
+                                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                              >
+                                {copiedId === w.id ? (
+                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3.5 h-3.5" />
+                                )}
+                              </button>
+
+                              {/* Remove button */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleRemoveWallet(w.id, e)}
+                                title="Remove Address"
+                                className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {/* Selected check */}
+                              <div className="ml-1">
+                                {isSelected ? (
+                                  <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
+                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  </span>
+                                ) : (
+                                  <span className="w-4 h-4 rounded-full border border-slate-700 group-hover:border-slate-500" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+
+                {/* Stablecoin Selection */}
                 <div>
                   <label className="text-xs font-semibold text-slate-300 block mb-1.5">
                     Select Stablecoin
@@ -349,86 +789,49 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     Settlement Network
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {NETWORKS.map((net) => (
-                      <button
-                        key={net.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedNetwork(net.id);
-                          // Auto adjust wallet address if switching between EVM and Solana
-                          if (net.id === 'Solana' && walletAddress.startsWith('0x')) {
-                            setWalletAddress('7XhM9pYqK3sL8nQ2vR6wE5tU1zC4jB8aD7fG6hJ5kL4');
-                          } else if (net.isEVM && !walletAddress.startsWith('0x') && walletAddress.length > 0) {
-                            setWalletAddress('0x71C5687b372480302E9B41d5F58eE5f242Ec33a9');
-                          }
-                        }}
-                        className={`p-2 rounded-lg border text-left transition-all ${
-                          selectedNetwork === net.id
-                            ? 'bg-slate-800 border-emerald-500 text-white'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="text-[11px] font-bold text-slate-200">{net.name}</div>
-                        <div className="text-[9px] text-emerald-400 font-mono mt-0.5 flex items-center gap-1">
-                          <Zap className="w-2.5 h-2.5" />
-                          <span>{net.gasSubsidy}</span>
-                        </div>
-                      </button>
-                    ))}
+                    {NETWORKS.map((net) => {
+                      const isNetworkCompatible = net.chain === activeChain;
+                      return (
+                        <button
+                          key={net.id}
+                          type="button"
+                          onClick={() => setSelectedNetwork(net.id)}
+                          className={`p-2 rounded-lg border text-left transition-all ${
+                            selectedNetwork === net.id
+                              ? 'bg-slate-800 border-emerald-500 text-white shadow-sm'
+                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                          } ${!isNetworkCompatible ? 'opacity-60' : ''}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-slate-200">{net.name}</span>
+                            <span className="text-[8px] font-mono px-1 rounded bg-slate-900 text-slate-400">
+                              {net.chain}
+                            </span>
+                          </div>
+                          <div className="text-[9px] text-emerald-400 font-mono mt-0.5 flex items-center gap-1">
+                            <Zap className="w-2.5 h-2.5" />
+                            <span>{net.gasSubsidy}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
-                {/* Connect Wallet / Destination Address */}
+                {/* Active Destination Address Preview & Manual Override */}
                 <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-300">
-                      Receiving Wallet Address
-                    </label>
-
-                    {connectedWalletName ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          <span>{connectedWalletName}</span>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <span>Destination Address</span>
+                      {connectedWalletName && (
+                        <span className="text-[10px] text-emerald-400 font-mono font-normal">
+                          ({connectedWalletName})
                         </span>
-                        <button
-                          type="button"
-                          onClick={handleDisconnectWallet}
-                          className="text-[10px] text-slate-400 hover:text-rose-400"
-                        >
-                          Disconnect
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <button
-                          type="button"
-                          onClick={() => setShowWalletPicker(!showWalletPicker)}
-                          disabled={isWalletConnecting}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors"
-                        >
-                          <Wallet className="w-3.5 h-3.5" />
-                          <span>{isWalletConnecting ? 'Connecting...' : 'Connect Wallet'}</span>
-                        </button>
-
-                        {/* Wallet Picker Dropdown */}
-                        {showWalletPicker && (
-                          <div className="absolute right-0 top-8 z-30 w-48 bg-slate-900 border border-slate-800 rounded-xl shadow-2xl p-1.5 space-y-1 animate-in fade-in zoom-in-95">
-                            {['MetaMask', 'Phantom', 'Coinbase Wallet', 'Rainbow'].map((wName) => (
-                              <button
-                                key={wName}
-                                type="button"
-                                onClick={() => handleConnectWallet(wName)}
-                                className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white flex items-center justify-between"
-                              >
-                                <span>{wName}</span>
-                                <ArrowRight className="w-3 h-3 text-slate-500" />
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      )}
+                    </label>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      Chain: <strong className="text-white">{activeChain}</strong>
+                    </span>
                   </div>
 
                   <input
@@ -436,27 +839,27 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     value={walletAddress}
                     onChange={(e) => {
                       setWalletAddress(e.target.value);
-                      if (connectedWalletName && !e.target.value) {
-                        setConnectedWalletName(null);
-                      }
+                      const matched = connectedWallets.find(w => w.address.toLowerCase() === e.target.value.trim().toLowerCase());
+                      setConnectedWalletName(matched ? matched.name : 'Custom Address');
                     }}
-                    placeholder={
-                      selectedNetwork === 'Solana'
-                        ? 'Paste Solana wallet address (e.g. 7XhM9pYq...)'
-                        : 'Paste EVM wallet address (0x...)'
-                    }
+                    placeholder="Selected address from verified wallets above..."
                     className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none transition-colors ${
-                      walletAddress && !isAddressValid()
+                      walletAddress && !isCurrentAddressValid()
                         ? 'border-rose-500/50 focus:border-rose-500 text-rose-200'
                         : 'border-slate-800 focus:border-emerald-500'
                     }`}
                   />
 
-                  {walletAddress && !isAddressValid() && (
-                    <p className="text-[10px] text-rose-400 mt-1">
-                      {selectedNetwork === 'Solana'
-                        ? 'Invalid Solana base58 address length.'
-                        : 'Invalid EVM format. Address must start with 0x and be 42 characters long.'}
+                  {walletAddress && !isCurrentAddressValid() && (
+                    <p className="text-[10px] text-rose-400 mt-1 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" />
+                      <span>
+                        {activeChain === 'ETH'
+                          ? 'Address must be a valid 42-char EVM hex address (0x...).'
+                          : activeChain === 'SOL'
+                          ? 'Address must be a valid 32-44 char base58 Solana address.'
+                          : 'Address must be a valid Bitcoin SegWit (bc1), Legacy (1), or Script (3) address.'}
+                      </span>
                     </p>
                   )}
                 </div>
@@ -526,7 +929,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             {/* Action Button */}
             <button
               onClick={handleWithdraw}
-              disabled={isProcessing || amount <= 0 || amount > stats.totalEarnedUsd || !isAddressValid()}
+              disabled={isProcessing || amount <= 0 || amount > stats.totalEarnedUsd || !isCurrentAddressValid()}
               className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:opacity-50 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all"
             >
               {isProcessing ? (
@@ -543,7 +946,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           </div>
         ) : (
           /* Receipt Screen */
-          <div className="p-6 space-y-4 text-center">
+          <div className="p-6 space-y-4 text-center overflow-y-auto">
             <div className="w-12 h-12 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>

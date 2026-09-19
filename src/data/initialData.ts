@@ -442,6 +442,25 @@ export const defaultPolicy: MonetizationPolicy = {
   allowInsuranceRiskProfiling: false,
   globalEpsilon: 0.35,
   autoNegotiateHighBids: true,
-  payoutMethod: 'usdc_solana',
-  walletAddress: 'SolData8vG...7k9wM3pQ'
+  payoutMethod: 'binance_auto',
+  walletAddress: 'SolData8vG...7k9wM3pQ',
+  binanceConfig: {
+    enabled: true,
+    binancePayIdOrEmail: 'johnpaularlos28@gmail.com',
+    defaultAsset: 'USDT',
+    network: 'Binance_Pay_Direct',
+    autoSweepThresholdUsd: 25.00,
+    sweepFrequency: 'instant',
+    isAttested: true
+  },
+  gcashConfig: {
+    enabled: true,
+    mobileNumber: '09171234567',
+    accountName: 'JOHN PAUL ARLOS',
+    autoCashOut: true,
+    cadence: 'instant',
+    minimumThresholdUsd: 10.00,
+    phpUsdRate: 58.75,
+    isVerifiedInstapay: true
+  }
 };

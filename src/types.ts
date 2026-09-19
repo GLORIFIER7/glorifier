@@ -108,6 +108,27 @@ export interface BuyerOffer {
   timestamp: string;
 }
 
+export interface BinanceAutoWithdrawalConfig {
+  enabled: boolean;
+  binancePayIdOrEmail: string; // Binance Pay ID (8-9 digits) or Binance registered Email
+  defaultAsset: 'USDT' | 'BUSD' | 'BNB' | 'BTC' | 'ETH';
+  network: 'Binance_Pay_Direct' | 'BEP20_BSC' | 'TRC20';
+  autoSweepThresholdUsd: number; // minimum amount to trigger auto-sweep
+  sweepFrequency: 'instant' | 'daily' | 'weekly';
+  isAttested: boolean;
+}
+
+export interface GCashDirectWithdrawalConfig {
+  enabled: boolean;
+  mobileNumber: string; // Philippine mobile format 09XXXXXXXXX or +639XXXXXXXXX
+  accountName: string; // Registered GCash verified name
+  autoCashOut: boolean;
+  cadence: 'instant' | 'weekly';
+  minimumThresholdUsd: number;
+  phpUsdRate: number; // e.g. 58.50 PHP per 1 USD
+  isVerifiedInstapay: boolean;
+}
+
 export interface MonetizationPolicy {
   brokerMode: 'autonomous-maximize' | 'balanced-protective' | 'strict-sovereign';
   minimumMonthlyFloorUsd: number;
@@ -117,8 +138,10 @@ export interface MonetizationPolicy {
   allowInsuranceRiskProfiling: boolean;
   globalEpsilon: number;
   autoNegotiateHighBids: boolean;
-  payoutMethod: 'usdc_solana' | 'stripe_connect' | 'direct_ach';
+  payoutMethod: 'usdc_solana' | 'binance_auto' | 'gcash_ph' | 'stripe_connect' | 'direct_ach';
   walletAddress: string;
+  binanceConfig?: BinanceAutoWithdrawalConfig;
+  gcashConfig?: GCashDirectWithdrawalConfig;
 }
 
 export interface CompensationTransaction {

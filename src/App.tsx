@@ -487,6 +487,7 @@ export default function App() {
           policy={policy}
           onClose={() => setIsWithdrawOpen(false)}
           onWithdrawSuccess={handleWithdrawSuccess}
+          onUpdatePolicy={handleUpdatePolicy}
         />
       )}
 

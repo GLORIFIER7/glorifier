@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { OverviewTab } from './components/OverviewTab';
 import { FootprintManager } from './components/FootprintManager';
@@ -29,8 +29,23 @@ import {
   ActiveDataGrant,
   UsageTelemetryEvent
 } from './types';
+import { 
+  auth, 
+  loginWithGoogle, 
+  logout, 
+  testFirestoreConnection 
+} from './lib/firebase';
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { 
+  saveUserPolicy, 
+  saveActiveGrant, 
+  recordTelemetryEvent, 
+  subscribeToUserPolicy, 
+  subscribeToUserGrants 
+} from './services/firestoreService';
 
 export default function App() {
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [stats, setStats] = useState(initialStats);
   const [footprints, setFootprints] = useState<DataFootprintSource[]>(initialFootprints);
@@ -43,6 +58,60 @@ export default function App() {
 
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [inspectingFootprint, setInspectingFootprint] = useState<DataFootprintSource | null>(null);
+
+  // Initialize Firebase Auth listener and test Firestore connection
+  useEffect(() => {
+    testFirestoreConnection();
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Sync with Firestore when user is logged in
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Listen to remote policy updates
+    const unsubPolicy = subscribeToUserPolicy(currentUser.uid, (remotePolicy) => {
+      if (remotePolicy) {
+        setPolicy(remotePolicy);
+      }
+    });
+
+    // Listen to remote grants updates
+    const unsubGrants = subscribeToUserGrants(currentUser.uid, (remoteGrants) => {
+      if (remoteGrants && remoteGrants.length > 0) {
+        setGrants(remoteGrants);
+      }
+    });
+
+    // Save current policy initially to ensure remote existence
+    saveUserPolicy(currentUser.uid, policy).catch(console.error);
+
+    return () => {
+      unsubPolicy();
+      unsubGrants();
+    };
+  }, [currentUser]);
+
+  const handleLogin = async () => {
+    try {
+      await loginWithGoogle();
+    } catch (err) {
+      console.error('Login error:', err);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   // Toggle footprint monetization
   const handleToggleFootprint = (id: string) => {
@@ -103,6 +172,10 @@ export default function App() {
         setStats(s => ({ ...s, monthlyPacingUsd: 145.00, privacyShieldIndex: 99 }));
       } else if (newPolicy.brokerMode === 'balanced-protective') {
         setStats(s => ({ ...s, monthlyPacingUsd: 215.30, privacyShieldIndex: 94 }));
+      }
+
+      if (currentUser) {
+        saveUserPolicy(currentUser.uid, updated).catch(console.error);
       }
 
       return updated;
@@ -253,6 +326,10 @@ export default function App() {
       totalEarnedUsd: s.totalEarnedUsd + payout,
       pendingSettlementUsd: s.pendingSettlementUsd + payout
     }));
+
+    if (currentUser) {
+      recordTelemetryEvent(currentUser.uid, newEvent).catch(console.error);
+    }
   };
 
   // Batch clear settlement
@@ -275,6 +352,9 @@ export default function App() {
         policy={policy}
         onOpenWithdraw={() => setIsWithdrawOpen(true)}
         pendingOffersCount={pendingOffersCount}
+        currentUser={currentUser}
+        onLogin={handleLogin}
+        onLogout={handleLogout}
       />
 
       {/* Main View Container */}

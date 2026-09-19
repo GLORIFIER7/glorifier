@@ -12,9 +12,14 @@ import {
   ArrowUpRight,
   SlidersHorizontal,
   Coins,
-  Lock
+  Lock,
+  LogIn,
+  LogOut,
+  User as UserIcon,
+  Cloud
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
+import { User } from 'firebase/auth';
 
 interface HeaderProps {
   activeTab: string;
@@ -23,6 +28,9 @@ interface HeaderProps {
   policy: MonetizationPolicy;
   onOpenWithdraw: () => void;
   pendingOffersCount: number;
+  currentUser: User | null;
+  onLogin: () => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -31,7 +39,10 @@ export const Header: React.FC<HeaderProps> = ({
   stats,
   policy,
   onOpenWithdraw,
-  pendingOffersCount
+  pendingOffersCount,
+  currentUser,
+  onLogin,
+  onLogout
 }) => {
   const tabs = [
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
@@ -75,24 +86,24 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-emerald-400 font-semibold capitalize">{policy.brokerMode.replace('-', ' ')}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
-              <Zap className="w-3.5 h-3.5 text-amber-400" />
-              <span>Diff. Privacy:</span>
-              <span className="text-slate-200 font-mono">ε = {policy.globalEpsilon}</span>
+              <Cloud className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Cloud DB:</span>
+              <span className="text-cyan-300 font-mono text-[11px]">asia-southeast1</span>
             </div>
           </div>
 
-          {/* Right: Wallet Balance & Cashout */}
+          {/* Right: Wallet Balance & Cashout & Auth */}
           <div className="flex items-center gap-3">
             <div 
               onClick={onOpenWithdraw}
               id="wallet-payout-button"
-              className="group cursor-pointer flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition-all shadow-sm"
+              className="group cursor-pointer flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition-all shadow-sm"
               title="Click to claim or withdraw funds"
             >
               <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Wallet className="w-4 h-4" />
               </div>
-              <div className="text-left">
+              <div className="text-left hidden sm:block">
                 <div className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">Claimable Yield</div>
                 <div className="text-sm font-bold text-emerald-400 font-mono flex items-center gap-1">
                   ${stats.totalEarnedUsd.toFixed(2)}
@@ -100,6 +111,33 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </div>
             </div>
+
+            {currentUser ? (
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+                <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-semibold text-xs border border-emerald-500/30">
+                  {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
+                </div>
+                <span className="text-xs text-slate-300 hidden md:inline max-w-[120px] truncate">
+                  {currentUser.displayName || currentUser.email}
+                </span>
+                <button
+                  onClick={onLogout}
+                  title="Sign out"
+                  className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onLogin}
+                id="google-signin-btn"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Sign in</span>
+              </button>
+            )}
 
             <button
               onClick={onOpenWithdraw}

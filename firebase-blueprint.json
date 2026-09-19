@@ -1,0 +1,282 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile with preferences and authorization details",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth User UID"
+        },
+        "email": {
+          "type": "string",
+          "description": "User email address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["uid", "email"]
+    },
+    "MonetizationPolicy": {
+      "title": "MonetizationPolicy",
+      "description": "User autonomous data monetization policy and yield preferences",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "brokerMode": {
+          "type": "string",
+          "description": "Broker mode strategy: autonomous-maximize, balanced-protective, strict-sovereign"
+        },
+        "minimumMonthlyFloorUsd": {
+          "type": "number",
+          "description": "Minimum acceptable monthly compensation floor in USD"
+        },
+        "allowAiModelPretraining": {
+          "type": "boolean",
+          "description": "Allow pre-training LLMs on anonymized data"
+        },
+        "allowAdTargeting": {
+          "type": "boolean",
+          "description": "Allow behavioral ad targeting"
+        },
+        "allowAcademicResearch": {
+          "type": "boolean",
+          "description": "Allow academic and non-profit research access"
+        },
+        "allowInsuranceRiskProfiling": {
+          "type": "boolean",
+          "description": "Allow insurance risk profiling"
+        },
+        "globalEpsilon": {
+          "type": "number",
+          "description": "Global Differential Privacy budget epsilon"
+        },
+        "autoNegotiateHighBids": {
+          "type": "boolean",
+          "description": "Automatically accept or counter high bids"
+        },
+        "payoutMethod": {
+          "type": "string",
+          "description": "Preferred payout route: usdc_solana, stripe_connect, direct_ach"
+        },
+        "walletAddress": {
+          "type": "string",
+          "description": "Settlement wallet or payout destination"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of policy update"
+        }
+      },
+      "required": ["userId", "brokerMode", "minimumMonthlyFloorUsd"]
+    },
+    "ActiveDataGrant": {
+      "title": "ActiveDataGrant",
+      "description": "Active data access grant with cryptographic protection and compensation terms",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Grant unique identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Owner user UID"
+        },
+        "dataPointName": {
+          "type": "string",
+          "description": "Name of the governed data stream"
+        },
+        "category": {
+          "type": "string",
+          "description": "Data category type"
+        },
+        "sharedFields": {
+          "type": "array",
+          "description": "List of anonymized fields shared"
+        },
+        "recipientOrg": {
+          "type": "string",
+          "description": "Name of recipient entity or buyer"
+        },
+        "recipientCategory": {
+          "type": "string",
+          "description": "Recipient vertical"
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Stated data computation purpose"
+        },
+        "protectionTech": {
+          "type": "string",
+          "description": "Cryptographic protection technique applied"
+        },
+        "epsilonLevel": {
+          "type": "number",
+          "description": "Differential privacy budget"
+        },
+        "compensationModel": {
+          "type": "string",
+          "description": "Pricing model: per_query, subscription, shapley_ml, per_action"
+        },
+        "rateDescription": {
+          "type": "string",
+          "description": "Human readable pricing rate description"
+        },
+        "grantedAt": {
+          "type": "string",
+          "description": "Timestamp grant was issued"
+        },
+        "expiresAt": {
+          "type": "string",
+          "description": "Timestamp grant expires"
+        },
+        "ttlHoursRemaining": {
+          "type": "number",
+          "description": "Hours remaining until automatic token revocation"
+        },
+        "status": {
+          "type": "string",
+          "description": "Status: active, revoked, expired"
+        },
+        "verifiableToken": {
+          "type": "string",
+          "description": "Cryptographic verifiable token or JWT hash"
+        },
+        "totalQueriesServed": {
+          "type": "number",
+          "description": "Cumulative queries served under this grant"
+        },
+        "revenueAccruedUsd": {
+          "type": "number",
+          "description": "Total USD accrued from this grant"
+        }
+      },
+      "required": ["id", "userId", "dataPointName", "recipientOrg", "status"]
+    },
+    "TelemetryEvent": {
+      "title": "TelemetryEvent",
+      "description": "Cryptographic query verification and microroyalty settlement event",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique event identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Data sovereign UID"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Event timestamp"
+        },
+        "grantId": {
+          "type": "string",
+          "description": "Associated grant ID"
+        },
+        "recipientOrg": {
+          "type": "string",
+          "description": "Buyer or computing lab"
+        },
+        "dataCategory": {
+          "type": "string",
+          "description": "Data vertical"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Computation event type"
+        },
+        "queryUnits": {
+          "type": "number",
+          "description": "Number of query units"
+        },
+        "compensationUsd": {
+          "type": "number",
+          "description": "Micropayment amount in USD"
+        },
+        "calculationModel": {
+          "type": "string",
+          "description": "Pricing model applied"
+        },
+        "zkProofHash": {
+          "type": "string",
+          "description": "ZKP proof hash verifying privacy preserving compute"
+        },
+        "epsilonConsumed": {
+          "type": "number",
+          "description": "Differential privacy epsilon consumed"
+        }
+      },
+      "required": ["id", "userId", "timestamp", "compensationUsd", "zkProofHash"]
+    },
+    "BuyerOffer": {
+      "title": "BuyerOffer",
+      "description": "AI model training or commercial data purchase offer",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Offer identifier"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Target user UID"
+        },
+        "buyerName": {
+          "type": "string",
+          "description": "Buyer organization name"
+        },
+        "buyerCategory": {
+          "type": "string",
+          "description": "Category of buyer"
+        },
+        "offeredCompUsd": {
+          "type": "number",
+          "description": "Offered compensation USD"
+        },
+        "status": {
+          "type": "string",
+          "description": "Offer status: PENDING, ACCEPTED, REJECTED, COUNTERED"
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Offer timestamp"
+        }
+      },
+      "required": ["id", "userId", "buyerName", "offeredCompUsd", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile records"
+    },
+    "/users/{userId}/policies/{policyId}": {
+      "schema": "MonetizationPolicy",
+      "description": "Sovereign user data monetization and broker rules"
+    },
+    "/users/{userId}/grants/{grantId}": {
+      "schema": "ActiveDataGrant",
+      "description": "Cryptographically bounded data access grants"
+    },
+    "/users/{userId}/telemetry/{telemetryId}": {
+      "schema": "TelemetryEvent",
+      "description": "Real-time usage telemetry and micro-settlement events"
+    },
+    "/users/{userId}/offers/{offerId}": {
+      "schema": "BuyerOffer",
+      "description": "Data purchase bids and AI training offers"
+    }
+  }
+}

@@ -173,6 +173,29 @@ export const initialFootprints: DataFootprintSource[] = [
       { field: 'Monthly Net Savings', rawValue: '34% of net income allocated to index funds', anonymizedValue: '[SHIELDED - NO ACCESS GRANTED]', noiseLevel: 'Complete Lockdown' },
       { field: 'Recurring SaaS', rawValue: 'AWS ($42), GitHub Copilot ($20), Spotify ($11)', anonymizedValue: '[SHIELDED - NO ACCESS GRANTED]', noiseLevel: 'Complete Lockdown' }
     ]
+  },
+  {
+    id: 'fp-gmail',
+    name: 'Gmail Workspace & Communications',
+    category: 'email',
+    platform: 'Google Workspace / Gmail API',
+    iconName: 'Mail',
+    dataPointsMonthly: 18500,
+    marketMonthlyValueUsd: 58.00,
+    userMonthlyCompUsd: 46.40,
+    isMonetized: true,
+    privacyTier: 'differential-privacy',
+    privacyEpsilon: 0.25,
+    status: 'active-monetizing',
+    lastSync: 'Live (Google Workspace Connected)',
+    description: 'E-commerce receipts, flight itineraries, newsletter clusters, and consumer interest signals (No raw email bodies or names).',
+    leakRiskScore: 82,
+    samples: [
+      { field: 'Commerce Order Confirmation', rawValue: 'Receipt for $142.50 at Electronics Store', anonymizedValue: 'ZK-Proof: Consumer Tech transaction bucketed in $100-$200 range', noiseLevel: 'Zero-Knowledge Proof' },
+      { field: 'Travel Itinerary', rawValue: 'Flight SFO -> SEA departing in 14 days', anonymizedValue: 'Synthetic Twin: West Coast domestic corridor traveler', noiseLevel: 'Laplacian ε=0.25' },
+      { field: 'Newsletter Digest', rawValue: 'Subscribed to 6 AI and Systems Engineering digests', anonymizedValue: 'Professional Technical Researcher cohort', noiseLevel: 'k-Anonymity (k=100)' },
+      { field: 'Vendor Tracking Pixels', rawValue: '18 marketing trackers identified and blocked', anonymizedValue: 'AdTech Pixel Disarm: 100% neutralized', noiseLevel: 'Privacy Shield Lockdown' }
+    ]
   }
 ];
 

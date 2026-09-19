@@ -9,7 +9,28 @@ export type DataCategoryType =
   | 'health'
   | 'developer'
   | 'location'
-  | 'financial';
+  | 'financial'
+  | 'email';
+
+export interface GmailTelemetryMetadata {
+  totalMessagesAnalyzed: number;
+  newsletterSubscriptionsDetected: number;
+  receiptsDetected: number;
+  travelReservationsCount: number;
+  spamTrackersBlocked: number;
+  lastSyncTimestamp: string;
+}
+
+export interface GmailAnalysisItem {
+  id: string;
+  snippet: string;
+  sender: string;
+  date: string;
+  category: 'Receipt/Commerce' | 'Travel/Itinerary' | 'Newsletter/Research' | 'Work/Collaboration';
+  extractedInsights: string;
+  governanceAction: 'Anonymized & Tokenized' | 'Direct Private Shield' | 'Synthetic Profiled';
+  estimatedYieldUsd: number;
+}
 
 export interface DataSampleRecord {
   field: string;

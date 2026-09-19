@@ -20,7 +20,8 @@ import {
   Landmark,
   FileSearch,
   ExternalLink,
-  ChevronDown
+  ChevronDown,
+  Mail
 } from 'lucide-react';
 import { DataFootprintSource, PrivacyTier, DataCategoryType } from '../types';
 
@@ -50,6 +51,7 @@ export const FootprintManager: React.FC<FootprintManagerProps> = ({
       case 'social': return Share2;
       case 'location': return MapPin;
       case 'financial': return Landmark;
+      case 'email': return Mail;
       default: return Database;
     }
   };

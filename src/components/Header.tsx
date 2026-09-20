@@ -18,7 +18,8 @@ import {
   User as UserIcon,
   Cloud,
   Mail,
-  HardDrive
+  HardDrive,
+  Users
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
@@ -55,6 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'privacy_lab', label: 'Privacy Tech Lab (PETs)', icon: Lock },
     { id: 'footprints', label: 'Footprint Tiers', icon: Database },
     { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
+    { id: 'ai_collaboration', label: 'AI Collaboration Management', icon: Users, badge: 'All AI' },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
     { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },
   ];

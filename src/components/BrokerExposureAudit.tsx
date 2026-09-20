@@ -49,6 +49,9 @@ export const BrokerExposureAudit: React.FC<BrokerExposureAuditProps> = ({
           model: 'gpt-4o'
         })
       });
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
       const data = await res.json();
       setActiveNoticeModal({
         brokerName: exp.brokerName,
@@ -57,6 +60,11 @@ export const BrokerExposureAudit: React.FC<BrokerExposureAuditProps> = ({
       });
     } catch (e) {
       console.error(e);
+      setActiveNoticeModal({
+        brokerName: exp.brokerName,
+        title: `STATUTORY NOTICE OF DATA ERASURE & ACCOUNTING OF PROFITS`,
+        notice: `DEMAND FOR IMMEDIATE EXPUNGEMENT AND STATUTORY ACCOUNTING\n\nTo: Compliance Officer, ${exp.brokerName}\n\nPursuant to ${exp.complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, and the California Delete Act'}:\n\n1. You are hereby formally notified to immediately purge, delete, and cease commercial syndication of all consumer profiles, device telemetry, and identity graphs associated with the undersigned (estimated ${exp.estimatedRecordsHeld || 350} records held).\n2. Provide a cryptographic Certificate of Deletion within thirty (30) calendar days.\n3. Disclose all third-party downstream licensees who received telemetry for financial gain.`
+      });
     } finally {
       setGeneratingId(null);
     }

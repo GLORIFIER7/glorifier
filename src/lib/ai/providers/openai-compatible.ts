@@ -25,11 +25,11 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   private get baseUrl() {
-    return process.env[this.config.baseUrlEnv];
+    return process.env[this.config.baseUrlEnv] || (this.config.id === 'openai' ? 'https://api.openai.com/v1' : undefined);
   }
 
   private get defaultModel() {
-    return process.env[this.config.modelEnv];
+    return process.env[this.config.modelEnv] || (this.config.id === 'openai' ? 'gpt-4o' : undefined);
   }
 
   status() {
@@ -47,7 +47,8 @@ export class OpenAICompatibleProvider implements AIProvider {
     const model = request.model || this.defaultModel;
     if (!model) throw new Error(`${this.name} model is not configured: missing ${this.config.modelEnv}.`);
 
-    const response = await fetch(`${this.baseUrl.replace(/\\/$/, '')}/chat/completions`, {
+    const cleanBaseUrl = this.baseUrl.replace(/\/+$/, '');
+    const response = await fetch(`${cleanBaseUrl}/chat/completions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

@@ -32,31 +32,64 @@ export class GeminiProvider implements AIProvider {
   }
 
   models() {
-    return process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL] : [];
+    return [process.env.GEMINI_MODEL || 'gemini-3.8-flash'];
   }
 
   async generate(request: AIRequest): Promise<AIResponse> {
     const client = this.getClient();
     if (!client) throw new Error('Gemini is not configured. Set GEMINI_API_KEY.');
 
-    const model = request.model || process.env.GEMINI_MODEL;
-    if (!model) throw new Error('Gemini model is not configured. Set GEMINI_MODEL.');
+    const primaryModel = request.model || process.env.GEMINI_MODEL || 'gemini-3.8-flash';
+    const fallbackModels = [primaryModel, 'gemini-3.1-flash-lite', 'gemini-flash-latest'].filter(
+      (m, idx, arr) => arr.indexOf(m) === idx
+    );
 
     const prompt = toPrompt(request.messages);
-    const response = await client.models.generateContent({
-      model,
-      contents: prompt.contents,
-      config: {
-        systemInstruction: prompt.systemInstruction,
-        ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
-        ...(request.maxTokens === undefined ? {} : { maxOutputTokens: request.maxTokens }),
-      },
-    });
 
-    return {
-      provider: this.id,
-      model,
-      text: response.text || '',
-    };
+    let lastError: any = null;
+    for (const model of fallbackModels) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          const response = await client.models.generateContent({
+            model,
+            contents: prompt.contents,
+            config: {
+              systemInstruction: prompt.systemInstruction,
+              ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
+              ...(request.maxTokens === undefined ? {} : { maxOutputTokens: request.maxTokens }),
+            },
+          });
+
+          return {
+            provider: this.id,
+            model,
+            text: response.text || '',
+          };
+        } catch (err: any) {
+          lastError = err;
+          const errMsg = err?.message || String(err);
+          const status = err?.status || err?.code || (errMsg.includes('503') ? 503 : (errMsg.includes('429') ? 429 : 0));
+          const isQuota = status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED');
+          const isUnavailable = status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('overloaded');
+
+          if (isQuota) {
+            break;
+          }
+
+          if (isUnavailable && attempt === 0) {
+            // Brief backoff before next attempt
+            await new Promise((r) => setTimeout(r, 600));
+            continue;
+          }
+
+          if (isUnavailable) {
+            break;
+          }
+          throw err;
+        }
+      }
+    }
+
+    throw lastError || new Error('Gemini generation failed');
   }
 }

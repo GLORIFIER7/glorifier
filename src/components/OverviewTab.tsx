@@ -14,9 +14,11 @@ import {
   Sparkles,
   ExternalLink,
   Shield,
-  Layers
+  Layers,
+  Users
 } from 'lucide-react';
 import { SovereignStats, DataFootprintSource, MonetizationPolicy, CompensationTransaction } from '../types';
+import { PrivacyShieldProgressBar } from './PrivacyShieldProgressBar';
 
 interface OverviewTabProps {
   stats: SovereignStats;
@@ -109,11 +111,19 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 self-end md:self-center">
+        <div className="flex items-center gap-2 self-end md:self-center flex-wrap">
+          <button
+            onClick={() => onNavigateToTab('ai_collaboration')}
+            id="open-ai-collaboration-btn"
+            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <Users className="w-3.5 h-3.5 text-emerald-400" />
+            <span>All-AI Collaboration</span>
+          </button>
           <button
             onClick={() => onNavigateToTab('broker')}
             id="open-ai-strategy-btn"
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <Cpu className="w-3.5 h-3.5 text-emerald-400" />
             Adjust Broker Strategy
@@ -170,25 +180,13 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
         </div>
 
-        {/* Card 3: Privacy Shield Score */}
-        <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Privacy Shield Index</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-emerald-400 tracking-tight">
-              {stats.privacyShieldIndex}/100
-            </span>
-            <span className="text-xs text-slate-400">Military-grade</span>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">Zero raw PII exposed</span>
-            <span className="text-emerald-400 font-medium">100% Cryptographic</span>
-          </div>
-        </div>
+        {/* Card 3: Privacy Shield Score & Animated Progress Bar */}
+        <PrivacyShieldProgressBar
+          stats={stats}
+          policy={policy}
+          onUpdatePolicy={onUpdatePolicy}
+          onNavigateToTab={onNavigateToTab}
+        />
 
         {/* Card 4: Governed Streams */}
         <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-sm relative overflow-hidden">

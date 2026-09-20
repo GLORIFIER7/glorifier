@@ -12,6 +12,7 @@ import { PrivacyTechLab } from './components/PrivacyTechLab';
 import { DataControlDashboard } from './components/DataControlDashboard';
 import { GmailGovernanceTab } from './components/GmailGovernanceTab';
 import { DriveGovernanceTab } from './components/DriveGovernanceTab';
+import { AiModelsCollaborationManagement } from './components/AiModelsCollaborationManagement';
 import { 
   initialStats, 
   initialFootprints, 
@@ -162,19 +163,50 @@ export default function App() {
     }));
   };
 
-  // Update policy
+  // Update policy with dynamic shield calculation
   const handleUpdatePolicy = (newPolicy: Partial<MonetizationPolicy>) => {
     setPolicy(prev => {
       const updated = { ...prev, ...newPolicy };
       
-      // If brokerMode changed, adjust pacing
-      if (newPolicy.brokerMode === 'autonomous-maximize') {
-        setStats(s => ({ ...s, monthlyPacingUsd: 382.40, privacyShieldIndex: 86 }));
-      } else if (newPolicy.brokerMode === 'strict-sovereign') {
-        setStats(s => ({ ...s, monthlyPacingUsd: 145.00, privacyShieldIndex: 99 }));
-      } else if (newPolicy.brokerMode === 'balanced-protective') {
-        setStats(s => ({ ...s, monthlyPacingUsd: 215.30, privacyShieldIndex: 94 }));
+      // Calculate dynamic privacy shield score based on policy protections
+      let baseShield = 91;
+      if (updated.brokerMode === 'strict-sovereign') {
+        baseShield = 95;
+      } else if (updated.brokerMode === 'balanced-protective') {
+        baseShield = 91;
+      } else {
+        baseShield = 84;
       }
+
+      // Epsilon strength factor (lower epsilon = more noise = stronger mathematical shield)
+      if (updated.globalEpsilon <= 0.15) {
+        baseShield += 2;
+      } else if (updated.globalEpsilon <= 0.35) {
+        baseShield += 1;
+      } else if (updated.globalEpsilon >= 0.60) {
+        baseShield -= 2;
+      }
+
+      // Protective constraints
+      if (!updated.allowAdTargeting) baseShield += 1;
+      if (!updated.allowInsuranceRiskProfiling) baseShield += 1;
+      if (!updated.allowAiModelPretraining) baseShield += 1;
+
+      const finalShield = Math.min(100, Math.max(50, baseShield));
+
+      // Calculate estimated pacing
+      let pacing = 215.30;
+      if (updated.brokerMode === 'autonomous-maximize') {
+        pacing = 382.40;
+      } else if (updated.brokerMode === 'strict-sovereign') {
+        pacing = 145.00;
+      }
+
+      setStats(s => ({ 
+        ...s, 
+        monthlyPacingUsd: pacing, 
+        privacyShieldIndex: finalShield 
+      }));
 
       if (currentUser) {
         saveUserPolicy(currentUser.uid, updated).catch(console.error);
@@ -459,6 +491,15 @@ export default function App() {
             policy={policy}
             onUpdatePolicy={handleUpdatePolicy}
             footprints={footprints}
+          />
+        )}
+
+        {activeTab === 'ai_collaboration' && (
+          <AiModelsCollaborationManagement
+            policy={policy}
+            onUpdatePolicy={handleUpdatePolicy}
+            footprints={footprints}
+            onOpenBrokerTab={() => setActiveTab('broker')}
           />
         )}
 

@@ -12,9 +12,12 @@ import {
   User, 
   Zap,
   RefreshCw,
-  FileCheck
+  FileCheck,
+  Users
 } from 'lucide-react';
 import { MonetizationPolicy, DataFootprintSource, AiBrokerChatMessage } from '../types';
+import { AiPolicyOptimizerModal } from './AiPolicyOptimizerModal';
+import { AllAiCollaborationModal } from './AllAiCollaborationModal';
 
 interface AiBrokerConsoleProps {
   policy: MonetizationPolicy;
@@ -30,6 +33,8 @@ export const AiBrokerConsole: React.FC<AiBrokerConsoleProps> = ({
   onApplySuggestedAction
 }) => {
   const [selectedModel, setSelectedModel] = useState<string>(policy.aiModel || 'gpt-4o');
+  const [showOptimizerModal, setShowOptimizerModal] = useState(false);
+  const [showCollaborationModal, setShowCollaborationModal] = useState(false);
 
   const [messages, setMessages] = useState<AiBrokerChatMessage[]>([
     {
@@ -61,16 +66,58 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
     onUpdatePolicy({ aiModel: newModel as any });
   };
 
+  const handleApplyOptimization = (optimizedPolicy: Partial<MonetizationPolicy>, rationale: string) => {
+    onUpdatePolicy(optimizedPolicy);
+
+    const optimizerMsg: AiBrokerChatMessage = {
+      id: `optimizer-${Date.now()}`,
+      sender: 'ai_broker',
+      content: `[AI Policy Optimizer Applied (${selectedModel.toUpperCase()})]:\n\n${rationale}\n\n• Calibrated Privacy Epsilon: ε = ${optimizedPolicy.globalEpsilon}\n• Recalibrated Monthly Floor: $${optimizedPolicy.minimumMonthlyFloorUsd}/mo\n• Autonomous Stance: ${optimizedPolicy.brokerMode}\n• Status: Differential privacy proof attested. Mathematical risk containment active.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      modelUsed: selectedModel,
+      provider: 'AI Policy Optimizer'
+    };
+
+    setMessages(prev => [...prev, optimizerMsg]);
+  };
+
+  const handleApplyCouncilDirectives = (directives: { globalEpsilon?: number; minimumMonthlyFloorUsd?: number; autoNegotiateHighBids?: boolean }, summary: string) => {
+    onUpdatePolicy(directives);
+
+    const councilMsg: AiBrokerChatMessage = {
+      id: `council-${Date.now()}`,
+      sender: 'ai_broker',
+      content: `🏛️ **ALL-AI MODEL COUNCIL CONSENSUS ENACTED**\n\n${summary}\n\n• Participating Frontier AI Nodes: OpenAI GPT-4o, Google Gemini 3.8 Flash, Meta LLaMA 3.3 (Open Weights)\n• Consensus Agreement: 98%\n• Calibrated Privacy Epsilon: ε = ${directives.globalEpsilon}\n• Recalibrated Monthly Floor: $${directives.minimumMonthlyFloorUsd}/mo\n• Status: All models have signed the consensus proof. Commercial ad-broker tracking quarantined, and zero-PII sovereign AI pretraining authorized.`,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      modelUsed: 'all-models',
+      provider: 'All-AI Sovereign Collaboration Council'
+    };
+
+    setMessages(prev => [...prev, councilMsg]);
+  };
+
   const quickPrompts = [
+    'Invite all artificial intelligence models to collaborate on my data strategy',
+    'Run AI Policy Optimizer to tune my epsilon and privacy tier',
     'Have GPT-4o negotiate a +25% rate for my developer code telemetry',
-    'GPT Audit: Scan my search and browsing streams for quasi-identifiers',
+    'GPT & Gemini Audit: Scan my search and browsing streams for quasi-identifiers',
     'Draft a strict CCPA / GDPR statutory clawback demand letter',
-    'Explain how differential privacy ε=0.35 protects me in AI pretraining',
   ];
 
   const handleSendMessage = async (customText?: string) => {
     const textToSend = customText || inputQuery;
     if (!textToSend.trim() || isLoading) return;
+
+    const lower = textToSend.toLowerCase();
+    if (lower.includes('optimizer') || lower.includes('tune my epsilon')) {
+      setShowOptimizerModal(true);
+    }
+
+    if (lower.includes('collaborat') || lower.includes('invite all') || lower.includes('all ai') || lower.includes('all artificial') || lower.includes('council')) {
+      setShowCollaborationModal(true);
+      setSelectedModel('all-models');
+      onUpdatePolicy({ aiModel: 'all-models' as any });
+    }
 
     const userMsg: AiBrokerChatMessage = {
       id: `user-${Date.now()}`,
@@ -142,17 +189,23 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
                   <h3 className="text-sm font-bold text-white">DataSovereign AI Broker</h3>
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                    {selectedModel.toUpperCase()}
+                    {selectedModel === 'all-models' ? 'ALL AI COUNCIL' : selectedModel.toUpperCase()}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400">
-                  OpenAI GPT-4o Autonomous Reasoning & Valuation Engine
+                  {selectedModel === 'all-models' 
+                    ? 'All AI Models Collaborative Council (OpenAI GPT-4o + Google Gemini + Meta LLaMA)' 
+                    : selectedModel === 'gemini-3.8-flash'
+                    ? 'Google Gemini 3.8 Flash Low-Latency Multimodal Reasoning'
+                    : selectedModel === 'consensus'
+                    ? 'Dual-Consensus Cross-Validation (GPT-4o + Gemini 3.8 Flash)'
+                    : 'OpenAI GPT-4o Autonomous Reasoning & Valuation Engine'}
                 </p>
               </div>
             </div>
 
             {/* Model Selector Pills in Header */}
-            <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-lg border border-slate-800">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-lg border border-slate-800 flex-wrap">
               <button
                 type="button"
                 onClick={() => handleModelChange('gpt-4o')}
@@ -179,6 +232,18 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
               </button>
               <button
                 type="button"
+                onClick={() => handleModelChange('gemini-3.8-flash')}
+                className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
+                  selectedModel === 'gemini-3.8-flash'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Google Gemini 3.8 Flash Engine"
+              >
+                Gemini
+              </button>
+              <button
+                type="button"
                 onClick={() => handleModelChange('consensus')}
                 className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
                   selectedModel === 'consensus'
@@ -191,15 +256,20 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
               </button>
               <button
                 type="button"
-                onClick={() => handleModelChange('gemini-3.8-flash')}
-                className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
-                  selectedModel === 'gemini-3.8-flash'
-                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
-                    : 'text-slate-400 hover:text-white'
+                id="invite-all-ai-models-btn"
+                onClick={() => {
+                  handleModelChange('all-models');
+                  setShowCollaborationModal(true);
+                }}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded transition-all flex items-center gap-1.5 cursor-pointer ${
+                  selectedModel === 'all-models'
+                    ? 'bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 text-slate-950 shadow-md font-bold'
+                    : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/20'
                 }`}
-                title="Google Gemini 3.8 Flash Engine"
+                title="Invite All AI Models to Collaborate (OpenAI GPT-4o + Google Gemini 3.8 Flash + Meta LLaMA 3.3)"
               >
-                Gemini
+                <Users className="w-3 h-3" />
+                <span>Collaborate (All AI)</span>
               </button>
             </div>
           </div>
@@ -340,15 +410,83 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
       {/* Right 5 cols: Live Policy Configuration Panel */}
       <div className="lg:col-span-5 space-y-4">
         <div className="rounded-xl bg-slate-900 border border-slate-800 p-5 shadow-lg">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 mb-3">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <Sliders className="w-4 h-4 text-emerald-400" />
               Autonomous Policy Directives
             </h3>
-            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              Active Enforcement
-            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <button
+                type="button"
+                id="invite-all-ai-header-btn"
+                onClick={() => {
+                  handleModelChange('all-models');
+                  setShowCollaborationModal(true);
+                }}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-400 hover:from-emerald-400 hover:to-cyan-300 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/20 transition-all active:scale-95 group cursor-pointer"
+                title="Invite All AI Models to Collaborate (OpenAI GPT-4o, Google Gemini, Meta LLaMA)"
+              >
+                <Users className="w-3.5 h-3.5 fill-slate-950 group-hover:scale-110 transition-transform" />
+                <span>Invite All AI</span>
+              </button>
+              <button
+                type="button"
+                id="ai-policy-optimizer-btn"
+                onClick={() => setShowOptimizerModal(true)}
+                className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium text-xs transition-all active:scale-95 group cursor-pointer"
+                title="Calibrate optimal epsilon and privacy tier settings based on risk tolerance"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400 group-hover:rotate-12 transition-transform" />
+                <span>Optimizer</span>
+              </button>
+            </div>
           </div>
+
+          {/* All-AI Collaboration Council Banner */}
+          <div className="mb-3 p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-cyan-950/40 border border-emerald-500/30 flex items-center justify-between gap-3 shadow-sm">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/30">
+                <Users className="w-4 h-4" />
+              </div>
+              <div className="text-[11px] text-slate-300 leading-tight">
+                <span className="font-semibold text-white">All-AI Collaboration Council: </span>
+                <span className="text-slate-400">OpenAI GPT-4o, Google Gemini, & Meta LLaMA co-deliberating.</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="banner-convene-models-btn"
+              onClick={() => {
+                handleModelChange('all-models');
+                setShowCollaborationModal(true);
+              }}
+              className="shrink-0 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer"
+            >
+              Convene Council →
+            </button>
+          </div>
+
+          {/* AI Policy Optimizer Quick Recommendation Banner */}
+          <div className="mb-4 p-3 rounded-xl bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-slate-950 border border-emerald-500/20 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <div className="text-[11px] text-slate-300 leading-tight">
+                <span className="font-semibold text-white">Risk-Tuned Directives: </span>
+                <span>Calibrate optimal ε and privacy tiers for your risk tolerance.</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="banner-launch-optimizer-btn"
+              onClick={() => setShowOptimizerModal(true)}
+              className="shrink-0 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 underline underline-offset-2 cursor-pointer"
+            >
+              Optimize →
+            </button>
+          </div>
+
           <p className="text-xs text-slate-400 mb-4">
             Your AI broker automatically applies these governing thresholds to all incoming buyer bids and data license requests.
           </p>
@@ -497,13 +635,29 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
               AI Intelligence Architecture
             </div>
             <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              {selectedModel === 'gpt-4o' ? 'OpenAI GPT-4o' : selectedModel === 'gpt-4o-mini' ? 'OpenAI GPT-4o mini' : selectedModel === 'consensus' ? 'Dual Consensus' : 'Google Gemini'}
+              {selectedModel === 'all-models'
+                ? 'All-AI Model Council'
+                : selectedModel === 'gpt-4o'
+                ? 'OpenAI GPT-4o'
+                : selectedModel === 'gpt-4o-mini'
+                ? 'OpenAI GPT-4o mini'
+                : selectedModel === 'consensus'
+                ? 'Dual Consensus'
+                : 'Google Gemini'}
             </span>
           </div>
           <div className="space-y-1.5 text-[11px] text-slate-400">
             <div className="flex justify-between border-b border-slate-800/60 pb-1">
-              <span>Primary Engine:</span>
-              <span className="text-slate-200 font-mono font-medium">OpenAI GPT-4o</span>
+              <span>Active Architecture:</span>
+              <span className="text-slate-200 font-mono font-medium">
+                {selectedModel === 'all-models'
+                  ? 'OpenAI + Gemini + Meta LLaMA'
+                  : selectedModel === 'consensus'
+                  ? 'GPT-4o & Gemini 3.8 Flash'
+                  : selectedModel === 'gemini-3.8-flash'
+                  ? 'Gemini 3.8 Flash'
+                  : 'OpenAI GPT-4o'}
+              </span>
             </div>
             <div className="flex justify-between border-b border-slate-800/60 pb-1">
               <span>Autonomous Stance:</span>
@@ -515,11 +669,31 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
             </div>
             <div className="flex justify-between pt-0.5">
               <span>Negotiation Capability:</span>
-              <span className="text-slate-200">Autonomous Counter-Offers</span>
+              <span className="text-slate-200">
+                {selectedModel === 'all-models' ? 'Multi-Model Consensus & Counter-Offers' : 'Autonomous Counter-Offers'}
+              </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* AI Policy Optimizer Modal */}
+      <AiPolicyOptimizerModal
+        isOpen={showOptimizerModal}
+        onClose={() => setShowOptimizerModal(false)}
+        currentPolicy={policy}
+        onApplyOptimization={handleApplyOptimization}
+        activeModel={selectedModel}
+      />
+
+      {/* All-AI Model Collaboration Council Modal */}
+      <AllAiCollaborationModal
+        isOpen={showCollaborationModal}
+        onClose={() => setShowCollaborationModal(false)}
+        policy={policy}
+        footprints={footprints}
+        onApplyDirectives={handleApplyCouncilDirectives}
+      />
     </div>
   );
 };

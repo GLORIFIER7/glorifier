@@ -15,7 +15,7 @@ export function getMongoClient(): Promise<MongoClient> {
     const client = new MongoClient(getMongoUri());
     clientPromise = client.connect();
   }
-  return clientPromise;
+  return clientPromise!;
 }
 
 export async function getMongoDb(): Promise<Db> {

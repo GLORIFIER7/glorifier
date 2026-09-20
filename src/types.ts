@@ -129,6 +129,8 @@ export interface GCashDirectWithdrawalConfig {
   isVerifiedInstapay: boolean;
 }
 
+export type RiskToleranceLevel = 'conservative' | 'balanced' | 'yield-focused';
+
 export interface MonetizationPolicy {
   brokerMode: 'autonomous-maximize' | 'balanced-protective' | 'strict-sovereign';
   minimumMonthlyFloorUsd: number;
@@ -142,7 +144,32 @@ export interface MonetizationPolicy {
   walletAddress: string;
   binanceConfig?: BinanceAutoWithdrawalConfig;
   gcashConfig?: GCashDirectWithdrawalConfig;
-  aiModel?: 'gpt-4o' | 'gpt-4o-mini' | 'gemini-3.8-flash' | 'consensus';
+  aiModel?: 'gpt-4o' | 'gpt-4o-mini' | 'gemini-3.8-flash' | 'consensus' | 'all-models';
+  riskTolerance?: RiskToleranceLevel;
+}
+
+export interface ModelCollaborationParticipant {
+  modelId: string;
+  name: string;
+  provider: string;
+  role: string;
+  color: string;
+  badge: string;
+  status: 'active' | 'analyzing' | 'completed' | 'ready';
+  output?: string;
+  perspective: string;
+  keyRecommendation?: string;
+}
+
+export interface CouncilConsensusResult {
+  agenda: string;
+  timestamp: string;
+  participants: ModelCollaborationParticipant[];
+  unifiedConsensus: string;
+  consensusScore: number; // 0 - 100
+  recommendedEpsilon: number;
+  recommendedFloorUsd: number;
+  actionDirectives: string[];
 }
 
 export interface CompensationTransaction {

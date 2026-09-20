@@ -5,11 +5,12 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { aiOrchestrator } from './src/lib/ai';
+import { checkPostgres } from './src/lib/db/postgres';
 
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -268,7 +269,12 @@ async function runModelExecution({
 
 // 1. Health check & AI Config
 app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), database: 'postgresql' });
+});
+
+app.get('/api/health/database', async (req: Request, res: Response) => {
+  const health = await checkPostgres();
+  res.status(health.ok ? 200 : 503).json(health);
 });
 
 app.get('/api/ai/config', (req: Request, res: Response) => {

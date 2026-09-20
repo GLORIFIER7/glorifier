@@ -3,6 +3,7 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import { auth, requiresAuth } from 'express-openid-connect';
 import { aiOrchestrator } from './src/lib/ai/orchestrator';
 import { checkMongoDb } from './src/lib/db/mongodb';
 
@@ -12,6 +13,54 @@ const app = express();
 const PORT = Number(process.env.PORT || 3000);
 
 app.use(express.json({ limit: '10mb' }));
+
+const authConfigured = Boolean(
+  process.env.AUTH0_ISSUER_BASE_URL &&
+  process.env.AUTH0_CLIENT_ID &&
+  process.env.AUTH0_CLIENT_SECRET &&
+  process.env.AUTH0_BASE_URL &&
+  process.env.AUTH0_SESSION_SECRET
+);
+
+if (authConfigured) {
+  app.set('trust proxy', 1);
+  app.use(auth({
+    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    baseURL: process.env.AUTH0_BASE_URL,
+    secret: process.env.AUTH0_SESSION_SECRET,
+    authRequired: false,
+    idpLogout: true,
+    authorizationParams: {
+      response_type: 'code',
+      scope: 'openid profile email',
+    },
+  }));
+} else {
+  console.warn('Auth0 is not configured; protected API routes are disabled until Auth0 environment variables are provided.');
+}
+
+const requireAuth = (req: Request, res: Response, next: Function) => {
+  if (!authConfigured) {
+    return res.status(503).json({ error: 'Auth0 is not configured' });
+  }
+  return requiresAuth()(req, res, next);
+};
+
+app.get('/api/auth/status', (req: Request, res: Response) => {
+  const oidc = (req as Request & { oidc?: { isAuthenticated?: () => boolean; user?: unknown } }).oidc;
+  res.json({
+    configured: authConfigured,
+    authenticated: Boolean(oidc?.isAuthenticated?.()),
+    user: oidc?.isAuthenticated?.() ? oidc.user : null,
+    loginPath: authConfigured ? '/auth/login' : null,
+    logoutPath: authConfigured ? '/auth/logout' : null,
+  });
+});
+
+app.use('/api/ai', requireAuth);
+app.use('/api/health/database', requireAuth);
 
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
@@ -58,7 +107,7 @@ app.get('/api/health/database', async (_req: Request, res: Response) => {
 });
 
 app.get('/api/health', (_req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), auth0Configured: authConfigured });
 });
 
 // Existing broker chat, now using the orchestrator when available.

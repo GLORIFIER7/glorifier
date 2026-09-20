@@ -15,37 +15,6 @@ const isProduction = process.env.NODE_ENV === 'production';
 app.set('trust proxy', 1);
 app.use(express.json({ limit: '2mb' }));
 
-const authConfigured = Boolean(
-  process.env.AUTH0_ISSUER_BASE_URL &&
-  process.env.AUTH0_CLIENT_ID &&
-  process.env.AUTH0_CLIENT_SECRET &&
-  process.env.AUTH0_BASE_URL &&
-  process.env.AUTH0_SESSION_SECRET
-);
-
-if (authConfigured) {
-  app.use(auth({
-    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
-    clientID: process.env.AUTH0_CLIENT_ID,
-    clientSecret: process.env.AUTH0_CLIENT_SECRET,
-    baseURL: process.env.AUTH0_BASE_URL,
-    secret: process.env.AUTH0_SESSION_SECRET,
-    authRequired: false,
-    idpLogout: true,
-    authorizationParams: {
-      response_type: 'code',
-      scope: 'openid profile email',
-    },
-  }));
-}
-
-function requireAuth(req: Request, res: Response, next: NextFunction) {
-  if (!authConfigured) {
-    return res.status(503).json({ error: 'Auth0 is not configured' });
-  }
-  return requiresAuth()(req, res, next);
-}
-
 function parseJson(text: string): unknown | null {
   try {
     return JSON.parse(text);
@@ -70,33 +39,19 @@ app.get('/api/health', (_req, res) => {
     status: 'ok',
     timestamp: now(),
     database: 'postgresql',
-    auth0Configured,
   });
 });
 
-app.get('/api/auth/status', (req: Request, res: Response) => {
-  const oidc = (req as Request & { oidc?: { isAuthenticated?: () => boolean; user?: unknown } }).oidc;
-  const authenticated = Boolean(oidc?.isAuthenticated?.());
-  res.json({
-    configured: authConfigured,
-    authenticated,
-    user: authenticated ? oidc?.user : null,
-    loginPath: authConfigured ? '/auth/login' : null,
-    logoutPath: authConfigured ? '/auth/logout' : null,
-  });
-});
-
-// Database and AI operations are protected by Auth0.
-app.get('/api/health/database', requireAuth, async (_req, res) => {
+app.get('/api/health/database', async (_req, res) => {
   const result = await checkPostgres();
   res.status(result.ok ? 200 : 503).json(result);
 });
 
-app.get('/api/ai/providers', requireAuth, (_req, res) => {
+app.get('/api/ai/providers', (_req, res) => {
   res.json({ providers: aiOrchestrator.registry() });
 });
 
-app.post('/api/ai/orchestrate', requireAuth, async (req, res) => {
+app.post('/api/ai/orchestrate', async (req, res) => {
   try {
     const { messages, provider = 'auto', model, temperature, maxTokens } = req.body;
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -117,7 +72,7 @@ app.post('/api/ai/orchestrate', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/ai/collaborate', requireAuth, async (req, res) => {
+app.post('/api/ai/collaborate', async (req, res) => {
   try {
     const { messages, providerIds } = req.body;
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -133,7 +88,7 @@ app.post('/api/ai/collaborate', requireAuth, async (req, res) => {
 });
 
 // Unified council: real connected providers only; no fabricated model output.
-app.post('/api/ai/council', requireAuth, async (req, res) => {
+app.post('/api/ai/council', async (req, res) => {
   try {
     const { agenda, currentPolicy, footprints, activeModels } = req.body;
     const topic = String(agenda || 'Glorifier AI governance review');
@@ -204,7 +159,7 @@ app.post('/api/ai/council', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/ai/broker-chat', requireAuth, async (req, res) => {
+app.post('/api/ai/broker-chat', async (req, res) => {
   try {
     const { message, currentPolicy, footprintsSummary, model } = req.body;
     if (!message || typeof message !== 'string') {
@@ -240,7 +195,7 @@ app.post('/api/ai/broker-chat', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/ai/evaluate-offer', requireAuth, async (req, res) => {
+app.post('/api/ai/evaluate-offer', async (req, res) => {
   try {
     const { offer, userPolicy, model } = req.body;
     if (!offer || typeof offer !== 'object') {
@@ -285,7 +240,7 @@ app.post('/api/ai/evaluate-offer', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/ai/audit-footprint', requireAuth, async (req, res) => {
+app.post('/api/ai/audit-footprint', async (req, res) => {
   try {
     const { category, sourceName, sampleData, model } = req.body;
     const result = await aiOrchestrator.generate({
@@ -326,7 +281,7 @@ app.post('/api/ai/audit-footprint', requireAuth, async (req, res) => {
   }
 });
 
-app.post('/api/ai/generate-clawback', requireAuth, async (req, res) => {
+app.post('/api/ai/generate-clawback', async (req, res) => {
   try {
     const { brokerName, complianceStatute, recordCount, model } = req.body;
     const result = await aiOrchestrator.generate({

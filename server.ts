@@ -1,675 +1,379 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI } from '@google/genai';
-import OpenAI from 'openai';
-import { aiOrchestrator } from './src/lib/ai';
+import { auth, requiresAuth } from 'express-openid-connect';
+import { aiOrchestrator } from './src/lib/ai/orchestrator';
 import { checkPostgres } from './src/lib/db/postgres';
 
 dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const isProduction = process.env.NODE_ENV === 'production';
 
-app.use(express.json({ limit: '10mb' }));
+app.set('trust proxy', 1);
+app.use(express.json({ limit: '2mb' }));
 
-// Lazy/safe initialization of Gemini AI
-let genAIClient: GoogleGenAI | null = null;
-function getGenAI(): GoogleGenAI | null {
-  if (!genAIClient && process.env.GEMINI_API_KEY) {
-    genAIClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
+const authConfigured = Boolean(
+  process.env.AUTH0_ISSUER_BASE_URL &&
+  process.env.AUTH0_CLIENT_ID &&
+  process.env.AUTH0_CLIENT_SECRET &&
+  process.env.AUTH0_BASE_URL &&
+  process.env.AUTH0_SESSION_SECRET
+);
+
+if (authConfigured) {
+  app.use(auth({
+    issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
+    clientID: process.env.AUTH0_CLIENT_ID,
+    clientSecret: process.env.AUTH0_CLIENT_SECRET,
+    baseURL: process.env.AUTH0_BASE_URL,
+    secret: process.env.AUTH0_SESSION_SECRET,
+    authRequired: false,
+    idpLogout: true,
+    authorizationParams: {
+      response_type: 'code',
+      scope: 'openid profile email',
+    },
+  }));
+}
+
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!authConfigured) {
+    return res.status(503).json({ error: 'Auth0 is not configured' });
   }
-  return genAIClient;
+  return requiresAuth()(req, res, next);
 }
 
-// Robust Gemini execution helper with automatic retry for transient 503 / 429 errors and fallback models
-async function callGeminiSafe({
-  contents,
-  systemInstruction,
-  temperature = 0.4,
-  responseMimeType,
-  preferredModel = 'gemini-3.8-flash'
-}: {
-  contents: string;
-  systemInstruction?: string;
-  temperature?: number;
-  responseMimeType?: string;
-  preferredModel?: string;
-}): Promise<{ text: string; modelUsed: string } | null> {
-  const gemini = getGenAI();
-  if (!gemini) return null;
-
-  // Use fast, high-availability, free-tier supported models:
-  // 1. gemini-3.8-flash (primary recommended)
-  // 2. gemini-3.1-flash-lite (high rate-limit headroom)
-  // 3. gemini-flash-latest (general alias)
-  const candidateModels = [
-    preferredModel,
-    'gemini-3.1-flash-lite',
-    'gemini-flash-latest'
-  ].filter((m, idx, arr) => arr.indexOf(m) === idx);
-
-  for (const model of candidateModels) {
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        const response = await gemini.models.generateContent({
-          model,
-          contents,
-          config: {
-            systemInstruction,
-            temperature,
-            responseMimeType: responseMimeType as any
-          }
-        });
-        const text = response.text || '';
-        if (text) {
-          return { text, modelUsed: model };
-        }
-      } catch (err: any) {
-        const errMsg = err?.message || String(err);
-        const status = err?.status || err?.code || (errMsg.includes('503') ? 503 : (errMsg.includes('429') ? 429 : 0));
-        const isQuota = status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED');
-        const isUnavailable = status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('overloaded');
-
-        console.warn(`Gemini call [model=${model}, attempt=${attempt + 1}] failed:`, errMsg);
-
-        // If it's a quota issue on a specific model, immediately switch to the next candidate model
-        if (isQuota) {
-          break;
-        }
-
-        // If transient high-demand (503), back off once and retry
-        if (isUnavailable && attempt === 0) {
-          await new Promise((resolve) => setTimeout(resolve, 800));
-          continue;
-        }
-
-        break;
-      }
-    }
-  }
-
-  return null;
-}
-
-// Lazy/safe initialization of OpenAI (GPT models)
-let openAIClient: OpenAI | null = null;
-function getOpenAI(): OpenAI | null {
-  if (!openAIClient && process.env.OPENAI_API_KEY) {
-    openAIClient = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
-  return openAIClient;
-}
-
-// Universal Model Runner supporting GPT-4o, GPT-4o-mini, Gemini, and Dual-Consensus
-interface ModelExecutionParams {
-  model?: string;
-  systemPrompt: string;
-  userPrompt: string;
-  temperature?: number;
-  jsonMode?: boolean;
-}
-
-async function runModelExecution({
-  model = 'gpt-4o',
-  systemPrompt,
-  userPrompt,
-  temperature = 0.4,
-  jsonMode = false
-}: ModelExecutionParams): Promise<{ text: string; modelUsed: string; provider: string }> {
-  const chosenModel = model || 'gpt-4o';
-  const openAI = getOpenAI();
-  const gemini = getGenAI();
-
-  // 1. Direct OpenAI execution if model is GPT-4o or GPT-4o-mini and OpenAI key is present
-  if (chosenModel.startsWith('gpt') && openAI) {
+function parseJson(text: string): unknown | null {
+  try {
+    return JSON.parse(text);
+  } catch {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
     try {
-      const gptModel = chosenModel === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o';
-      const completion = await openAI.chat.completions.create({
-        model: gptModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature,
-        response_format: jsonMode ? { type: 'json_object' } : undefined
-      });
-      const text = completion.choices[0]?.message?.content || '';
-      return { text, modelUsed: gptModel, provider: 'OpenAI GPT' };
-    } catch (err) {
-      console.warn('OpenAI call failed, falling back to sovereign pipeline:', err);
+      return JSON.parse(match[0]);
+    } catch {
+      return null;
     }
   }
-
-  // 2. All-AI Model Council Collaboration (GPT-4o, Gemini, Meta LLaMA, Enclave)
-  if (chosenModel === 'all-models') {
-    let gptPart = '';
-    let geminiPart = '';
-    
-    if (openAI) {
-      try {
-        const comp = await openAI.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: `${systemPrompt}\nFocus on commercial data valuation, buyer counter-negotiation, and yield strategy.` },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature
-        });
-        gptPart = comp.choices[0]?.message?.content || '';
-      } catch (e) {
-        console.warn('Council GPT call error:', e);
-      }
-    }
-    
-    if (gemini) {
-      const comp = await callGeminiSafe({
-        contents: `${systemPrompt}\nFocus on zero-knowledge differential privacy (epsilon bounds), quasi-identifier scrubbing, and telemetry integrity.\n\nUser: ${userPrompt}`,
-        temperature
-      });
-      if (comp?.text) {
-        geminiPart = comp.text;
-      }
-    }
-
-    if (!gptPart) {
-      gptPart = `Commercial Valuation Analysis: Current telemetry holds an estimated market value of $215–$340/mo. We recommend establishing a strict $40/mo floor and asserting a 25% premium for synthetic AI training datasets.`;
-    }
-    if (!geminiPart) {
-      geminiPart = `Differential Privacy & Mathematical Bounds: Under Laplacian noise (ε=0.35), reconstruction probability is statistically constrained below 0.01%. Recommend masking granular GPS coordinates to 3-decimal-point centroids.`;
-    }
-
-    const llamaPart = `Decentralized Sovereignty & Open-Weights Audit: Unconsented data broker syndicates (Acxiom, Meta Graph, Experian) must be formally notified under statutory rights. Consent tokens should be cryptographically bound to prevent downstream resale.`;
-
-    const consensusPart = `UNIFIED COUNCIL VERDICT (100% Agreement): All models unanimously approve licensing de-identified developer & browsing cohorts for frontier AI pre-training with an updated floor of $40/mo, while indefinitely quarantining commercial ad retargeters.`;
-
-    return {
-      text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n` +
-            `🟢 **OpenAI GPT-4o (Valuation & Strategy)**:\n${gptPart}\n\n` +
-            `🔵 **Google Gemini 3.8 Flash (Differential Privacy & Telemetry)**:\n${geminiPart}\n\n` +
-            `🟣 **Meta LLaMA 3.3 (Decentralized Sovereignty & Anti-Silo)**:\n${llamaPart}\n\n` +
-            `⚖️ **COUNCIL CONSENSUS DIRECTIVE**:\n${consensusPart}`,
-      modelUsed: 'all-models (gpt-4o + gemini-3.8-flash + llama-3.3)',
-      provider: 'All-AI Sovereign Collaboration Council'
-    };
-  }
-
-  // 3. Dual-Consensus: If requested, run both or synthesize agreement
-  if (chosenModel === 'consensus') {
-    if (openAI && gemini) {
-      try {
-        const [gptRes, geminiRes] = await Promise.allSettled([
-          openAI.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            temperature
-          }),
-          callGeminiSafe({
-            contents: `${systemPrompt}\n\nUser: ${userPrompt}`,
-            temperature
-          })
-        ]);
-
-        const gptText = gptRes.status === 'fulfilled' ? gptRes.value.choices[0]?.message?.content : null;
-        const geminiText = geminiRes.status === 'fulfilled' ? geminiRes.value?.text : null;
-
-        if (gptText && geminiText) {
-          return {
-            text: `[Dual-Consensus Verified (GPT-4o & Gemini 3.8 Flash)]:\n\n${gptText}\n\n---\n*Cross-Validation Note (Gemini Enclave)*: Cryptographic differential privacy boundaries and valuation parameters confirmed across both model checkpoints.`,
-            modelUsed: 'consensus (gpt-4o + gemini-3.8-flash)',
-            provider: 'Hybrid Sovereign Consensus'
-          };
-        }
-      } catch (err) {
-        console.warn('Consensus execution fell back:', err);
-      }
-    }
-  }
-
-  // 4. Google Gemini execution (live or fallback with retry & model switching)
-  if (gemini) {
-    const geminiRes = await callGeminiSafe({
-      contents: userPrompt,
-      systemInstruction: systemPrompt,
-      temperature,
-      responseMimeType: jsonMode ? 'application/json' : undefined,
-      preferredModel: chosenModel.startsWith('gemini') ? chosenModel : 'gemini-3.8-flash'
-    });
-
-    if (geminiRes?.text) {
-      return { 
-        text: geminiRes.text, 
-        modelUsed: chosenModel.startsWith('gpt') ? `${chosenModel} (Zero-Knowledge Enclave Engine)` : geminiRes.modelUsed, 
-        provider: chosenModel.startsWith('gpt') ? 'GPT Architecture (Autonomous Pipeline)' : 'Google DeepMind' 
-      };
-    }
-  }
-
-  // 5. Local High-Fidelity Sovereign GPT-grade Fallback Engine
-  const isGpt = chosenModel.startsWith('gpt');
-  return {
-    text: '',
-    modelUsed: chosenModel,
-    provider: isGpt ? 'OpenAI GPT-4o Enclave' : 'Sovereign Core'
-  };
 }
 
-// 1. Health check & AI Config
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString(), database: 'postgresql' });
-});
+function now() {
+  return new Date().toISOString();
+}
 
-app.get('/api/health/database', async (req: Request, res: Response) => {
-  const health = await checkPostgres();
-  res.status(health.ok ? 200 : 503).json(health);
-});
-
-app.get('/api/ai/config', (req: Request, res: Response) => {
+// Public operational endpoints.
+app.get('/api/health', (_req, res) => {
   res.json({
-    openAiConfigured: !!process.env.OPENAI_API_KEY,
-    geminiConfigured: !!process.env.GEMINI_API_KEY,
-    defaultModel: 'gpt-4o',
-    availableModels: [
-      { 
-        id: 'gpt-4o', 
-        name: 'GPT-4o (OpenAI)', 
-        provider: 'OpenAI', 
-        description: 'Flagship frontier model for data valuation, contract negotiation & legal clawbacks',
-        isDefault: true,
-        status: process.env.OPENAI_API_KEY ? 'Live API Connected' : 'Enclave Ready'
-      },
-      { 
-        id: 'gpt-4o-mini', 
-        name: 'GPT-4o mini (OpenAI)', 
-        provider: 'OpenAI', 
-        description: 'Ultra-fast, cost-efficient GPT model for high-frequency telemetry screening',
-        status: process.env.OPENAI_API_KEY ? 'Live API Connected' : 'Enclave Ready'
-      },
-      { 
-        id: 'gemini-3.8-flash', 
-        name: 'Gemini 3.8 Flash (Google)', 
-        provider: 'Google DeepMind', 
-        description: 'Low-latency multi-modal intelligence with large context window',
-        status: process.env.GEMINI_API_KEY ? 'Live API Connected' : 'Ready'
-      },
-      { 
-        id: 'consensus', 
-        name: 'Dual-Consensus (GPT-4o + Gemini)', 
-        provider: 'Hybrid Enclave', 
-        description: 'Cross-model verification for high-value data offers and risk audits',
-        status: 'Active Multi-Model'
-      },
-      { 
-        id: 'all-models', 
-        name: 'All-AI Model Council (GPT-4o + Gemini + Meta LLaMA)', 
-        provider: 'Multi-Model Enclave Council', 
-        description: 'Collaborative assembly of OpenAI, Google DeepMind, and open-weights sovereign models',
-        status: 'Active Multi-Model Council'
-      }
-    ]
+    status: 'ok',
+    timestamp: now(),
+    database: 'postgresql',
+    auth0Configured,
   });
 });
 
-// Dedicated All-AI Model Council Consultation endpoint
-app.post('/api/ai/council', async (req: Request, res: Response) => {
+app.get('/api/auth/status', (req: Request, res: Response) => {
+  const oidc = (req as Request & { oidc?: { isAuthenticated?: () => boolean; user?: unknown } }).oidc;
+  const authenticated = Boolean(oidc?.isAuthenticated?.());
+  res.json({
+    configured: authConfigured,
+    authenticated,
+    user: authenticated ? oidc?.user : null,
+    loginPath: authConfigured ? '/auth/login' : null,
+    logoutPath: authConfigured ? '/auth/logout' : null,
+  });
+});
+
+// Database and AI operations are protected by Auth0.
+app.get('/api/health/database', requireAuth, async (_req, res) => {
+  const result = await checkPostgres();
+  res.status(result.ok ? 200 : 503).json(result);
+});
+
+app.get('/api/ai/providers', requireAuth, (_req, res) => {
+  res.json({ providers: aiOrchestrator.registry() });
+});
+
+app.post('/api/ai/orchestrate', requireAuth, async (req, res) => {
   try {
-    const { agenda, currentPolicy, footprints } = req.body;
-    const topic = agenda || 'Holistic Digital Sovereignty & Data Monetization Strategy';
-
-    const systemPrompt = `You are participating in the Sovereign Personal Data Council on the topic: "${topic}".
-User policy floor: $${currentPolicy?.minimumMonthlyFloorUsd || 35}/mo. Epsilon: ${currentPolicy?.globalEpsilon || 0.35}.
-Provide your specialized perspective.`;
-
-    const gptPromise = runModelExecution({
-      model: 'gpt-4o',
-      systemPrompt: `${systemPrompt} As OpenAI GPT-4o, provide the Commercial Valuation & Market Licensing perspective. Propose optimal pricing and counter-negotiation tactics.`,
-      userPrompt: topic,
-      temperature: 0.3
+    const { messages, provider = 'auto', model, temperature, maxTokens } = req.body;
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages must be a non-empty array' });
+    }
+    const result = await aiOrchestrator.generate({
+      messages,
+      provider,
+      model,
+      temperature,
+      maxTokens,
     });
-
-    const geminiPromise = runModelExecution({
-      model: 'gemini-3.8-flash',
-      systemPrompt: `${systemPrompt} As Google Gemini 3.8 Flash, provide the Mathematical Differential Privacy & Telemetry Integrity perspective. Analyze Laplacian noise and epsilon leakage bounds.`,
-      userPrompt: topic,
-      temperature: 0.3
+    return res.json(result);
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'AI orchestration failed',
     });
-
-    const [gptRes, geminiRes] = await Promise.allSettled([gptPromise, geminiPromise]);
-
-    const gptText = (gptRes.status === 'fulfilled' && gptRes.value.text)
-      ? gptRes.value.text
-      : `Commercial Market Valuation: Current consumer and developer telemetry should be valued at a baseline of $215.30/mo. Counter-negotiate incoming enterprise buyer bids by +25% on datasets with verified zero-identifiability.`;
-
-    const geminiText = (geminiRes.status === 'fulfilled' && geminiRes.value.text)
-      ? geminiRes.value.text
-      : `Differential Privacy & Telemetry Bounds: Enforcing ε = 0.30 via Laplace noise perturbation maintains strict mathematical bounds (e^0.30 ≈ 1.35 max information leakage). Quasi-identifiers across search and browsing streams are permanently unlinked.`;
-
-    const llamaText = `Decentralized Autonomy & Open Weights Audit: Prohibit single-vendor telemetry capture. Ensure data licensing contracts include cryptographic zero-knowledge attestation, preventing downstream syndication by broker conglomerates (Acxiom, Meta, Google).`;
-
-    const councilResult = {
-      agenda: topic,
-      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      participants: [
-        {
-          modelId: 'gpt-4o',
-          name: 'GPT-4o',
-          provider: 'OpenAI',
-          role: 'Commercial Valuation & Strategic Negotiation',
-          color: 'emerald',
-          badge: 'OpenAI Frontier',
-          status: 'completed' as const,
-          output: gptText,
-          perspective: 'Maximizing data yield, contract terms, and counter-offers',
-          keyRecommendation: 'Elevate floor to $40/mo and demand 25% premium on AI pretraining datasets.'
-        },
-        {
-          modelId: 'gemini-3.8-flash',
-          name: 'Gemini 3.8 Flash',
-          provider: 'Google DeepMind',
-          role: 'Differential Privacy & Cryptographic Verification',
-          color: 'teal',
-          badge: 'Google Multimodal',
-          status: 'completed' as const,
-          output: geminiText,
-          perspective: 'Mathematical entropy, Laplacian perturbation, and quasi-identifier elimination',
-          keyRecommendation: 'Enforce global ε = 0.30 with k-anonymity (k ≥ 50) verified cohorts.'
-        },
-        {
-          modelId: 'llama-3.3',
-          name: 'LLaMA 3.3 (Open Weights)',
-          provider: 'Meta AI / Sovereign Enclave',
-          role: 'Decentralized Sovereignty & Anti-Monopoly Audit',
-          color: 'cyan',
-          badge: 'Open Weights',
-          status: 'completed' as const,
-          output: llamaText,
-          perspective: 'Eliminating corporate shadow-broker lock-in and enforcing statutory clawbacks',
-          keyRecommendation: 'Dispatch statutory erasure notices to third-party ad brokers immediately.'
-        }
-      ],
-      unifiedConsensus: `All three frontier artificial intelligence models unanimously endorse a unified sovereign stance: (1) Maintain strict differential privacy with ε = 0.30, (2) License de-identified developer & e-commerce telemetry for vetted frontier AI pretraining at an upgraded $40/mo floor, and (3) Sever all tracking connections to commercial ad-broker syndicates.`,
-      consensusScore: 98,
-      recommendedEpsilon: 0.30,
-      recommendedFloorUsd: 40,
-      actionDirectives: [
-        'Calibrate Differential Privacy Epsilon to ε = 0.30',
-        'Upgrade Minimum Compensation Floor to $40.00 / month',
-        'Authorize Frontier AI Pre-Training Licensing with Zero-PII Guarantees',
-        'Dispatch Automated CCPA & GDPR Statutory Clawback Notices to Shadow Brokers'
-      ]
-    };
-
-    res.json(councilResult);
-  } catch (err: any) {
-    console.error('Council execution error:', err);
-    res.status(500).json({ error: 'Failed to convene AI models' });
   }
 });
 
-// AI Provider Registry & Orchestrator endpoint
-app.get('/api/ai/registry', (req: Request, res: Response) => {
-  try {
-    const providers = aiOrchestrator.registry();
-    res.json({ providers });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Failed to list providers' });
-  }
-});
-
-// AI Collaborative Multi-Model Consensus (GPT, Gemini, etc. working together)
-app.post('/api/ai/collaborate', async (req: Request, res: Response) => {
+app.post('/api/ai/collaborate', requireAuth, async (req, res) => {
   try {
     const { messages, providerIds } = req.body;
-    if (!messages || !Array.isArray(messages)) {
-      return res.status(400).json({ error: 'messages array is required' });
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'messages must be a non-empty array' });
     }
     const responses = await aiOrchestrator.collaborate(messages, providerIds);
-    res.json({ responses });
-  } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Collaboration execution failed' });
+    return res.json({ responses });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'AI collaboration failed',
+    });
   }
 });
 
-// 2. AI Broker Chat endpoint
-app.post('/api/ai/broker-chat', async (req: Request, res: Response) => {
+// Unified council: real connected providers only; no fabricated model output.
+app.post('/api/ai/council', requireAuth, async (req, res) => {
+  try {
+    const { agenda, currentPolicy, footprints, activeModels } = req.body;
+    const topic = String(agenda || 'Glorifier AI governance review');
+    const policy = currentPolicy || {};
+    const requestedProviders = Array.isArray(activeModels)
+      ? activeModels.filter((id: unknown) => ['openai', 'gemini', 'meta'].includes(String(id)))
+      : undefined;
+
+    const providerIds = requestedProviders?.length ? requestedProviders : undefined;
+    const messages = [
+      {
+        role: 'system' as const,
+        content:
+          'You are a specialist member of the Glorifier AI governance council. ' +
+          'Analyze the agenda using only the supplied facts. Clearly distinguish evidence, assumptions, and recommendations. ' +
+          'Do not claim legal authority, cryptographic guarantees, or model agreement unless actually established.',
+      },
+      {
+        role: 'user' as const,
+        content: JSON.stringify({
+          agenda: topic,
+          policy,
+          footprints: Array.isArray(footprints) ? footprints : [],
+        }),
+      },
+    ];
+
+    const responses = await aiOrchestrator.collaborate(messages, providerIds);
+    const participants = responses.map((result) => ({
+      modelId: result.provider,
+      name: result.model,
+      provider: result.provider,
+      role: 'Independent governance analysis',
+      color: 'emerald',
+      badge: 'Live Provider',
+      status: 'completed' as const,
+      output: result.text,
+      perspective: 'Independent analysis from a connected provider',
+      keyRecommendation: 'Review this provider output alongside the other live results before changing policy.',
+    }));
+
+    const successful = responses.length;
+    const configured = aiOrchestrator.registry().filter((p) => p.status === 'connected').length;
+    const coverage = configured > 0 ? Math.round((successful / configured) * 100) : 0;
+
+    return res.json({
+      agenda: topic,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      participants,
+      unifiedConsensus:
+        successful > 0
+          ? `Live multi-provider review completed with ${successful} successful provider response(s). This is a review record, not proof of unanimous agreement; policy changes remain subject to the user's explicit action.`
+          : 'No connected AI provider returned a result. No policy change was proposed.',
+      consensusScore: coverage,
+      recommendedEpsilon: Number(policy.globalEpsilon ?? 0.35),
+      recommendedFloorUsd: Number(policy.minimumMonthlyFloorUsd ?? 35),
+      actionDirectives: [
+        'Review each live provider output and its supporting assumptions.',
+        'Keep the current privacy epsilon unless the evidence supports a change.',
+        'Keep the current compensation floor unless market evidence supports a change.',
+        'Require explicit user approval before applying governance changes.',
+      ],
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'AI council failed',
+    });
+  }
+});
+
+app.post('/api/ai/broker-chat', requireAuth, async (req, res) => {
   try {
     const { message, currentPolicy, footprintsSummary, model } = req.body;
-    const chosenModel = model || currentPolicy?.aiModel || 'gpt-4o';
-
-    const systemPrompt = `You are DataSovereign AI running on ${chosenModel}, an expert autonomous personal data broker and privacy agent representing the user.
-Your mission is to defend the user's digital sovereignty across the entire internet, enforce mathematical differential privacy (Laplacian noise, epsilon \u03b5 levels), calculate fair-market data compensation, negotiate with data buyers (e.g., AI frontier labs, market analytics, biomedical researchers), and eliminate unconsented broker tracking (Acxiom, Experian, Meta, Google).
-Respond directly, concisely (2-3 paragraphs max), strategically, and authoritatively. Highlight concrete dollar values, privacy risks, and specific action steps.
-User's current policy: Floor = $${currentPolicy?.minimumMonthlyFloorUsd || 35}/mo; Mode = ${currentPolicy?.brokerMode || 'balanced'}; Epsilon \u03b5 = ${currentPolicy?.globalEpsilon || 0.35}; AI pretraining allowed: ${currentPolicy?.allowAiModelPretraining ? 'YES' : 'NO'}.
-Active AI Model: ${chosenModel}.
-Data streams summary: ${footprintsSummary || 'Browsing, E-Commerce, Developer, Health telemetry active'}.`;
-
-    const execution = await runModelExecution({
-      model: chosenModel,
-      systemPrompt,
-      userPrompt: message,
-      temperature: 0.4
-    });
-
-    let replyText = execution.text;
-
-    if (!replyText) {
-      // High quality fallback
-      replyText = `[Autonomous Broker via ${chosenModel}]: I have analyzed your command "${message}". Under your configured threshold ($${currentPolicy?.minimumMonthlyFloorUsd || 35}/mo floor, \u03b5=${currentPolicy?.globalEpsilon || 0.35}), your active data streams are securely shielded. Academic research and sovereign frontier AI pre-training licensing remain enabled, while ad-targeting and shadow brokers are quarantined.`;
+    if (!message || typeof message !== 'string') {
+      return res.status(400).json({ error: 'message is required' });
     }
 
-    // Determine context-driven suggested action
-    let suggestedAction = undefined;
-    const lower = message.toLowerCase();
-    if (lower.includes('clawback') || lower.includes('delete') || lower.includes('broker')) {
-      suggestedAction = { label: 'Dispatch Statutory Erasure Notices', type: 'opt_out_all' };
-    } else if (lower.includes('earn') || lower.includes('more') || lower.includes('maximize') || lower.includes('yield')) {
-      suggestedAction = { label: 'Optimize Yield Curve (+28% Comp)', type: 'maximize_yield' };
-    } else if (lower.includes('privacy') || lower.includes('shield') || lower.includes('strict')) {
-      suggestedAction = { label: 'Tighten Differential Privacy (\u03b5=0.2)', type: 'apply_policy' };
-    }
-
-    res.json({
-      reply: replyText,
-      suggestedAction,
-      modelUsed: execution.modelUsed,
-      provider: execution.provider
+    const result = await aiOrchestrator.generate({
+      provider: model && ['openai', 'gemini', 'meta'].includes(model) ? model : 'auto',
+      model: typeof model === 'string' ? model : undefined,
+      temperature: 0.4,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You are the Glorifier AI governance assistant. Provide practical, evidence-based analysis of data governance, privacy, and compensation workflows. ' +
+            'Do not invent market prices, legal rights, successful actions, cryptographic proofs, or completed external operations. ' +
+            'State uncertainty when facts are unavailable. ' +
+            `Current policy: ${JSON.stringify(currentPolicy || {})}. Data summary: ${String(footprintsSummary || 'not provided')}.`,
+        },
+        { role: 'user', content: message },
+      ],
     });
-  } catch (error: any) {
-    console.error('AI Broker Chat error:', error);
-    res.json({
-      reply: `[Broker Local Engine]: Acknowledged. I am enforcing your current privacy parameters across all internet data streams with zero raw unanonymized records shared.`,
-      suggestedAction: { label: 'Verify Privacy Proofs', type: 'apply_policy' },
-      modelUsed: 'gpt-4o-fallback',
-      provider: 'Local Enclave'
+
+    return res.json({
+      reply: result.text,
+      modelUsed: result.model,
+      provider: result.provider,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'AI broker chat failed',
     });
   }
 });
 
-// 3. AI Offer Evaluator endpoint
-app.post('/api/ai/evaluate-offer', async (req: Request, res: Response) => {
+app.post('/api/ai/evaluate-offer', requireAuth, async (req, res) => {
   try {
     const { offer, userPolicy, model } = req.body;
-    const chosenModel = model || userPolicy?.aiModel || 'gpt-4o';
-
-    const prompt = `Evaluate this data purchase offer for a user who owns their digital footprint:
-Buyer: ${offer.buyerName} (${offer.buyerCategory})
-Data categories requested: ${offer.dataCategoriesNeeded?.join(', ')}
-Compensation offered: $${offer.offeredCompUsd} ${offer.pricingCadence}
-Retention period: ${offer.retentionWindowDays} days
-Requested Epsilon \u03b5: ${offer.maxEpsilonAllowed}
-Stated purpose: "${offer.purposeSummary}"
-User minimum floor: $${userPolicy?.minimumMonthlyFloorUsd}/mo, User global epsilon preference: ${userPolicy?.globalEpsilon}
-
-Return a valid JSON object with:
-- score: number (0-100)
-- verdict: "RECOMMEND" | "CAUTION" | "REJECT"
-- reasoning: a sharp 2-sentence explanation of why, with specific privacy or monetary assessment
-- suggestedCounterUsd: optional recommended counter-offer amount if applicable`;
-
-    const systemPrompt = `You are DataSovereign AI running on ${chosenModel}. Evaluate commercial data acquisition contracts objectively with rigorous economic and differential privacy rigor. Always respond in valid JSON format only.`;
-
-    const execution = await runModelExecution({
-      model: chosenModel,
-      systemPrompt,
-      userPrompt: prompt,
-      temperature: 0.2,
-      jsonMode: true
-    });
-
-    if (execution.text) {
-      try {
-        const parsed = JSON.parse(execution.text);
-        return res.json({ ...parsed, modelUsed: execution.modelUsed, provider: execution.provider });
-      } catch {
-        // Try extracting JSON block if wrapped
-        const jsonMatch = execution.text.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          return res.json({ ...parsed, modelUsed: execution.modelUsed, provider: execution.provider });
-        }
-      }
+    if (!offer || typeof offer !== 'object') {
+      return res.status(400).json({ error: 'offer is required' });
     }
 
-    // Fallback valuation
-    const isRisky = offer.offeredCompUsd < (userPolicy?.minimumMonthlyFloorUsd || 30) || (offer.maxEpsilonAllowed || 0) > 1.0;
-    res.json({
-      score: isRisky ? 35 : 92,
-      verdict: isRisky ? 'CAUTION' : 'RECOMMEND',
-      reasoning: isRisky 
-        ? `Offer falls below user floor ($${offer.offeredCompUsd} vs $${userPolicy?.minimumMonthlyFloorUsd}) or requests excessive leakage epsilon (${offer.maxEpsilonAllowed}).`
-        : `Audited buyer with strict retention boundaries (${offer.retentionWindowDays} days) and fair market compensation.`,
-      modelUsed: chosenModel,
-      provider: 'GPT Valuation Engine'
+    const result = await aiOrchestrator.generate({
+      provider: model && ['openai', 'gemini', 'meta'].includes(model) ? model : 'auto',
+      model: typeof model === 'string' ? model : undefined,
+      temperature: 0.2,
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Evaluate the supplied data acquisition offer. Return JSON only with score (0-100), verdict (RECOMMEND|CAUTION|REJECT), reasoning, and optional suggestedCounterUsd. ' +
+            'Do not invent facts about the buyer. Base the analysis only on supplied fields.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({ offer, userPolicy }),
+        },
+      ],
     });
-  } catch (err: any) {
-    console.error('Offer evaluation error:', err);
-    res.status(500).json({ error: 'Evaluation failed', details: err.message });
+
+    const parsed = parseJson(result.text);
+    if (parsed && typeof parsed === 'object') {
+      return res.json({
+        ...(parsed as Record<string, unknown>),
+        modelUsed: result.model,
+        provider: result.provider,
+      });
+    }
+    return res.json({
+      reasoning: result.text,
+      modelUsed: result.model,
+      provider: result.provider,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Offer evaluation failed',
+    });
   }
 });
 
-// 4. AI Footprint Audit & Leak Scanner endpoint
-app.post('/api/ai/audit-footprint', async (req: Request, res: Response) => {
+app.post('/api/ai/audit-footprint', requireAuth, async (req, res) => {
   try {
     const { category, sourceName, sampleData, model } = req.body;
-    const chosenModel = model || 'gpt-4o';
-
-    const prompt = `Perform a privacy leakage and monetization audit on this data stream:
-Source: ${sourceName} (${category})
-Sample records: ${JSON.stringify(sampleData)}
-
-Analyze re-identification vulnerability, identify latent quasi-identifiers, recommend the optimal mathematical differential privacy \u03b5 (epsilon), and suggest the fair market value per 10,000 queries.
-Format as JSON with keys:
-- reidentificationRisk: string (e.g. "Low (12%)", "High (84%)")
-- recommendedEpsilon: number (between 0.1 and 1.0)
-- kAnonymityMin: number (e.g. 50, 100)
-- fairMarketMonthlyUsd: number
-- sanitizationReport: string (1-2 sentences technical recommendations)`;
-
-    const systemPrompt = `You are a Principal Privacy Engineer and Autonomous Data Broker using ${chosenModel}. Provide quantitative privacy audits and sanitization parameters in strict JSON format.`;
-
-    const execution = await runModelExecution({
-      model: chosenModel,
-      systemPrompt,
-      userPrompt: prompt,
+    const result = await aiOrchestrator.generate({
+      provider: model && ['openai', 'gemini', 'meta'].includes(model) ? model : 'auto',
+      model: typeof model === 'string' ? model : undefined,
       temperature: 0.2,
-      jsonMode: true
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Perform a privacy engineering review of the supplied data sample. Return JSON only with reidentificationRisk, recommendedEpsilon, kAnonymityMin, fairMarketMonthlyUsd, and sanitizationReport. ' +
+            'Treat numerical estimates as estimates, not measured facts.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({ category, sourceName, sampleData }),
+        },
+      ],
     });
 
-    if (execution.text) {
-      try {
-        const parsed = JSON.parse(execution.text);
-        return res.json({ ...parsed, modelUsed: execution.modelUsed, provider: execution.provider });
-      } catch {
-        const match = execution.text.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          return res.json({ ...parsed, modelUsed: execution.modelUsed, provider: execution.provider });
-        }
-      }
+    const parsed = parseJson(result.text);
+    if (parsed && typeof parsed === 'object') {
+      return res.json({
+        ...(parsed as Record<string, unknown>),
+        modelUsed: result.model,
+        provider: result.provider,
+      });
     }
-
-    res.json({
-      reidentificationRisk: 'Moderate (28%)',
-      recommendedEpsilon: 0.35,
-      kAnonymityMin: 50,
-      fairMarketMonthlyUsd: 42.50,
-      sanitizationReport: 'High-entropy identifiers detected (IP, timestamp offsets). Recommend Laplacian noise perturbation on temporal features and postal code 3-digit aggregation.',
-      modelUsed: chosenModel,
-      provider: 'GPT Privacy Pipeline'
+    return res.json({
+      sanitizationReport: result.text,
+      modelUsed: result.model,
+      provider: result.provider,
     });
-  } catch (err: any) {
-    console.error('Audit footprint error:', err);
-    res.status(500).json({ error: 'Audit failed' });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Footprint audit failed',
+    });
   }
 });
 
-// 5. Statutory Clawback Notice Generator
-app.post('/api/ai/generate-clawback', async (req: Request, res: Response) => {
+app.post('/api/ai/generate-clawback', requireAuth, async (req, res) => {
   try {
     const { brokerName, complianceStatute, recordCount, model } = req.body;
-    const chosenModel = model || 'gpt-4o';
-
-    const prompt = `Draft an authoritative, legally binding statutory demand letter for personal data deletion and accounting of unauthorized monetization profits:
-Target Data Broker: ${brokerName}
-Statutes: ${complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, CPRA, and California SB 362'}
-Estimated records held: ${recordCount || 400}
-Include:
-- Clear citation of statutory penalties for failure to comply
-- Demand for cryptographic Proof of Deletion
-- Prohibition of future re-ingestion
-Return JSON with { documentTitle: string, legalNotice: string }`;
-
-    const systemPrompt = `You are a Senior Privacy Attorney & Sovereign Data Agent using ${chosenModel}. Draft formal statutory notices with unyielding legal authority. Return strictly in JSON format.`;
-
-    const execution = await runModelExecution({
-      model: chosenModel,
-      systemPrompt,
-      userPrompt: prompt,
+    const result = await aiOrchestrator.generate({
+      provider: model && ['openai', 'gemini', 'meta'].includes(model) ? model : 'auto',
+      model: typeof model === 'string' ? model : undefined,
       temperature: 0.3,
-      jsonMode: true
+      messages: [
+        {
+          role: 'system',
+          content:
+            'Draft a privacy/data-deletion request based only on the supplied facts. Return JSON with documentTitle and legalNotice. ' +
+            'Do not state that the request is legally binding or guarantee statutory penalties. Encourage verification of the applicable law before sending.',
+        },
+        {
+          role: 'user',
+          content: JSON.stringify({
+            brokerName,
+            complianceStatute,
+            recordCount,
+          }),
+        },
+      ],
     });
 
-    if (execution.text) {
-      try {
-        const parsed = JSON.parse(execution.text);
-        return res.json({ ...parsed, modelUsed: execution.modelUsed, provider: execution.provider });
-      } catch {
-        const match = execution.text.match(/\{[\s\S]*\}/);
-        if (match) {
-          const parsed = JSON.parse(match[0]);
-          return res.json({ ...parsed, modelUsed: execution.modelUsed, provider: execution.provider });
-        }
-      }
+    const parsed = parseJson(result.text);
+    if (parsed && typeof parsed === 'object') {
+      return res.json({
+        ...(parsed as Record<string, unknown>),
+        modelUsed: result.model,
+        provider: result.provider,
+      });
     }
-
-    res.json({
-      documentTitle: `STATUTORY NOTICE OF DATA ERASURE & ACCOUNTING OF PROFITS`,
-      legalNotice: `DEMAND FOR IMMEDIATE EXPUNGEMENT AND STATUTORY ACCOUNTING\n\nTo: Compliance Officer, ${brokerName}\n\nPursuant to ${complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, and the California Delete Act'}:\n\n1. You are hereby formally notified to immediately purge, delete, and cease commercial syndication of all consumer profiles, device telemetry, and identity graphs associated with the undersigned (estimated ${recordCount || 350} records held).\n2. Provide a cryptographic Certificate of Deletion within thirty (30) calendar days.\n3. Disclose all third-party downstream licensees who received telemetry for financial gain.`,
-      modelUsed: chosenModel,
-      provider: 'GPT Legal Synthesis'
+    return res.json({
+      documentTitle: 'Privacy / Data Deletion Request',
+      legalNotice: result.text,
+      modelUsed: result.model,
+      provider: result.provider,
     });
-  } catch (err: any) {
-    console.error('Clawback error:', err);
-    res.status(500).json({ error: 'Notice generation failed' });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'Clawback generation failed',
+    });
   }
 });
 
-// Vite middleware for dev or static serving for prod
 async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -678,14 +382,17 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req: Request, res: Response) => {
+    app.get('*', (_req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Personal Data Monetization Server running on http://0.0.0.0:${PORT}`);
+    console.log(`Glorifier AI server listening on 0.0.0.0:${PORT}`);
   });
 }
 
-startServer();
+startServer().catch((error) => {
+  console.error('Server startup failed:', error);
+  process.exit(1);
+});

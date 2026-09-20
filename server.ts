@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { aiOrchestrator } from './src/lib/ai/orchestrator';
+import { checkMongoDb } from './src/lib/db/mongodb';
 
 dotenv.config();
 
@@ -49,6 +50,11 @@ app.post('/api/ai/collaborate', async (req: Request, res: Response) => {
   } catch (error) {
     return res.status(502).json({ error: error instanceof Error ? error.message : 'AI collaboration failed' });
   }
+});
+
+app.get('/api/health/database', async (_req: Request, res: Response) => {
+  const result = await checkMongoDb();
+  return res.status(result.ok ? 200 : 503).json(result);
 });
 
 app.get('/api/health', (_req: Request, res: Response) => {

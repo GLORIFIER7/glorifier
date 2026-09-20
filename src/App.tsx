@@ -49,6 +49,8 @@ import {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [auth0Authenticated, setAuth0Authenticated] = useState(false);
+  const [auth0Email, setAuth0Email] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [stats, setStats] = useState(initialStats);
   const [footprints, setFootprints] = useState<DataFootprintSource[]>(initialFootprints);
@@ -62,7 +64,7 @@ export default function App() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [inspectingFootprint, setInspectingFootprint] = useState<DataFootprintSource | null>(null);
 
-  // Initialize Firebase Auth listener and test Firestore connection
+  // Google Workspace connection is separate from application authentication.
   useEffect(() => {
     testFirestoreConnection();
 
@@ -72,6 +74,21 @@ export default function App() {
 
     return () => unsubscribe();
   }, []);
+
+  // Auth0 owns application/API authentication.
+  useEffect(() => {
+    fetch('/api/auth/status')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data) return;
+        setAuth0Authenticated(Boolean(data.authenticated));
+        setAuth0Email(data.user?.email || data.user?.name || null);
+      })
+      .catch((err) => console.warn('Auth0 status check failed:', err));
+  }, []);
+
+  const handleAuth0Login = () => { window.location.assign('/auth/login'); };
+  const handleAuth0Logout = () => { window.location.assign('/auth/logout'); };
 
   // Sync with Firestore when user is logged in
   useEffect(() => {
@@ -386,9 +403,10 @@ export default function App() {
         policy={policy}
         onOpenWithdraw={() => setIsWithdrawOpen(true)}
         pendingOffersCount={pendingOffersCount}
-        currentUser={currentUser}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
+        auth0Authenticated={auth0Authenticated}
+        auth0Email={auth0Email}
+        onAuth0Login={handleAuth0Login}
+        onAuth0Logout={handleAuth0Logout}
       />
 
       {/* Main View Container */}

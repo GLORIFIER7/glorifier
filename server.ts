@@ -1,8 +1,7 @@
-import express, { Request, Response, NextFunction } from 'express';
+import express from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
-import { auth, requiresAuth } from 'express-openid-connect';
 import { aiOrchestrator } from './src/lib/ai/orchestrator';
 import { checkPostgres } from './src/lib/db/postgres';
 

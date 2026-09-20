@@ -22,7 +22,6 @@ import {
   Users
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
-import { User } from 'firebase/auth';
 
 interface HeaderProps {
   activeTab: string;
@@ -31,9 +30,10 @@ interface HeaderProps {
   policy: MonetizationPolicy;
   onOpenWithdraw: () => void;
   pendingOffersCount: number;
-  currentUser: User | null;
-  onLogin: () => void;
-  onLogout: () => void;
+  auth0Authenticated: boolean;
+  auth0Email?: string | null;
+  onAuth0Login: () => void;
+  onAuth0Logout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -43,9 +43,10 @@ export const Header: React.FC<HeaderProps> = ({
   policy,
   onOpenWithdraw,
   pendingOffersCount,
-  currentUser,
-  onLogin,
-  onLogout
+  auth0Authenticated,
+  auth0Email,
+  onAuth0Login,
+  onAuth0Logout
 }) => {
   const tabs = [
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
@@ -123,28 +124,18 @@ export const Header: React.FC<HeaderProps> = ({
               </div>
             </div>
 
-            {currentUser ? (
+            {auth0Authenticated ? (
               <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
                 <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-semibold text-xs border border-emerald-500/30">
-                  {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
+                  {auth0Email ? auth0Email[0].toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
                 </div>
-                <span className="text-xs text-slate-300 hidden md:inline max-w-[120px] truncate">
-                  {currentUser.displayName || currentUser.email}
-                </span>
-                <button
-                  onClick={onLogout}
-                  title="Sign out"
-                  className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
-                >
+                <span className="text-xs text-slate-300 hidden md:inline max-w-[120px] truncate">{auth0Email || 'Authenticated'}</span>
+                <button onClick={onAuth0Logout} title="Sign out" className="text-slate-400 hover:text-rose-400 p-1 transition-colors">
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <button
-                onClick={onLogin}
-                id="google-signin-btn"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors"
-              >
+              <button onClick={onAuth0Login} id="auth0-signin-btn" className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors">
                 <LogIn className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Sign in</span>
               </button>

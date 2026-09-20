@@ -29,14 +29,18 @@ export const AiBrokerConsole: React.FC<AiBrokerConsoleProps> = ({
   footprints,
   onApplySuggestedAction
 }) => {
+  const [selectedModel, setSelectedModel] = useState<string>(policy.aiModel || 'gpt-4o');
+
   const [messages, setMessages] = useState<AiBrokerChatMessage[]>([
     {
       id: 'msg-welcome',
       sender: 'ai_broker',
-      content: `Hello. I am your autonomous personal data broker. I represent you across all internet data transactions, enforce strict mathematical differential privacy (\u03b5), evaluate buyer bids, and block unconsented shadow tracking.
+      content: `Hello. I am your autonomous personal data broker, powered by OpenAI GPT-4o. I represent your sovereign data rights across all digital broker syndicates, enforce strict differential privacy (ε), evaluate commercial AI training bids, and block unconsented shadow tracking.
 
 Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo under your $${policy.minimumMonthlyFloorUsd}/mo floor. How can I assist you with your digital footprint or revenue strategy today?`,
       timestamp: 'Just now',
+      modelUsed: 'gpt-4o',
+      provider: 'OpenAI GPT Sovereign Broker',
       suggestedAction: {
         label: 'Audit Active Tracker Exposure',
         type: 'run_audit'
@@ -52,11 +56,16 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
+  const handleModelChange = (newModel: string) => {
+    setSelectedModel(newModel);
+    onUpdatePolicy({ aiModel: newModel as any });
+  };
+
   const quickPrompts = [
-    'How do I safely reach $300/mo without revealing my identity?',
-    'Audit my browsing and search telemetry for leak risks',
-    'Draft a strict ZK clause prohibiting resale to third parties',
-    'Explain how differential privacy \u03b5=0.35 protects me',
+    'Have GPT-4o negotiate a +25% rate for my developer code telemetry',
+    'GPT Audit: Scan my search and browsing streams for quasi-identifiers',
+    'Draft a strict CCPA / GDPR statutory clawback demand letter',
+    'Explain how differential privacy ε=0.35 protects me in AI pretraining',
   ];
 
   const handleSendMessage = async (customText?: string) => {
@@ -81,8 +90,9 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: textToSend,
-          currentPolicy: policy,
-          footprintsSummary: activeStreams
+          currentPolicy: { ...policy, aiModel: selectedModel },
+          footprintsSummary: activeStreams,
+          model: selectedModel
         })
       });
 
@@ -92,7 +102,9 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
         sender: 'ai_broker',
         content: data.reply || 'I have audited your data streams and verified cryptographic containment.',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        suggestedAction: data.suggestedAction
+        suggestedAction: data.suggestedAction,
+        modelUsed: data.modelUsed || selectedModel,
+        provider: data.provider || 'OpenAI GPT Valuation Engine'
       };
 
       setMessages(prev => [...prev, brokerMsg]);
@@ -103,8 +115,10 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
         {
           id: `broker-err-${Date.now()}`,
           sender: 'ai_broker',
-          content: 'My autonomous reasoning engine has verified your parameters. All unconsented tracker queries from ad networks remain blocked, and active licensing yields are accruing normally.',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          content: 'My autonomous GPT reasoning engine has verified your parameters. All unconsented tracker queries from ad networks remain blocked, and active licensing yields are accruing normally.',
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          modelUsed: selectedModel,
+          provider: 'OpenAI GPT'
         }
       ]);
     } finally {
@@ -117,25 +131,77 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
       {/* Left 7 cols: Live Chat with AI Broker */}
       <div className="lg:col-span-7 flex flex-col rounded-xl bg-slate-900 border border-slate-800 overflow-hidden shadow-lg h-[680px]">
         {/* Chat Header */}
-        <div className="p-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
-              <Bot className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white">DataSovereign AI Broker</h3>
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        <div className="p-4 bg-slate-950 border-b border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shadow-inner">
+                <Bot className="w-5 h-5" />
               </div>
-              <p className="text-[11px] text-slate-400">
-                Powered by Gemini 3.8 Flash • Real-time Data Valuation & Privacy Counsel
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-white">DataSovereign AI Broker</h3>
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                    {selectedModel.toUpperCase()}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  OpenAI GPT-4o Autonomous Reasoning & Valuation Engine
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="hidden sm:flex items-center gap-2 text-[10px] font-mono text-slate-400 bg-slate-900 px-2.5 py-1 rounded border border-slate-800">
-            <span>Stance:</span>
-            <span className="text-emerald-400 uppercase font-semibold">{policy.brokerMode}</span>
+            {/* Model Selector Pills in Header */}
+            <div className="flex items-center gap-1.5 p-1 bg-slate-900 rounded-lg border border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleModelChange('gpt-4o')}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded transition-colors ${
+                  selectedModel === 'gpt-4o'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="OpenAI GPT-4o: Flagship multimodal intelligence for high-stakes contract and yield negotiations"
+              >
+                GPT-4o
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModelChange('gpt-4o-mini')}
+                className={`text-[10px] font-semibold px-2.5 py-1 rounded transition-colors ${
+                  selectedModel === 'gpt-4o-mini'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="OpenAI GPT-4o-mini: Fast, low-latency micro-screening"
+              >
+                GPT-4o mini
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModelChange('consensus')}
+                className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
+                  selectedModel === 'consensus'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Dual Consensus: Synthesize analysis from both GPT-4o and Gemini 3.8 Flash"
+              >
+                Consensus
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModelChange('gemini-3.8-flash')}
+                className={`text-[10px] font-semibold px-2 py-1 rounded transition-colors ${
+                  selectedModel === 'gemini-3.8-flash'
+                    ? 'bg-emerald-500 text-slate-950 shadow-sm font-bold'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+                title="Google Gemini 3.8 Flash Engine"
+              >
+                Gemini
+              </button>
+            </div>
           </div>
         </div>
 
@@ -163,8 +229,23 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
               >
                 <div className="whitespace-pre-wrap">{msg.content}</div>
 
+                {msg.sender === 'ai_broker' && (
+                  <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px]">
+                    <div className="flex items-center gap-1.5 text-slate-400">
+                      <Cpu className="w-3 h-3 text-emerald-400" />
+                      <span className="font-mono text-emerald-400/90 font-semibold">
+                        {msg.modelUsed || selectedModel}
+                      </span>
+                      {msg.provider && (
+                        <span className="text-slate-500 hidden sm:inline">• {msg.provider}</span>
+                      )}
+                    </div>
+                    <span className="text-[9px] text-slate-500">{msg.timestamp}</span>
+                  </div>
+                )}
+
                 {msg.suggestedAction && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-800 flex items-center justify-between">
+                  <div className="mt-2 pt-2 border-t border-slate-800 flex items-center justify-between">
                     <button
                       onClick={() => {
                         if (msg.suggestedAction?.type === 'maximize_yield') {
@@ -179,12 +260,11 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
                       <Sparkles className="w-3.5 h-3.5" />
                       {msg.suggestedAction.label}
                     </button>
-                    <span className="text-[9px] text-slate-500">{msg.timestamp}</span>
                   </div>
                 )}
 
-                {!msg.suggestedAction && (
-                  <div className="mt-1 text-[9px] text-slate-500 text-right">
+                {msg.sender === 'user' && (
+                  <div className="mt-1 text-[9px] text-emerald-200 text-right">
                     {msg.timestamp}
                   </div>
                 )}
@@ -406,6 +486,37 @@ Currently, I have 5 data streams monetizing at an average pacing of ~$215/mo und
           </p>
           <div className="mt-2 text-[10px] font-mono text-emerald-400 flex items-center gap-2">
             <span>Protocol: ZK-DataShield v3.4</span> • <span>Epsilon Verifier: Active</span>
+          </div>
+        </div>
+
+        {/* AI Engine & GPT Status Card */}
+        <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-slate-200">
+              <Cpu className="w-4 h-4 text-emerald-400" />
+              AI Intelligence Architecture
+            </div>
+            <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+              {selectedModel === 'gpt-4o' ? 'OpenAI GPT-4o' : selectedModel === 'gpt-4o-mini' ? 'OpenAI GPT-4o mini' : selectedModel === 'consensus' ? 'Dual Consensus' : 'Google Gemini'}
+            </span>
+          </div>
+          <div className="space-y-1.5 text-[11px] text-slate-400">
+            <div className="flex justify-between border-b border-slate-800/60 pb-1">
+              <span>Primary Engine:</span>
+              <span className="text-slate-200 font-mono font-medium">OpenAI GPT-4o</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-800/60 pb-1">
+              <span>Autonomous Stance:</span>
+              <span className="text-emerald-400 font-mono capitalize">{policy.brokerMode}</span>
+            </div>
+            <div className="flex justify-between border-b border-slate-800/60 pb-1">
+              <span>Zero-Training Guarantee:</span>
+              <span className="text-emerald-300 font-mono">Enforced (API Terms)</span>
+            </div>
+            <div className="flex justify-between pt-0.5">
+              <span>Negotiation Capability:</span>
+              <span className="text-slate-200">Autonomous Counter-Offers</span>
+            </div>
           </div>
         </div>
       </div>

@@ -45,7 +45,8 @@ export const BrokerExposureAudit: React.FC<BrokerExposureAuditProps> = ({
         body: JSON.stringify({
           brokerName: exp.brokerName,
           complianceStatute: exp.complianceStatute,
-          recordCount: exp.estimatedRecordsHeld
+          recordCount: exp.estimatedRecordsHeld,
+          model: 'gpt-4o'
         })
       });
       const data = await res.json();

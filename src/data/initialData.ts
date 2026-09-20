@@ -462,5 +462,6 @@ export const defaultPolicy: MonetizationPolicy = {
     minimumThresholdUsd: 10.00,
     phpUsdRate: 58.75,
     isVerifiedInstapay: true
-  }
+  },
+  aiModel: 'gpt-4o'
 };

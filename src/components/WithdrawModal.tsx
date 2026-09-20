@@ -26,6 +26,7 @@ interface WithdrawModalProps {
   policy: MonetizationPolicy;
   onClose: () => void;
   onWithdrawSuccess: (amount: number, method: string, txHash: string) => void;
+  onUpdatePolicy?: (newPolicy: Partial<MonetizationPolicy>) => void;
 }
 
 export type CryptoChain = 'ETH' | 'SOL' | 'BTC';
@@ -100,7 +101,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   stats,
   policy,
   onClose,
-  onWithdrawSuccess
+  onWithdrawSuccess,
+  onUpdatePolicy
 }) => {
   const [amount, setAmount] = useState<number>(stats.totalEarnedUsd);
   const [payoutCategory, setPayoutCategory] = useState<'crypto' | 'fiat'>('crypto');

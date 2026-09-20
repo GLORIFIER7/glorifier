@@ -90,6 +90,11 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="text-emerald-400 font-semibold capitalize">{policy.brokerMode.replace('-', ' ')}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
+              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+              <span>AI Engine:</span>
+              <span className="text-emerald-300 font-mono text-[11px] font-semibold uppercase">{policy.aiModel || 'GPT-4o'}</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
               <Cloud className="w-3.5 h-3.5 text-cyan-400" />
               <span>Cloud DB:</span>
               <span className="text-cyan-300 font-mono text-[11px]">asia-southeast1</span>

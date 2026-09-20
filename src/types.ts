@@ -142,6 +142,7 @@ export interface MonetizationPolicy {
   walletAddress: string;
   binanceConfig?: BinanceAutoWithdrawalConfig;
   gcashConfig?: GCashDirectWithdrawalConfig;
+  aiModel?: 'gpt-4o' | 'gpt-4o-mini' | 'gemini-3.8-flash' | 'consensus';
 }
 
 export interface CompensationTransaction {
@@ -172,6 +173,8 @@ export interface AiBrokerChatMessage {
   sender: 'user' | 'ai_broker';
   content: string;
   timestamp: string;
+  modelUsed?: string;
+  provider?: string;
   suggestedAction?: {
     label: string;
     type: 'apply_policy' | 'opt_out_all' | 'maximize_yield' | 'run_audit';

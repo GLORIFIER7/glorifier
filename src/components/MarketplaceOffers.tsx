@@ -228,7 +228,12 @@ export const MarketplaceOffers: React.FC<MarketplaceOffersProps> = ({
               <div className="mt-3.5 p-3 rounded-lg bg-slate-950/70 border border-slate-800/90 text-xs flex items-start gap-2.5">
                 <Sparkles className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <span className="font-bold text-slate-200">AI Broker Assessment: </span>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="font-bold text-slate-200">AI Broker Assessment</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-mono font-semibold uppercase">
+                      {policy.aiModel || 'GPT-4o'}
+                    </span>
+                  </div>
                   <span className="text-slate-300">{offer.aiBrokerReasoning}</span>
                 </div>
                 <button

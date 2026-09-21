@@ -41,7 +41,8 @@ import {
   loginWithGoogle, 
   authorizeGoogleWorkspace,
   logout, 
-  testFirestoreConnection 
+  testFirestoreConnection,
+  authenticatedFetch
 } from './lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { 
@@ -91,7 +92,7 @@ export default function App() {
   // Railway + Neon is the authoritative application state. Firebase remains optional for Google Workspace only.
   useEffect(() => {
     const userReference = currentUser?.uid || 'anonymous';
-    fetch(`/api/state?userReference=${encodeURIComponent(userReference)}`)
+    authenticatedFetch('/api/state')
       .then((res) => res.ok ? res.json() : Promise.reject(new Error(`State HTTP ${res.status}`)))
       .then((state) => {
         if (state.policy) setPolicy(state.policy);
@@ -112,7 +113,7 @@ export default function App() {
   const persistState = async (payload: Record<string, unknown>) => {
     const userReference = currentUser?.uid || 'anonymous';
     try {
-      const res = await fetch('/api/state', {
+      const res = await authenticatedFetch('/api/state', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userReference, ...payload }),
@@ -252,10 +253,10 @@ export default function App() {
 
   // Accept offer — persisted by the Railway API; no client-side earnings settlement.
   const handleAcceptOffer = async (offerId: string) => {
-    const res = await fetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/accept', {
+    const res = await authenticatedFetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/accept', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
+      body: JSON.stringify({  }),
     });
     if (!res.ok) throw new Error(`Offer acceptance HTTP ${res.status}`);
     const state = await res.json();
@@ -266,7 +267,7 @@ export default function App() {
 
   // Reject offer
   const handleRejectOffer = async (offerId: string) => {
-    const res = await fetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/reject', {
+    const res = await authenticatedFetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/reject', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
@@ -278,10 +279,10 @@ export default function App() {
 
   // Counter offer
   const handleCounterOffer = async (offerId: string, counterAmount: number) => {
-    const res = await fetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/counter', {
+    const res = await authenticatedFetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/counter', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous', counterAmount }),
+      body: JSON.stringify({ counterAmount }),
     });
     if (!res.ok) throw new Error(`Offer counter HTTP ${res.status}`);
     const state = await res.json();
@@ -317,7 +318,7 @@ export default function App() {
 
   // Handle grant revocation
   const handleRevokeGrant = async (grantId: string) => {
-    const res = await fetch('/api/grants/' + encodeURIComponent(grantId) + '/revoke', {
+    const res = await authenticatedFetch('/api/grants/' + encodeURIComponent(grantId) + '/revoke', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
@@ -329,7 +330,7 @@ export default function App() {
 
   // Handle grant permission update
   const handleUpdateGrantPermissions = async (grantId: string, updatedFields: string[]) => {
-    const res = await fetch('/api/grants/' + encodeURIComponent(grantId), {
+    const res = await authenticatedFetch('/api/grants/' + encodeURIComponent(grantId), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous', sharedFields: updatedFields }),
@@ -341,7 +342,7 @@ export default function App() {
 
   // Trigger usage event — recorded server-side; client never creates a payout.
   const handleTriggerSimulatedUsage = async (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
-    const res = await fetch('/api/telemetry/usage', {
+    const res = await authenticatedFetch('/api/telemetry/usage', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous', model }),
@@ -355,7 +356,7 @@ export default function App() {
 
   // Batch clear settlement
   const handleClearSettlement = async () => {
-    const res = await fetch('/api/settlements/clear', {
+    const res = await authenticatedFetch('/api/settlements/clear', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),

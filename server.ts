@@ -6,6 +6,7 @@ import { aiOrchestrator } from './src/lib/ai/orchestrator';
 import { checkPostgres } from './src/lib/db/postgres';
 import { runAIRole } from './src/lib/ai/roles-service';
 import { AI_ROLE_DEFINITIONS } from './src/lib/ai/roles';
+import { getRevenueSummary, initializeRevenueLedger, recordRevenueEvent, verifyRevenueWebhook } from './src/lib/revenue/engine';
 
 dotenv.config();
 
@@ -14,7 +15,12 @@ const PORT = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1);
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json({
+  limit: '2mb',
+  verify: (req, _res, buf) => {
+    (req as express.Request & { rawBody?: string }).rawBody = buf.toString('utf8');
+  },
+}));
 
 function parseJson(text: string): unknown | null {
   try {
@@ -73,6 +79,59 @@ app.post('/api/ai/role', async (req, res) => {
     return res.status(502).json({
       error: error instanceof Error ? error.message : 'AI role analysis failed',
     });
+  }
+});
+
+function requireRevenueAdmin(req: express.Request, res: express.Response): boolean {
+  const expected = process.env.REVENUE_ADMIN_KEY;
+  const supplied = req.header('x-revenue-admin-key');
+  if (!expected || !supplied || supplied !== expected) {
+    res.status(401).json({ error: 'Revenue administration is not authorized.' });
+    return false;
+  }
+  return true;
+}
+
+app.get('/api/revenue/summary', async (req, res) => {
+  if (!requireRevenueAdmin(req, res)) return;
+  try {
+    return res.json({
+      currencies: await getRevenueSummary(),
+      generatedAt: now(),
+      source: 'PostgreSQL revenue ledger',
+      verifiedMoneyOnly: true,
+    });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Revenue summary unavailable' });
+  }
+});
+
+app.post('/api/revenue/webhook', async (req, res) => {
+  const rawBody = (req as express.Request & { rawBody?: string }).rawBody ?? '';
+  if (!verifyRevenueWebhook(rawBody, req.header('x-revenue-signature'))) {
+    return res.status(401).json({ error: 'Invalid revenue webhook signature.' });
+  }
+
+  try {
+    const event = req.body;
+    const result = await recordRevenueEvent({
+      eventId: String(event.eventId || ''),
+      provider: String(event.provider || ''),
+      providerTransactionId: event.providerTransactionId ? String(event.providerTransactionId) : undefined,
+      customerReference: event.customerReference ? String(event.customerReference) : undefined,
+      currency: String(event.currency || '').toUpperCase(),
+      amountMinor: Number(event.amountMinor),
+      status: event.status,
+      occurredAt: event.occurredAt ? String(event.occurredAt) : undefined,
+      metadata: event.metadata && typeof event.metadata === 'object' ? event.metadata : {},
+    });
+    return res.status(result.inserted ? 201 : 200).json({
+      accepted: true,
+      duplicate: !result.inserted,
+      ledgerId: result.id ?? null,
+    });
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Invalid revenue event' });
   }
 });
 
@@ -365,6 +424,14 @@ app.post('/api/ai/generate-clawback', async (req, res) => {
 });
 
 async function startServer() {
+  try {
+    await initializeRevenueLedger();
+    console.log('Revenue ledger initialized.');
+  } catch (error) {
+    console.error('Revenue ledger initialization failed:', error);
+    if (process.env.REVENUE_REQUIRED === 'true') process.exit(1);
+  }
+
   if (!isProduction) {
     const vite = await createViteServer({
       server: { middlewareMode: true },

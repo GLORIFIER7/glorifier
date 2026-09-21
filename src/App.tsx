@@ -121,6 +121,14 @@ export default function App() {
     }
   };
 
+  const handleWorkspaceLogin = async () => {
+    try {
+      await authorizeGoogleWorkspace();
+    } catch (err) {
+      console.error('Workspace authorization error:', err);
+    }
+  };
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -428,7 +436,7 @@ export default function App() {
         {activeTab === 'gmail' && (
           <GmailGovernanceTab
             currentUser={currentUser}
-            onLogin={handleLogin}
+            onLogin={handleWorkspaceLogin}
             onAddEarnings={(amount, desc) => {
               setStats(s => ({
                 ...s,
@@ -453,7 +461,7 @@ export default function App() {
         {activeTab === 'drive' && (
           <DriveGovernanceTab
             currentUser={currentUser}
-            onLogin={handleLogin}
+            onLogin={handleWorkspaceLogin}
             onAddEarnings={(amount, desc) => {
               setStats(s => ({
                 ...s,

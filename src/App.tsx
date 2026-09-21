@@ -16,6 +16,7 @@ import { AiModelsCollaborationManagement } from './components/AiModelsCollaborat
 import { AIRoleCommandCenter } from './components/AIRoleCommandCenter';
 import { MonetizationManager } from './components/MonetizationManager';
 import { BinanceNftDashboard } from './components/BinanceNftDashboard';
+import { DataAssetRegistry } from './components/DataAssetRegistry';
 import { 
   initialStats, 
   initialFootprints, 
@@ -412,6 +413,11 @@ export default function App() {
 
       {/* Main View Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+        {activeTab === 'data_registry' && (
+          <DataAssetRegistry />
+        )}
+
         {activeTab === 'overview' && (
           <OverviewTab
             stats={stats}

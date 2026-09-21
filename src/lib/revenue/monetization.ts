@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { capturePayPalOrder, createPayPalOrder } from '../payments/paypal';
 import { getPostgresPool } from '../db/postgres';
 
@@ -48,7 +49,7 @@ export async function createCheckout(customerReference: string, planId: string) 
     throw new Error('Invalid customer reference');
   }
   const plan = getPlan(planId);
-  const referenceId = `glorifier-${plan.id}-${cryptoRandomId()}`;
+  const referenceId = `glorifier-${plan.id}-${crypto.randomUUID()}`;
   const order = await createPayPalOrder(plan.price, plan.currency, referenceId, {
     planId: plan.id,
     customerReference,
@@ -123,8 +124,4 @@ export async function getSubscription(customerReference: string) {
     [customerReference],
   );
   return result.rows[0] ?? null;
-}
-
-function cryptoRandomId() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }

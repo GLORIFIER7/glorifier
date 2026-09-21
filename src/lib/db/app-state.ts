@@ -40,10 +40,13 @@ export async function readAppState(userReference?: string): Promise<AppState> {
   const txResult = await db.query('SELECT id, offer_id, amount_minor, currency, status, created_at FROM marketplace_transactions WHERE user_reference=$1 ORDER BY created_at DESC LIMIT 100', [u]);
   const tx = txResult.rows.map((r: any) => ({ id: r.id, offerId: r.offer_id, amountUsd: Number(r.amount_minor) / 100, currency: r.currency, status: r.status, createdAt: r.created_at }));
   const revenue = await db.query(`SELECT COALESCE(SUM(CASE WHEN status='paid' THEN amount_minor ELSE 0 END),0)::bigint AS paid_minor, COALESCE(SUM(CASE WHEN status='refunded' THEN amount_minor ELSE 0 END),0)::bigint AS refunded_minor, COALESCE(SUM(CASE WHEN status='disputed' THEN amount_minor ELSE 0 END),0)::bigint AS disputed_minor FROM revenue_ledger WHERE user_reference=$1`, [u]);
-  const ledgerBalanceUsd = (Number(revenue.rows[0]?.paid_minor || 0) - Number(revenue.rows[0]?.refunded_minor || 0) - Number(revenue.rows[0]?.disputed_minor || 0)) / 100;
+  const payouts = await db.query(`SELECT COALESCE(SUM(CASE WHEN status IN ('pending','processing','paid') THEN amount_minor ELSE 0 END),0)::bigint AS reserved_minor FROM payout_requests WHERE user_reference=$1`, [u]);
+  const grossLedgerUsd = (Number(revenue.rows[0]?.paid_minor || 0) - Number(revenue.rows[0]?.refunded_minor || 0) - Number(revenue.rows[0]?.disputed_minor || 0)) / 100;
+  const reservedPayoutUsd = Number(payouts.rows[0]?.reserved_minor || 0) / 100;
+  const ledgerBalanceUsd = Math.max(0, grossLedgerUsd - reservedPayoutUsd);
   const telemetryEvents = telemetry.rows.map(r => r.event_data);
   const earned = ledgerBalanceUsd;
-  const pending = tx.reduce((n: number, t: any) => n + (t.status === 'pending' ? Number(t.amountUsd || 0) : 0), 0);
+  const pending = tx.reduce((n: number, t: any) => n + (t.status === 'accepted' ? Number(t.amountUsd || 0) : 0), 0);
   const activeDataStreamsCount = footprints.rows.filter((r: any) => Boolean(r.footprint_data?.isMonetized)).length;
   const totalDataPointsGoverned = footprints.rows.reduce((n: number, r: any) => n + Number(r.footprint_data?.dataPointsMonthly || 0), 0);
 

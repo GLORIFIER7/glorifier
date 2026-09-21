@@ -27,6 +27,7 @@ interface WithdrawModalProps {
   onClose: () => void;
   onWithdrawSuccess: (amount: number, method: string, txHash: string) => void;
   onUpdatePolicy?: (newPolicy: Partial<MonetizationPolicy>) => void;
+  userReference?: string;
 }
 
 export type CryptoChain = 'ETH' | 'SOL' | 'BTC';
@@ -102,7 +103,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   policy,
   onClose,
   onWithdrawSuccess,
-  onUpdatePolicy
+  onUpdatePolicy,
+  userReference = 'anonymous'
 }) => {
   const [amount, setAmount] = useState<number>(stats.totalEarnedUsd);
   const [payoutCategory, setPayoutCategory] = useState<'crypto' | 'fiat'>('crypto');
@@ -313,7 +315,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
       const res = await fetch('/api/payouts/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, method, destination, userReference: 'anonymous' })
+        body: JSON.stringify({ amount, method, destination, userReference })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Payout request HTTP ${res.status}`);

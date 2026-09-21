@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Wallet, Sparkles, SlidersHorizontal, Database, Scale, Layers, ShieldAlert,
-  ArrowUpRight, Coins, Lock, Cloud, Mail, HardDrive, Users, Bot
+  ArrowUpRight, Coins, Lock, Cloud, Mail, HardDrive, Users, Bot, WalletCards
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 
@@ -28,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
     { id: 'ai_roles', label: 'AI Specialists', icon: Scale, badge: 'Attorney + Data Scientist' },
     { id: 'monetization_manager', label: 'AI Monetization Manager', icon: Bot, badge: 'AI Bot' },
+    { id: 'binance_nft', label: 'Binance & NFTs', icon: WalletCards, badge: 'Crypto' },
     { id: 'ai_collaboration', label: 'AI Collaboration Management', icon: Users, badge: 'All AI' },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
     { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },

@@ -264,7 +264,7 @@ export default function App() {
         category: accepted.dataCategoriesNeeded[0] || 'browsing',
         amountUsd: 15.00,
         privacyTier: accepted.requiredPrivacyTier,
-        txHash: `0x${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`,
+        txHash: 'demo-pending',
         status: 'settled'
       };
       setTransactions(t => [newTx, ...t]);
@@ -373,7 +373,7 @@ export default function App() {
       queryUnits: 1,
       compensationUsd: payout,
       calculationModel: model,
-      zkProofHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+      zkProofHash: 'demo-proof-pending',
       epsilonConsumed: model === 'Per-Query' ? 0.02 : 0
     };
 
@@ -411,6 +411,12 @@ export default function App() {
         pendingOffersCount={pendingOffersCount}
         currentUser={currentUser}
       />
+
+      <div className="max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-4">
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-xs text-amber-200/90">
+          <span className="font-semibold">Demo data:</span> seeded balances, buyer offers, telemetry and transaction records are illustrative. Verified earnings require a connected payment or revenue event.
+        </div>
+      </div>
 
       {/* Main View Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
@@ -457,7 +463,7 @@ export default function App() {
                 category: 'email',
                 amountUsd: amount,
                 privacyTier: 'differential-privacy',
-                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+                txHash: 'demo-pending',
                 status: 'settled'
               };
               setTransactions(t => [newTx, ...t]);
@@ -482,7 +488,7 @@ export default function App() {
                 category: 'drive',
                 amountUsd: amount,
                 privacyTier: 'differential-privacy',
-                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+                txHash: 'demo-pending',
                 status: 'settled'
               };
               setTransactions(t => [newTx, ...t]);

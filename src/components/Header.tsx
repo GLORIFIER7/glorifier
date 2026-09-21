@@ -16,8 +16,7 @@ import {
   Cloud,
   Mail,
   HardDrive,
-  Users,
-  Scale
+  Users
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 
@@ -42,7 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: 'Google Workspace' },
-    { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: currentUser ? 'Connected' : 'Auth Required' },
+    { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: 'Google Workspace' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },
     { id: 'privacy_lab', label: 'Privacy Tech Lab (PETs)', icon: Lock },
     { id: 'footprints', label: 'Footprint Tiers', icon: Database },

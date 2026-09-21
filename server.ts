@@ -339,6 +339,12 @@ app.post('/api/revenue/webhook', async (req, res) => {
     const metadata = event.metadata && typeof event.metadata === 'object' ? event.metadata : {};
     const userReference = String(metadata.userReference || event.userReference || event.customerReference || '');
     if (!userReference) return res.status(400).json({ error: 'Verified revenue event must identify the Glorifier user.' });
+    const transactionId = String(metadata.transactionId || event.transactionId || '');
+    if (!transactionId) return res.status(400).json({ error: 'Verified revenue event must identify the marketplace transaction.' });
+    const db = (await import('./src/lib/db/postgres')).getPostgresPool();
+    const transactionCheck = await db.query('SELECT id, amount_minor, currency, status, user_reference FROM marketplace_transactions WHERE id=$1 AND user_reference=$2', [transactionId, userReference]);
+    if (!transactionCheck.rows[0]) return res.status(400).json({ error: 'Marketplace transaction not found for this user.' });
+    if (event.status === 'paid' && transactionCheck.rows[0].status !== 'accepted') return res.status(409).json({ error: 'Transaction is not awaiting payment.' });
     const result = await recordRevenueEvent({
       eventId: String(event.eventId || ''),
       provider: String(event.provider || ''),
@@ -681,4 +687,8 @@ async function startServer() {
 startServer().catch((error) => {
   console.error('Server startup failed:', error);
   process.exit(1);
-});
+});    if (result.inserted) {
+      const nextStatus = event.status === 'paid' ? 'paid' : event.status;
+      await db.query('UPDATE marketplace_transactions SET status=$1,revenue_event_id=$2,updated_at=NOW() WHERE id=$3 AND user_reference=$4', [nextStatus, event.eventId, transactionId, userReference]);
+    }
+

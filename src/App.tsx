@@ -514,6 +514,7 @@ export default function App() {
 
         {activeTab === 'monetization_manager' && (
           <MonetizationManager
+            currentUser={currentUser}
             policy={policy}
             stats={stats}
             onUpdatePolicy={handleUpdatePolicy}

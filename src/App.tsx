@@ -14,6 +14,7 @@ import { GmailGovernanceTab } from './components/GmailGovernanceTab';
 import { DriveGovernanceTab } from './components/DriveGovernanceTab';
 import { AiModelsCollaborationManagement } from './components/AiModelsCollaborationManagement';
 import { AIRoleCommandCenter } from './components/AIRoleCommandCenter';
+import { MonetizationManager } from './components/MonetizationManager';
 import { 
   initialStats, 
   initialFootprints, 
@@ -504,6 +505,14 @@ export default function App() {
 
         {activeTab === 'ai_roles' && (
           <AIRoleCommandCenter />
+        )}
+
+        {activeTab === 'monetization_manager' && (
+          <MonetizationManager
+            policy={policy}
+            stats={stats}
+            onUpdatePolicy={handleUpdatePolicy}
+          />
         )}
 
         {activeTab === 'ai_collaboration' && (

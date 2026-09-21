@@ -1,0 +1,50 @@
+name: Glorifier AI Continuous Improvement
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * 1"
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Run improvement agent
+        run: node scripts/continuous-improvement-agent.mjs
+      - name: Publish improvement report
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('reports/continuous-improvement.json', 'utf8'));
+            const title = `Glorifier AI improvement report — ${report.timestamp.slice(0,10)}`;
+            const body = [
+              '## Continuous Improvement Agent',
+              '',
+              `- Lint passed: **${report.lintPassed}**`,
+              `- Working tree clean: **${report.workingTreeClean}**`,
+              `- Branch: ${report.branch || 'unknown'}`,
+              '',
+              report.findings.length ? '### Findings\n' + report.findings.map(x => `- \`${x.command}\`: ${x.error}`).join('\n') : 'No command failures detected.',
+              '',
+              '> This agent only inspects and reports. It does not automatically merge, deploy, change credentials, or perform external financial actions.'
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['continuous-improvement']
+            });

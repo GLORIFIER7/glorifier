@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'node:crypto';
 import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
@@ -166,13 +167,25 @@ app.put('/api/state', async (req, res) => {
 app.post('/api/marketplace/offers/:offerId/accept', async (req, res) => {
   const uid = await requireFirebaseUser(req, res);
   if (!uid) return;
+  const db = (await import('./src/lib/db/postgres')).getPostgresPool();
+  const client = await db.connect();
   try {
-    return res.json(await updateOffer(uid, req.params.offerId, { status: 'ACCEPTED' }));
+    await client.query('BEGIN');
+    const offerResult = await client.query('SELECT offer FROM app_offers WHERE user_reference=$1 AND offer_id=$2 FOR UPDATE', [uid, req.params.offerId]);
+    const offer = offerResult.rows[0]?.offer;
+    if (!offer) throw new Error('Offer not found');
+    if (offer.status !== 'PENDING' && offer.status !== 'COUNTERED') throw new Error('Only pending or countered offers can be accepted');
+    const amountUsd = Number(offer.counterOfferAmount ?? offer.offeredCompUsd);
+    if (!Number.isFinite(amountUsd) || amountUsd <= 0) throw new Error('Offer has no valid compensation amount');
+    const txResult = await client.query('INSERT INTO marketplace_transactions (id,user_reference,offer_id,amount_minor,currency,status) VALUES ($1,$2,$3,$4,\'USD\',\'accepted\') ON CONFLICT (user_reference,offer_id) DO UPDATE SET updated_at=NOW() RETURNING id', [crypto.randomUUID(), uid, req.params.offerId, Math.round(amountUsd * 100)]);
+    await client.query('UPDATE app_offers SET offer=jsonb_set(offer,\'{status}\',\'"ACCEPTED"\'::jsonb),updated_at=NOW() WHERE user_reference=$1 AND offer_id=$2', [uid, req.params.offerId]);
+    await client.query('COMMIT');
+    return res.status(201).json({ transactionId: txResult.rows[0].id, status: 'accepted', offerId: req.params.offerId, verifiedEarningsUsd: 0, message: 'Offer accepted. Earnings remain zero until a verified revenue event is received.' });
   } catch (error) {
+    try { await client.query('ROLLBACK'); } catch {}
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer acceptance failed' });
-  }
+  } finally { client.release(); }
 });
-
 app.post('/api/marketplace/offers/:offerId/reject', async (req, res) => {
   const uid = await requireFirebaseUser(req, res);
   if (!uid) return;
@@ -323,11 +336,15 @@ app.post('/api/revenue/webhook', async (req, res) => {
 
   try {
     const event = req.body;
+    const metadata = event.metadata && typeof event.metadata === 'object' ? event.metadata : {};
+    const userReference = String(metadata.userReference || event.userReference || event.customerReference || '');
+    if (!userReference) return res.status(400).json({ error: 'Verified revenue event must identify the Glorifier user.' });
     const result = await recordRevenueEvent({
       eventId: String(event.eventId || ''),
       provider: String(event.provider || ''),
       providerTransactionId: event.providerTransactionId ? String(event.providerTransactionId) : undefined,
       customerReference: event.customerReference ? String(event.customerReference) : undefined,
+      userReference,
       currency: String(event.currency || '').toUpperCase(),
       amountMinor: Number(event.amountMinor),
       status: event.status,

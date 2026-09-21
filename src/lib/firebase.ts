@@ -68,6 +68,21 @@ let isSigningIn = false;
 export const getAccessToken = (): string | null => cachedAccessToken;
 export const setAccessToken = (token: string | null) => { cachedAccessToken = token; };
 
+// Return a short-lived Firebase ID token for backend authentication.
+export const getIdToken = async (): Promise<string | null> => {
+  const user = auth.currentUser;
+  if (!user) return null;
+  return user.getIdToken();
+};
+
+export const authenticatedFetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+  const token = await getIdToken();
+  if (!token) throw new Error('Authentication required. Please sign in again.');
+  const headers = new Headers(init.headers);
+  headers.set('Authorization', 'Bearer ' + token);
+  return fetch(input, { ...init, headers });
+};
+
 export const loginWithGoogle = async () => {
   try {
     isSigningIn = true;

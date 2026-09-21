@@ -7,6 +7,7 @@ import { checkPostgres } from './src/lib/db/postgres';
 import { runAIRole } from './src/lib/ai/roles-service';
 import { AI_ROLE_DEFINITIONS } from './src/lib/ai/roles';
 import { getRevenueSummary, initializeRevenueLedger, recordRevenueEvent, verifyRevenueWebhook } from './src/lib/revenue/engine';
+import { captureCheckout, createCheckout, getSubscription, initializeMonetizationTables, MONETIZATION_PLANS } from './src/lib/revenue/monetization';
 
 dotenv.config();
 
@@ -91,6 +92,40 @@ function requireRevenueAdmin(req: express.Request, res: express.Response): boole
   }
   return true;
 }
+
+app.get('/api/monetization/plans', (_req, res) => {
+  res.json({ plans: Object.values(MONETIZATION_PLANS) });
+});
+
+app.post('/api/monetization/checkout', async (req, res) => {
+  try {
+    const { customerReference, planId } = req.body;
+    const result = await createCheckout(String(customerReference || ''), String(planId || ''));
+    return res.status(201).json(result);
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Checkout creation failed' });
+  }
+});
+
+app.post('/api/monetization/capture', async (req, res) => {
+  try {
+    const { customerReference, orderId } = req.body;
+    const result = await captureCheckout(String(customerReference || ''), String(orderId || ''));
+    return res.json(result);
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Payment capture failed' });
+  }
+});
+
+app.get('/api/monetization/subscription', async (req, res) => {
+  try {
+    const customerReference = String(req.query.customerReference || '');
+    if (!customerReference) return res.status(400).json({ error: 'customerReference is required' });
+    return res.json({ subscription: await getSubscription(customerReference) });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Subscription lookup failed' });
+  }
+});
 
 app.get('/api/revenue/summary', async (req, res) => {
   if (!requireRevenueAdmin(req, res)) return;
@@ -426,7 +461,8 @@ app.post('/api/ai/generate-clawback', async (req, res) => {
 async function startServer() {
   try {
     await initializeRevenueLedger();
-    console.log('Revenue ledger initialized.');
+    await initializeMonetizationTables();
+    console.log('Revenue ledger and monetization tables initialized.');
   } catch (error) {
     console.error('Revenue ledger initialization failed:', error);
     if (process.env.REVENUE_REQUIRED === 'true') process.exit(1);

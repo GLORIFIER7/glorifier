@@ -300,42 +300,39 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     setTimeout(() => setCopiedId(null), 1800);
   };
 
-  const handleWithdraw = () => {
+  const handleWithdraw = async () => {
     if (amount <= 0 || amount > stats.totalEarnedUsd) return;
     if (!isCurrentAddressValid()) return;
 
     setIsProcessing(true);
-    setTimeout(() => {
-      let generatedTx = '';
-      if (payoutCategory === 'crypto') {
-        const chain = getActiveAddressChain();
-        if (chain === 'SOL') {
-          generatedTx = `${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 10)}...${Math.random().toString(36).substring(2, 6)}`;
-        } else if (chain === 'BTC') {
-          generatedTx = `btc_${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 8)}`;
-        } else {
-          generatedTx = `0x${Math.random().toString(16).substring(2, 10)}${Math.random().toString(16).substring(2, 10)}...${Math.random().toString(16).substring(2, 6)}`;
-        }
-      } else {
-        generatedTx = `ach_ref_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-      }
+    try {
+      const method = payoutCategory === 'crypto'
+        ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}`
+        : fiatMethod;
+      const destination = payoutCategory === 'crypto' ? walletAddress : fiatAccount;
+      const res = await fetch('/api/payouts/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, method, destination, userReference: 'anonymous' })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Payout request HTTP ${res.status}`);
 
       setSettledReceipt({
-        txHash: generatedTx,
+        txHash: data.payoutRequestId,
         amountUsd: amount,
         tokenSymbol: payoutCategory === 'crypto' ? selectedToken : 'USD',
-        network: payoutCategory === 'crypto' ? selectedNetwork : (fiatMethod === 'stripe_connect' ? 'Stripe ACH' : 'Federal Reserve Wire'),
-        destination: payoutCategory === 'crypto' ? walletAddress : fiatAccount,
+        network: payoutCategory === 'crypto' ? selectedNetwork : (fiatMethod === 'stripe_connect' ? 'Stripe Connect' : 'ACH'),
+        destination,
         timestamp: new Date().toLocaleString(),
         isCrypto: payoutCategory === 'crypto'
       });
+      onWithdrawSuccess(amount, method, data.payoutRequestId);
+    } catch (error) {
+      console.error('Payout request failed:', error);
+    } finally {
       setIsProcessing(false);
-      onWithdrawSuccess(
-        amount, 
-        payoutCategory === 'crypto' ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}` : fiatMethod, 
-        generatedTx
-      );
-    }, 1200);
+    }
   };
 
   const handleCopyTx = () => {

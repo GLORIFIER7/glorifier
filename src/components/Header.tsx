@@ -23,6 +23,7 @@ export const Header: React.FC<HeaderProps> = ({
   const tabs = [
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
+    { id: 'data_registry', label: 'Data Asset Registry', icon: Database, badge: 'Governance' },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: 'Google Workspace' },
     { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: 'Google Workspace' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },

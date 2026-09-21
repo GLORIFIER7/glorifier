@@ -345,6 +345,7 @@ app.post('/api/revenue/webhook', async (req, res) => {
     const transactionCheck = await db.query('SELECT id, amount_minor, currency, status, user_reference FROM marketplace_transactions WHERE id=$1 AND user_reference=$2', [transactionId, userReference]);
     if (!transactionCheck.rows[0]) return res.status(400).json({ error: 'Marketplace transaction not found for this user.' });
     if (event.status === 'paid' && transactionCheck.rows[0].status !== 'accepted') return res.status(409).json({ error: 'Transaction is not awaiting payment.' });
+    if (event.status === 'paid' && (Number(event.amountMinor) !== Number(transactionCheck.rows[0].amount_minor) || String(event.currency || '').toUpperCase() !== String(transactionCheck.rows[0].currency).trim())) return res.status(409).json({ error: 'Verified revenue amount does not match the accepted transaction.' });
     const result = await recordRevenueEvent({
       eventId: String(event.eventId || ''),
       provider: String(event.provider || ''),

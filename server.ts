@@ -285,9 +285,10 @@ app.get('/api/monetization/plans', (_req, res) => {
 });
 
 app.post('/api/monetization/checkout', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    const { customerReference, planId } = req.body;
-    const result = await createCheckout(String(customerReference || ''), String(planId || ''));
+    const result = await createCheckout(uid, String(req.body?.planId || ''));
     return res.status(201).json(result);
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Checkout creation failed' });
@@ -295,9 +296,10 @@ app.post('/api/monetization/checkout', async (req, res) => {
 });
 
 app.post('/api/monetization/capture', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    const { customerReference, orderId } = req.body;
-    const result = await captureCheckout(String(customerReference || ''), String(orderId || ''));
+    const result = await captureCheckout(uid, String(req.body?.orderId || ''));
     return res.json(result);
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Payment capture failed' });
@@ -305,10 +307,10 @@ app.post('/api/monetization/capture', async (req, res) => {
 });
 
 app.get('/api/monetization/subscription', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    const customerReference = String(req.query.customerReference || '');
-    if (!customerReference) return res.status(400).json({ error: 'customerReference is required' });
-    return res.json({ subscription: await getSubscription(customerReference) });
+    return res.json({ subscription: await getSubscription(uid) });
   } catch (error) {
     return res.status(503).json({ error: error instanceof Error ? error.message : 'Subscription lookup failed' });
   }

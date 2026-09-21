@@ -95,28 +95,40 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        <nav className="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 scrollbar-none border-t border-slate-900">
-          {tabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                id={`tab-btn-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
-                  isActive ? 'bg-slate-800 text-emerald-400 shadow-sm border border-slate-700/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                <span>{tab.label}</span>
-                {tab.badge && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">{tab.badge}</span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
+        <div className="border-t border-slate-900 py-2">
+          <div className="sm:hidden">
+            <label htmlFor="mobile-command-navigation" className="sr-only">Command Center section</label>
+            <select
+              id="mobile-command-navigation"
+              value={activeTab}
+              onChange={(e) => setActiveTab(e.target.value)}
+              className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-200 outline-none focus:border-emerald-500"
+            >
+              {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
+            </select>
+          </div>
+          <nav aria-label="Command Center sections" className="hidden sm:flex space-x-1 overflow-x-auto scrollbar-none">
+            {tabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  id={`tab-btn-${tab.id}`}
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+                    isActive ? 'bg-slate-800 text-emerald-400 shadow-sm border border-slate-700/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                  <span>{tab.label}</span>
+                  {tab.badge && <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">{tab.badge}</span>}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
       </div>
     </header>
   );

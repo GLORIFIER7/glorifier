@@ -15,6 +15,7 @@ import { DriveGovernanceTab } from './components/DriveGovernanceTab';
 import { AiModelsCollaborationManagement } from './components/AiModelsCollaborationManagement';
 import { AIRoleCommandCenter } from './components/AIRoleCommandCenter';
 import { MonetizationManager } from './components/MonetizationManager';
+import { BinanceNftDashboard } from './components/BinanceNftDashboard';
 import { 
   initialStats, 
   initialFootprints, 
@@ -505,6 +506,10 @@ export default function App() {
 
         {activeTab === 'ai_roles' && (
           <AIRoleCommandCenter />
+        )}
+
+        {activeTab === 'binance_nft' && (
+          <BinanceNftDashboard />
         )}
 
         {activeTab === 'monetization_manager' && (

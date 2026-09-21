@@ -102,6 +102,9 @@ export default function App() {
         if (Array.isArray(state.telemetryEvents)) setTelemetryEvents(state.telemetryEvents);
         if (Array.isArray(state.transactions)) setTransactions(state.transactions);
         if (state.stats) setStats((prev) => ({ ...prev, ...state.stats }));
+        if (!state.policy && (!state.offers?.length && !state.grants?.length && !state.footprints?.length)) {
+          void persistState({ policy, offers: initialBuyerOffers, grants: initialActiveGrants, footprints: initialFootprints, exposures: initialBrokerExposures, telemetryEvents: initialUsageTelemetry, transactions: initialTransactions });
+        }
       })
       .catch((error) => console.warn('Authoritative backend state unavailable; keeping local read-only seed data.', error));
   }, [currentUser]);
@@ -169,13 +172,15 @@ export default function App() {
         monthlyPacingUsd: totalComp
       }));
 
+      void persistState({ footprints: next });
       return next;
     });
   };
 
   // Update privacy tier & epsilon
   const handleUpdatePrivacyTier = (id: string, tier: PrivacyTier, epsilon: number) => {
-    setFootprints(prev => prev.map(f => {
+    setFootprints(prev => {
+      const next = prev.map(f => {
       if (f.id === id) {
         // Higher epsilon gives higher buyer yield, lower epsilon slightly lower
         const multiplier = epsilon < 0.25 ? 0.65 : epsilon < 0.6 ? 0.8 : 0.95;
@@ -188,7 +193,10 @@ export default function App() {
         };
       }
       return f;
-    }));
+      });
+      void persistState({ footprints: next });
+      return next;
+    });
   };
 
   // Update policy with dynamic shield calculation

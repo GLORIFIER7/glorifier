@@ -1,0 +1,101 @@
+import crypto from 'node:crypto';
+import { getPostgresPool } from '../db/postgres';
+
+export type RevenueEvent = {
+  eventId: string;
+  provider: string;
+  providerTransactionId?: string;
+  customerReference?: string;
+  currency: string;
+  amountMinor: number;
+  status: 'paid' | 'refunded' | 'disputed' | 'voided';
+  occurredAt?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export async function initializeRevenueLedger(): Promise<void> {
+  await getPostgresPool().query(`
+    CREATE TABLE IF NOT EXISTS revenue_ledger (
+      id BIGSERIAL PRIMARY KEY,
+      event_id TEXT NOT NULL UNIQUE,
+      provider TEXT NOT NULL,
+      provider_transaction_id TEXT,
+      customer_reference TEXT,
+      currency CHAR(3) NOT NULL,
+      amount_minor BIGINT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('paid','refunded','disputed','voided')),
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    );
+
+    CREATE INDEX IF NOT EXISTS revenue_ledger_occurred_at_idx
+      ON revenue_ledger (occurred_at DESC);
+
+    CREATE INDEX IF NOT EXISTS revenue_ledger_provider_tx_idx
+      ON revenue_ledger (provider, provider_transaction_id);
+  `);
+}
+
+export async function recordRevenueEvent(event: RevenueEvent): Promise<{ inserted: boolean; id?: number }> {
+  if (!event.eventId || !event.provider || !event.currency || !Number.isSafeInteger(event.amountMinor)) {
+    throw new Error('Invalid revenue event');
+  }
+  if (event.amountMinor < 0) throw new Error('Revenue amount cannot be negative');
+  if (!/^[A-Z]{3}$/.test(event.currency)) throw new Error('Currency must be an ISO 4217 uppercase code');
+
+  const result = await getPostgresPool().query(
+    `
+      INSERT INTO revenue_ledger
+        (event_id, provider, provider_transaction_id, customer_reference, currency, amount_minor, status, occurred_at, metadata)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,NOW()),$9)
+      ON CONFLICT (event_id) DO NOTHING
+      RETURNING id
+    `,
+    [
+      event.eventId,
+      event.provider,
+      event.providerTransactionId ?? null,
+      event.customerReference ?? null,
+      event.currency,
+      event.amountMinor,
+      event.status,
+      event.occurredAt ?? null,
+      JSON.stringify(event.metadata ?? {}),
+    ],
+  );
+
+  return { inserted: result.rowCount === 1, id: result.rows[0]?.id };
+}
+
+export async function getRevenueSummary() {
+  const result = await getPostgresPool().query(`
+    SELECT
+      currency,
+      COALESCE(SUM(CASE WHEN status = 'paid' THEN amount_minor ELSE 0 END), 0)::bigint AS paid_minor,
+      COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount_minor ELSE 0 END), 0)::bigint AS refunded_minor,
+      COALESCE(SUM(CASE WHEN status = 'disputed' THEN amount_minor ELSE 0 END), 0)::bigint AS disputed_minor,
+      COUNT(*)::bigint AS event_count
+    FROM revenue_ledger
+    GROUP BY currency
+    ORDER BY currency
+  `);
+
+  return result.rows.map((row) => ({
+    currency: row.currency,
+    paidMinor: Number(row.paid_minor),
+    refundedMinor: Number(row.refunded_minor),
+    disputedMinor: Number(row.disputed_minor),
+    netMinor: Number(row.paid_minor) - Number(row.refunded_minor) - Number(row.disputed_minor),
+    eventCount: Number(row.event_count),
+  }));
+}
+
+export function verifyRevenueWebhook(rawBody: string, signature: string | undefined): boolean {
+  const secret = process.env.REVENUE_WEBHOOK_SECRET;
+  if (!secret || !signature) return false;
+  const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+  const supplied = signature.replace(/^sha256=/, '');
+  return supplied.length === expected.length &&
+    crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+}

@@ -1,50 +1,54 @@
-name: Glorifier AI Continuous Improvement
+name: Glorifier AI Autonomous Improvement
 
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 2 * * 1"
-  push:
-    branches: ["main"]
+    - cron: "0 2 * * *"
 
 permissions:
-  contents: read
-  issues: write
+  contents: write
+
+concurrency:
+  group: glorifier-autonomous-improvement
+  cancel-in-progress: true
 
 jobs:
-  inspect:
+  improve:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
+
       - run: npm ci
-      - name: Run improvement agent
+
+      - name: Autonomous improvement agent
+        env:
+          GUARDIAN_PROVIDER: ${{ vars.GUARDIAN_PROVIDER }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/continuous-improvement-agent.mjs
-      - name: Publish improvement report
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const fs = require('fs');
-            const report = JSON.parse(fs.readFileSync('reports/continuous-improvement.json', 'utf8'));
-            const title = `Glorifier AI improvement report — ${report.timestamp.slice(0,10)}`;
-            const body = [
-              '## Continuous Improvement Agent',
-              '',
-              `- Lint passed: **${report.lintPassed}**`,
-              `- Working tree clean: **${report.workingTreeClean}**`,
-              `- Branch: ${report.branch || 'unknown'}`,
-              '',
-              report.findings.length ? '### Findings\n' + report.findings.map(x => `- \`${x.command}\`: ${x.error}`).join('\n') : 'No command failures detected.',
-              '',
-              '> This agent only inspects and reports. It does not automatically merge, deploy, change credentials, or perform external financial actions.'
-            ].join('\n');
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title,
-              body,
-              labels: ['continuous-improvement']
-            });
+
+      - name: Commit verified improvement
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "No improvement produced."
+            exit 0
+          fi
+          git config user.name "Glorifier AI Autonomous Agent"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "chore: autonomous Glorifier AI improvement [skip ci]"
+          git push origin HEAD:main

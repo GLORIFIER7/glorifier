@@ -49,6 +49,12 @@ export async function createPayPalOrder(amount: string, currency = 'USD', refere
         description: custom?.planId ? `GLORIFIER ${custom.planId} subscription` : 'GLORIFIER purchase',
         amount: { currency_code: currency, value: amount },
       }],
+      application_context: {
+        brand_name: 'GLORIFIER AI',
+        user_action: 'PAY_NOW',
+        return_url: `${process.env.APP_URL || 'http://localhost:3000'}/?payment=success`,
+        cancel_url: `${process.env.APP_URL || 'http://localhost:3000'}/?payment=cancelled`,
+      },
     }),
   });
   if (!response.ok) throw new Error(`PayPal order creation failed: ${response.status}`);

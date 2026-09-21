@@ -399,6 +399,7 @@ export default function App() {
         policy={policy}
         onOpenWithdraw={() => setIsWithdrawOpen(true)}
         pendingOffersCount={pendingOffersCount}
+        currentUser={currentUser}
       />
 
       {/* Main View Container */}

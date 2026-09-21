@@ -1,14 +1,39 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Bot, BrainCircuit, DollarSign, Gauge, Play, ShieldCheck, TrendingUp, Wallet } from 'lucide-react';
 import { MonetizationPolicy, SovereignStats } from '../types';
+import type { User } from 'firebase/auth';
 
 interface MonetizationManagerProps {
   policy: MonetizationPolicy;
   stats: SovereignStats;
   onUpdatePolicy: (policy: Partial<MonetizationPolicy>) => void;
+  currentUser?: User | null;
 }
 
-export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy, stats, onUpdatePolicy }) => {
+export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy, stats, onUpdatePolicy, currentUser }) => {
+  const [checkoutLoading, setCheckoutLoading] = useState< 'pro' | 'business' | null>(null);
+  const [subscription, setSubscription] = useState<{ plan_id?: string; status?: string; expires_at?: string } | null>(null);
+  const [paymentMessage, setPaymentMessage] = useState('');
+
+  useEffect(() => {
+    if (!currentUser) { setSubscription(null); return; }
+    fetch('/api/monetization/subscription?customerReference=' + encodeURIComponent(currentUser.uid))
+      .then((r) => r.json()).then((data) => setSubscription(data.subscription || null)).catch(() => undefined);
+  }, [currentUser]);
+
+  const startCheckout = async (planId: 'pro' | 'business') => {
+    if (!currentUser) { setPaymentMessage('Sign in with Google before purchasing a plan.'); return; }
+    setCheckoutLoading(planId); setPaymentMessage('');
+    try {
+      const response = await fetch('/api/monetization/checkout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ customerReference: currentUser.uid, planId }) });
+      const data = await response.json();
+      if (!response.ok || !data.approvalUrl) throw new Error(data.error || 'Checkout unavailable');
+      window.location.href = data.approvalUrl;
+    } catch (error) {
+      setPaymentMessage(error instanceof Error ? error.message : 'Checkout unavailable.');
+      setCheckoutLoading(null);
+    }
+  };
   const [goal, setGoal] = useState('Find privacy-preserving ways to increase monthly data compensation without exceeding my current privacy settings.');
   const [reply, setReply] = useState('');
   const [loading, setLoading] = useState(false);
@@ -62,6 +87,36 @@ export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy
             <div className="text-2xl font-bold font-mono text-emerald-400">{projected.toFixed(2)}</div>
           </div>
         </div>
+      </div>
+
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="text-xs font-bold uppercase tracking-widest text-emerald-400">Real-money subscriptions</div>
+            <h3 className="mt-1 text-xl font-bold text-white">GLORIFIER Plans</h3>
+            <p className="mt-1 text-sm text-slate-400">Payments are processed by PayPal. A plan becomes active only after the server confirms a completed capture.</p>
+          </div>
+          <div className="text-xs text-slate-400">{currentUser ? 'Signed in' : 'Sign in required'}</div>
+        </div>
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div className="font-semibold text-white">Free</div><div className="mt-1 text-2xl font-bold">$0</div>
+            <div className="mt-2 text-xs text-slate-400">Basic tools with usage limits.</div>
+          </div>
+          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+            <div className="font-semibold text-white">Pro</div><div className="mt-1 text-2xl font-bold">$9.99<span className="text-xs text-slate-500">/month</span></div>
+            <div className="mt-2 text-xs text-slate-400">1,000 AI credits/month.</div>
+            <button onClick={() => startCheckout('pro')} disabled={checkoutLoading !== null} className="mt-4 w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{checkoutLoading === 'pro' ? 'Opening PayPal...' : 'Subscribe Pro'}</button>
+          </div>
+          <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
+            <div className="font-semibold text-white">Business</div><div className="mt-1 text-2xl font-bold">$49.00<span className="text-xs text-slate-500">/month</span></div>
+            <div className="mt-2 text-xs text-slate-400">10,000 AI credits/month.</div>
+            <button onClick={() => startCheckout('business')} disabled={checkoutLoading !== null} className="mt-4 w-full rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{checkoutLoading === 'business' ? 'Opening PayPal...' : 'Subscribe Business'}</button>
+          </div>
+        </div>
+        {subscription && <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-3 text-sm text-emerald-200">Active record: {subscription.plan_id} · {subscription.status}{subscription.expires_at ? ' · renews/expires ' + new Date(subscription.expires_at).toLocaleDateString() : ''}</div>}
+        {paymentMessage && <div className="mt-4 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-sm text-amber-200">{paymentMessage}</div>}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">

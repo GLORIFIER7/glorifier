@@ -6,6 +6,7 @@ export type RevenueEvent = {
   provider: string;
   providerTransactionId?: string;
   customerReference?: string;
+  userReference: string;
   currency: string;
   amountMinor: number;
   status: 'paid' | 'refunded' | 'disputed' | 'voided';
@@ -21,6 +22,7 @@ export async function initializeRevenueLedger(): Promise<void> {
       provider TEXT NOT NULL,
       provider_transaction_id TEXT,
       customer_reference TEXT,
+      user_reference TEXT NOT NULL,
       currency CHAR(3) NOT NULL,
       amount_minor BIGINT NOT NULL,
       status TEXT NOT NULL CHECK (status IN ('paid','refunded','disputed','voided')),
@@ -38,7 +40,7 @@ export async function initializeRevenueLedger(): Promise<void> {
 }
 
 export async function recordRevenueEvent(event: RevenueEvent): Promise<{ inserted: boolean; id?: number }> {
-  if (!event.eventId || !event.provider || !event.currency || !Number.isSafeInteger(event.amountMinor)) {
+  if (!event.eventId || !event.provider || !event.userReference || !event.currency || !Number.isSafeInteger(event.amountMinor)) {
     throw new Error('Invalid revenue event');
   }
   if (event.amountMinor < 0) throw new Error('Revenue amount cannot be negative');
@@ -47,8 +49,8 @@ export async function recordRevenueEvent(event: RevenueEvent): Promise<{ inserte
   const result = await getPostgresPool().query(
     `
       INSERT INTO revenue_ledger
-        (event_id, provider, provider_transaction_id, customer_reference, currency, amount_minor, status, occurred_at, metadata)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,COALESCE($8,NOW()),$9)
+        (event_id, provider, provider_transaction_id, customer_reference, user_reference, currency, amount_minor, status, occurred_at, metadata)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,NOW()),$10)
       ON CONFLICT (event_id) DO NOTHING
       RETURNING id
     `,
@@ -58,6 +60,7 @@ export async function recordRevenueEvent(event: RevenueEvent): Promise<{ inserte
       event.providerTransactionId ?? null,
       event.customerReference ?? null,
       event.currency,
+      event.userReference,
       event.amountMinor,
       event.status,
       event.occurredAt ?? null,

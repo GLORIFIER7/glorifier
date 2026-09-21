@@ -88,32 +88,37 @@ export default function App() {
     return () => unsubscribe?.();
   }, []);
 
-  // Sync with Firestore when user is logged in
+  // Railway + Neon is the authoritative application state. Firebase remains optional for Google Workspace only.
   useEffect(() => {
-    if (!currentUser) return;
-
-    // Listen to remote policy updates
-    const unsubPolicy = subscribeToUserPolicy(currentUser.uid, (remotePolicy) => {
-      if (remotePolicy) {
-        setPolicy(remotePolicy);
-      }
-    });
-
-    // Listen to remote grants updates
-    const unsubGrants = subscribeToUserGrants(currentUser.uid, (remoteGrants) => {
-      if (remoteGrants && remoteGrants.length > 0) {
-        setGrants(remoteGrants);
-      }
-    });
-
-    // Save current policy initially to ensure remote existence
-    saveUserPolicy(currentUser.uid, policy).catch(console.error);
-
-    return () => {
-      unsubPolicy();
-      unsubGrants();
-    };
+    const userReference = currentUser?.uid || 'anonymous';
+    fetch(`/api/state?userReference=${encodeURIComponent(userReference)}`)
+      .then((res) => res.ok ? res.json() : Promise.reject(new Error(`State HTTP ${res.status}`)))
+      .then((state) => {
+        if (state.policy) setPolicy(state.policy);
+        if (Array.isArray(state.offers) && state.offers.length) setOffers(state.offers);
+        if (Array.isArray(state.grants) && state.grants.length) setGrants(state.grants);
+        if (Array.isArray(state.footprints) && state.footprints.length) setFootprints(state.footprints);
+        if (Array.isArray(state.exposures) && state.exposures.length) setExposures(state.exposures);
+        if (Array.isArray(state.telemetryEvents)) setTelemetryEvents(state.telemetryEvents);
+        if (Array.isArray(state.transactions)) setTransactions(state.transactions);
+        if (state.stats) setStats((prev) => ({ ...prev, ...state.stats }));
+      })
+      .catch((error) => console.warn('Authoritative backend state unavailable; keeping local read-only seed data.', error));
   }, [currentUser]);
+
+  const persistState = async (payload: Record<string, unknown>) => {
+    const userReference = currentUser?.uid || 'anonymous';
+    try {
+      const res = await fetch('/api/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userReference, ...payload }),
+      });
+      if (!res.ok) throw new Error(`State update HTTP ${res.status}`);
+    } catch (error) {
+      console.error('Failed to persist authoritative state:', error);
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -231,68 +236,48 @@ export default function App() {
         privacyShieldIndex: finalShield 
       }));
 
-      if (currentUser) {
-        saveUserPolicy(currentUser.uid, updated).catch(console.error);
-      }
+      void persistState({ policy: updated });
 
       return updated;
     });
   };
 
-  // Accept offer
-  const handleAcceptOffer = (offerId: string) => {
-    setOffers(prev => prev.map(o => {
-      if (o.id === offerId) {
-        return { ...o, status: 'ACCEPTED' as const };
-      }
-      return o;
-    }));
-
-    const accepted = offers.find(o => o.id === offerId);
-    if (accepted) {
-      setStats(s => ({
-        ...s,
-        monthlyPacingUsd: s.monthlyPacingUsd + accepted.offeredCompUsd,
-        totalEarnedUsd: s.totalEarnedUsd + 15.00
-      }));
-
-      // Add a settlement transaction
-      const newTx: CompensationTransaction = {
-        id: `tx-${Date.now().toString().slice(-4)}`,
-        timestamp: 'Just now',
-        buyerName: accepted.buyerName,
-        category: accepted.dataCategoriesNeeded[0] || 'browsing',
-        amountUsd: 15.00,
-        privacyTier: accepted.requiredPrivacyTier,
-        txHash: 'demo-pending',
-        status: 'settled'
-      };
-      setTransactions(t => [newTx, ...t]);
-    }
+  // Accept offer — persisted by the Railway API; no client-side earnings settlement.
+  const handleAcceptOffer = async (offerId: string) => {
+    const res = await fetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
+    });
+    if (!res.ok) throw new Error(`Offer acceptance HTTP ${res.status}`);
+    const state = await res.json();
+    if (Array.isArray(state.offers)) setOffers(state.offers);
+    if (Array.isArray(state.transactions)) setTransactions(state.transactions);
+    if (state.stats) setStats((prev) => ({ ...prev, ...state.stats }));
   };
 
   // Reject offer
-  const handleRejectOffer = (offerId: string) => {
-    setOffers(prev => prev.map(o => {
-      if (o.id === offerId) {
-        return { ...o, status: 'REJECTED' as const };
-      }
-      return o;
-    }));
+  const handleRejectOffer = async (offerId: string) => {
+    const res = await fetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/reject', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
+    });
+    if (!res.ok) throw new Error(`Offer rejection HTTP ${res.status}`);
+    const state = await res.json();
+    if (Array.isArray(state.offers)) setOffers(state.offers);
   };
 
   // Counter offer
-  const handleCounterOffer = (offerId: string, counterAmount: number) => {
-    setOffers(prev => prev.map(o => {
-      if (o.id === offerId) {
-        return {
-          ...o,
-          status: 'COUNTERED' as const,
-          counterOfferAmount: counterAmount
-        };
-      }
-      return o;
-    }));
+  const handleCounterOffer = async (offerId: string, counterAmount: number) => {
+    const res = await fetch('/api/marketplace/offers/' + encodeURIComponent(offerId) + '/counter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous', counterAmount }),
+    });
+    if (!res.ok) throw new Error(`Offer counter HTTP ${res.status}`);
+    const state = await res.json();
+    if (Array.isArray(state.offers)) setOffers(state.offers);
   };
 
   // Dispatch clawback notice to data broker
@@ -323,37 +308,30 @@ export default function App() {
   };
 
   // Handle grant revocation
-  const handleRevokeGrant = (grantId: string) => {
-    setGrants(prev => prev.map(g => {
-      if (g.id === grantId) {
-        return {
-          ...g,
-          status: 'revoked' as const,
-          ttlHoursRemaining: 0
-        };
-      }
-      return g;
-    }));
-    setStats(s => ({
-      ...s,
-      privacyShieldIndex: Math.min(100, s.privacyShieldIndex + 3)
-    }));
+  const handleRevokeGrant = async (grantId: string) => {
+    const res = await fetch('/api/grants/' + encodeURIComponent(grantId) + '/revoke', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
+    });
+    if (!res.ok) throw new Error(`Grant revoke HTTP ${res.status}`);
+    const state = await res.json();
+    if (Array.isArray(state.grants)) setGrants(state.grants);
   };
 
   // Handle grant permission update
-  const handleUpdateGrantPermissions = (grantId: string, updatedFields: string[]) => {
-    setGrants(prev => prev.map(g => {
-      if (g.id === grantId) {
-        return {
-          ...g,
-          sharedFields: updatedFields
-        };
-      }
-      return g;
-    }));
+  const handleUpdateGrantPermissions = async (grantId: string, updatedFields: string[]) => {
+    const res = await fetch('/api/grants/' + encodeURIComponent(grantId), {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous', sharedFields: updatedFields }),
+    });
+    if (!res.ok) throw new Error(`Grant update HTTP ${res.status}`);
+    const state = await res.json();
+    if (Array.isArray(state.grants)) setGrants(state.grants);
   };
 
-  // Trigger simulated telemetry usage event
+  // Trigger usage event — recorded server-side and reflected from the authoritative ledger.
   const handleTriggerSimulatedUsage = (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
     const payoutMap = {
       'Per-Query': 0.057,
@@ -450,23 +428,8 @@ export default function App() {
           <GmailGovernanceTab
             currentUser={currentUser}
             onLogin={handleWorkspaceLogin}
-            onAddEarnings={(amount, desc) => {
-              setStats(s => ({
-                ...s,
-                totalEarnedUsd: s.totalEarnedUsd + amount,
-                pendingSettlementUsd: s.pendingSettlementUsd + amount
-              }));
-              const newTx: CompensationTransaction = {
-                id: `tx-gmail-${Date.now()}`,
-                timestamp: 'Just now',
-                buyerName: 'Verified Research Consortia',
-                category: 'email',
-                amountUsd: amount,
-                privacyTier: 'differential-privacy',
-                txHash: 'demo-pending',
-                status: 'settled'
-              };
-              setTransactions(t => [newTx, ...t]);
+            onAddEarnings={(_amount, _desc) => {
+              console.warn('Workspace earnings are now recorded only by verified backend revenue events.');
             }}
           />
         )}
@@ -475,23 +438,8 @@ export default function App() {
           <DriveGovernanceTab
             currentUser={currentUser}
             onLogin={handleWorkspaceLogin}
-            onAddEarnings={(amount, desc) => {
-              setStats(s => ({
-                ...s,
-                totalEarnedUsd: s.totalEarnedUsd + amount,
-                pendingSettlementUsd: s.pendingSettlementUsd + amount
-              }));
-              const newTx: CompensationTransaction = {
-                id: `tx-drive-${Date.now()}`,
-                timestamp: 'Just now',
-                buyerName: 'Secure Cloud Analytics Group',
-                category: 'drive',
-                amountUsd: amount,
-                privacyTier: 'differential-privacy',
-                txHash: 'demo-pending',
-                status: 'settled'
-              };
-              setTransactions(t => [newTx, ...t]);
+            onAddEarnings={(_amount, _desc) => {
+              console.warn('Workspace earnings are now recorded only by verified backend revenue events.');
             }}
           />
         )}

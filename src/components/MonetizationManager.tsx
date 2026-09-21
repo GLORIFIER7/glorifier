@@ -141,6 +141,21 @@ export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy
             Enable AI high-bid negotiation
           </label>
 
+          <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+            <div className="text-xs font-bold uppercase tracking-widest text-emerald-400">PayPal Revenue Rail</div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              Accept payments through the Glorifier PayPal.Me account. Payment confirmation is reconciled through verified PayPal events before being counted as verified revenue.
+            </p>
+            <a
+              href="https://paypal.me/glorifier?locale.x=en_US&country.x=PH"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-emerald-400"
+            >
+              <Wallet className="w-4 h-4" /> Pay with PayPal
+            </a>
+          </div>
+
           <div className="mt-5 rounded-lg border border-amber-500/20 bg-amber-500/5 p-3 text-xs text-amber-200">
             The bot provides analysis and recommendations. External payments, data sharing and governance changes should require explicit authorization.
           </div>

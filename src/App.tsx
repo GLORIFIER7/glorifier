@@ -331,48 +331,30 @@ export default function App() {
     if (Array.isArray(state.grants)) setGrants(state.grants);
   };
 
-  // Trigger usage event — recorded server-side and reflected from the authoritative ledger.
-  const handleTriggerSimulatedUsage = (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
-    const payoutMap = {
-      'Per-Query': 0.057,
-      'Data Shapley': 0.338,
-      'Cohort Subscription': 1.250,
-      'Proof Attestation': 12.000
-    };
-    const payout = payoutMap[model] || 0.100;
-
-    const newEvent: UsageTelemetryEvent = {
-      id: `telemetry-${Date.now()}`,
-      timestamp: 'Just now',
-      grantId: 'grant-01',
-      recipientOrg: model === 'Data Shapley' ? 'Anthropic AI Foundation Models Lab' : 'Stanford Quantitative Economics & Market Lab',
-      dataCategory: 'ecommerce',
-      eventType: model === 'Data Shapley' ? 'fl_gradient_update' : 'dp_query_laplace',
-      queryUnits: 1,
-      compensationUsd: payout,
-      calculationModel: model,
-      zkProofHash: 'demo-proof-pending',
-      epsilonConsumed: model === 'Per-Query' ? 0.02 : 0
-    };
-
-    setTelemetryEvents(prev => [newEvent, ...prev.slice(0, 15)]);
-    setStats(s => ({
-      ...s,
-      totalEarnedUsd: s.totalEarnedUsd + payout,
-      pendingSettlementUsd: s.pendingSettlementUsd + payout
-    }));
-
-    if (currentUser) {
-      recordTelemetryEvent(currentUser.uid, newEvent).catch(console.error);
-    }
+  // Trigger usage event — recorded server-side; client never creates a payout.
+  const handleTriggerSimulatedUsage = async (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
+    const res = await fetch('/api/telemetry/usage', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous', model }),
+    });
+    if (!res.ok) throw new Error(`Telemetry HTTP ${res.status}`);
+    const state = await res.json();
+    if (Array.isArray(state.telemetryEvents)) setTelemetryEvents(state.telemetryEvents);
+    if (Array.isArray(state.transactions)) setTransactions(state.transactions);
+    if (state.stats) setStats((prev) => ({ ...prev, ...state.stats }));
   };
 
   // Batch clear settlement
-  const handleClearSettlement = () => {
-    setStats(s => ({
-      ...s,
-      pendingSettlementUsd: 0
-    }));
+  const handleClearSettlement = async () => {
+    const res = await fetch('/api/settlements/clear', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userReference: currentUser?.uid || 'anonymous' }),
+    });
+    if (!res.ok) throw new Error(`Settlement clear HTTP ${res.status}`);
+    const state = await res.json();
+    if (state.stats) setStats((prev) => ({ ...prev, ...state.stats }));
   };
 
   const pendingOffersCount = offers.filter(o => o.status === 'PENDING').length;

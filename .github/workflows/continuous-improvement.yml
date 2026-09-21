@@ -2,6 +2,19 @@ name: Glorifier AI Autonomous Improvement
 
 on:
   workflow_dispatch:
+    inputs:
+      provider:
+        description: "AI provider to use for this run"
+        required: false
+        default: "auto"
+        type: choice
+        options:
+          - auto
+          - openai
+          - gemini
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 2 * * *"
 
@@ -30,7 +43,7 @@ jobs:
 
       - name: Autonomous improvement agent
         env:
-          GUARDIAN_PROVIDER: ${{ vars.GUARDIAN_PROVIDER }}
+          GUARDIAN_PROVIDER: ${{ github.event.inputs.provider != '' && github.event.inputs.provider != 'auto' && github.event.inputs.provider || vars.GUARDIAN_PROVIDER }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}

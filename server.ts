@@ -183,6 +183,25 @@ app.post('/api/telemetry/usage', async (req, res) => {
   }
 });
 
+app.post('/api/payouts/request', async (req, res) => {
+  try {
+    const amount = Number(req.body?.amount);
+    const userReference = String(req.body?.userReference || 'anonymous');
+    const method = String(req.body?.method || '');
+    const destination = String(req.body?.destination || '');
+    if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'amount must be positive' });
+    if (!method || !destination) return res.status(400).json({ error: 'payout method and destination are required' });
+    const state = await readAppState(userReference);
+    if (amount > Number(state.stats.totalEarnedUsd || 0)) return res.status(400).json({ error: 'Insufficient verified available balance' });
+    const id = `payout-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const db = (await import('./src/lib/db/postgres')).getPostgresPool();
+    await db.query('INSERT INTO payout_requests(id,user_reference,amount_minor,currency,method,destination,status) VALUES($1,$2,$3,$4,$5,$6,$7)', [id,userReference,Math.round(amount*100),'USD',method,destination,'pending']);
+    return res.status(202).json({ accepted: true, status: 'pending', payoutRequestId: id, message: 'Payout request recorded. No transfer is claimed until a connected payment provider confirms it.' });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Payout request failed' });
+  }
+});
+
 app.post('/api/settlements/clear', async (req, res) => {
   try {
     const state = await readAppState(String(req.body?.userReference || 'anonymous'));

@@ -63,15 +63,25 @@ export default function App() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [inspectingFootprint, setInspectingFootprint] = useState<DataFootprintSource | null>(null);
 
-  // Google Workspace connection is separate from application authentication.
+  // Google Workspace is optional and must never block the Command Center.
   useEffect(() => {
-    testFirestoreConnection();
+    let unsubscribe: (() => void) | undefined;
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setCurrentUser(user);
-    });
+    try {
+      testFirestoreConnection().catch((error) => {
+        console.warn('Firebase connection unavailable; continuing without it.', error);
+      });
 
-    return () => unsubscribe();
+      unsubscribe = onAuthStateChanged(
+        auth,
+        (user) => setCurrentUser(user),
+        (error) => console.warn('Google Workspace auth unavailable; continuing without it.', error),
+      );
+    } catch (error) {
+      console.warn('Google Workspace integration unavailable; continuing without it.', error);
+    }
+
+    return () => unsubscribe?.();
   }, []);
 
   // Sync with Firestore when user is logged in

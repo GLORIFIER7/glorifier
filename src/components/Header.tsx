@@ -4,6 +4,8 @@ import {
   ArrowUpRight, Coins, Lock, Cloud, Mail, HardDrive, Users, Bot, WalletCards
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
+import { User } from 'firebase/auth';
+import { AuthPanel } from './AuthPanel';
 
 interface HeaderProps {
   activeTab: string;
@@ -12,10 +14,11 @@ interface HeaderProps {
   policy: MonetizationPolicy;
   onOpenWithdraw: () => void;
   pendingOffersCount: number;
+  currentUser: User | null;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeTab, setActiveTab, stats, policy, onOpenWithdraw, pendingOffersCount,
+  activeTab, setActiveTab, stats, policy, onOpenWithdraw, pendingOffersCount, currentUser,
 }) => {
   const tabs = [
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
@@ -72,6 +75,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           <div className="flex items-center gap-3">
+            <AuthPanel currentUser={currentUser} />
             <div onClick={onOpenWithdraw} id="wallet-payout-button" className="group cursor-pointer flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition-all shadow-sm" title="Click to claim or withdraw funds">
               <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Wallet className="w-4 h-4" />

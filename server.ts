@@ -357,6 +357,10 @@ app.post('/api/revenue/webhook', async (req, res) => {
       occurredAt: event.occurredAt ? String(event.occurredAt) : undefined,
       metadata: event.metadata && typeof event.metadata === 'object' ? event.metadata : {},
     });
+    if (result.inserted) {
+      const nextStatus = event.status === 'paid' ? 'paid' : event.status;
+      await db.query('UPDATE marketplace_transactions SET status=$1,revenue_event_id=$2,updated_at=NOW() WHERE id=$3 AND user_reference=$4', [nextStatus, event.eventId, transactionId, userReference]);
+    }
     return res.status(result.inserted ? 201 : 200).json({
       accepted: true,
       duplicate: !result.inserted,

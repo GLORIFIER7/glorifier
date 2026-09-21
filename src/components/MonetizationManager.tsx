@@ -19,6 +19,26 @@ export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy
     if (!currentUser) { setSubscription(null); return; }
     fetch('/api/monetization/subscription?customerReference=' + encodeURIComponent(currentUser.uid))
       .then((r) => r.json()).then((data) => setSubscription(data.subscription || null)).catch(() => undefined);
+
+    const params = new URLSearchParams(window.location.search);
+    const orderId = params.get('token');
+    if (params.get('payment') === 'success' && orderId) {
+      setPaymentMessage('Confirming your PayPal payment...');
+      fetch('/api/monetization/capture', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerReference: currentUser.uid, orderId }),
+      }).then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Payment confirmation failed');
+        setSubscription({ plan_id: data.plan?.id, status: 'active', expires_at: data.plan ? new Date(Date.now() + 30 * 86400000).toISOString() : undefined });
+        setPaymentMessage('Payment confirmed. Your GLORIFIER access is active.');
+        window.history.replaceState({}, '', window.location.pathname);
+      }).catch((error) => setPaymentMessage(error instanceof Error ? error.message : 'Payment confirmation failed.'));
+    } else if (params.get('payment') === 'cancelled') {
+      setPaymentMessage('PayPal checkout was cancelled. No subscription was activated.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, [currentUser]);
 
   const startCheckout = async (planId: 'pro' | 'business') => {
@@ -95,7 +115,7 @@ export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy
           <div>
             <div className="text-xs font-bold uppercase tracking-widest text-emerald-400">Real-money subscriptions</div>
             <h3 className="mt-1 text-xl font-bold text-white">GLORIFIER Plans</h3>
-            <p className="mt-1 text-sm text-slate-400">Payments are processed by PayPal. A plan becomes active only after the server confirms a completed capture.</p>
+            <p className="mt-1 text-sm text-slate-400">Payments are processed by PayPal. Access becomes active only after the server confirms a completed PayPal capture.</p>
           </div>
           <div className="text-xs text-slate-400">{currentUser ? 'Signed in' : 'Sign in required'}</div>
         </div>
@@ -106,12 +126,12 @@ export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy
           </div>
           <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
             <div className="font-semibold text-white">Pro</div><div className="mt-1 text-2xl font-bold">$9.99<span className="text-xs text-slate-500">/month</span></div>
-            <div className="mt-2 text-xs text-slate-400">1,000 AI credits/month.</div>
+            <div className="mt-2 text-xs text-slate-400">1,000 AI credits per 30 days.</div>
             <button onClick={() => startCheckout('pro')} disabled={checkoutLoading !== null} className="mt-4 w-full rounded-lg bg-emerald-500 px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{checkoutLoading === 'pro' ? 'Opening PayPal...' : 'Subscribe Pro'}</button>
           </div>
           <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
             <div className="font-semibold text-white">Business</div><div className="mt-1 text-2xl font-bold">$49.00<span className="text-xs text-slate-500">/month</span></div>
-            <div className="mt-2 text-xs text-slate-400">10,000 AI credits/month.</div>
+            <div className="mt-2 text-xs text-slate-400">10,000 AI credits per 30 days.</div>
             <button onClick={() => startCheckout('business')} disabled={checkoutLoading !== null} className="mt-4 w-full rounded-lg bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{checkoutLoading === 'business' ? 'Opening PayPal...' : 'Subscribe Business'}</button>
           </div>
         </div>

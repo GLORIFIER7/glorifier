@@ -1,18 +1,28 @@
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User } from 'firebase/auth';
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signOut,
+  onAuthStateChanged,
+  User,
+  updateProfile,
+} from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
-// Initialize Firestore with default database or custom ID if present
 const firestoreDbId = (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-personaldatamone-2569f3c8-4865-4a6a-b7cf-da9a1de696fc';
 export const db = getFirestore(app, firestoreDbId);
 export const auth = getAuth(app);
 
 export const GMAIL_SCOPES = [
   'https://mail.google.com/',
-  'https://www.googleapis.com/auth/gmail.addons.current.action.compose',
+  'https://www.googleapis.com/auth/gmail.addons.current.action',
   'https://www.googleapis.com/auth/gmail.addons.current.message.action',
   'https://www.googleapis.com/auth/gmail.addons.current.message.metadata',
   'https://www.googleapis.com/auth/gmail.addons.current.message.readonly',
@@ -45,36 +55,53 @@ export const DRIVE_SCOPES = [
 
 export const ALL_WORKSPACE_SCOPES = [...GMAIL_SCOPES, ...DRIVE_SCOPES];
 
+// Basic Google provider for Command Center sign-in.
+// Workspace scopes are requested separately so normal login is not blocked by Gmail/Drive consent.
 export const googleAuthProvider = new GoogleAuthProvider();
-// Add Workspace scopes (Gmail + Drive) to provider
-ALL_WORKSPACE_SCOPES.forEach(scope => {
-  googleAuthProvider.addScope(scope);
-});
 
-// In-memory access token caching per security rules (NEVER localStorage/sessionStorage)
+const workspaceAuthProvider = new GoogleAuthProvider();
+ALL_WORKSPACE_SCOPES.forEach(scope => workspaceAuthProvider.addScope(scope));
+
 let cachedAccessToken: string | null = null;
 let isSigningIn = false;
 
-export const getAccessToken = (): string | null => {
-  return cachedAccessToken;
-};
-
-export const setAccessToken = (token: string | null) => {
-  cachedAccessToken = token;
-};
+export const getAccessToken = (): string | null => cachedAccessToken;
+export const setAccessToken = (token: string | null) => { cachedAccessToken = token; };
 
 export const loginWithGoogle = async () => {
   try {
     isSigningIn = true;
     const result = await signInWithPopup(auth, googleAuthProvider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (credential?.accessToken) {
-      cachedAccessToken = credential.accessToken;
-    }
     return { user: result.user, accessToken: cachedAccessToken };
-  } catch (err) {
-    console.error('Sign in error:', err);
-    throw err;
+  } finally {
+    isSigningIn = false;
+  }
+};
+
+export const loginWithEmail = async (email: string, password: string) => {
+  const result = await signInWithEmailAndPassword(auth, email.trim(), password);
+  return result.user;
+};
+
+export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
+  const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
+  if (displayName?.trim()) {
+    await updateProfile(result.user, { displayName: displayName.trim() });
+  }
+  return result.user;
+};
+
+export const resetPassword = async (email: string) => {
+  await sendPasswordResetEmail(auth, email.trim());
+};
+
+export const authorizeGoogleWorkspace = async () => {
+  try {
+    isSigningIn = true;
+    const result = await signInWithPopup(auth, workspaceAuthProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) cachedAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: cachedAccessToken };
   } finally {
     isSigningIn = false;
   }
@@ -85,14 +112,10 @@ export const logout = async () => {
   return await signOut(auth);
 };
 
-// Clear cached access token on auth change if logged out
 onAuthStateChanged(auth, (user) => {
-  if (!user && !isSigningIn) {
-    cachedAccessToken = null;
-  }
+  if (!user && !isSigningIn) cachedAccessToken = null;
 });
 
-// Validate connection per skill guidelines
 export async function testFirestoreConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
@@ -102,3 +125,5 @@ export async function testFirestoreConnection() {
     }
   }
 }
+
+export type { User };

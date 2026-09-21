@@ -39,6 +39,7 @@ import {
 import { 
   auth, 
   loginWithGoogle, 
+  authorizeGoogleWorkspace,
   logout, 
   testFirestoreConnection 
 } from './lib/firebase';

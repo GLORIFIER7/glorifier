@@ -4,6 +4,8 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { aiOrchestrator } from './src/lib/ai/orchestrator';
 import { checkPostgres } from './src/lib/db/postgres';
+import { runAIRole } from './src/lib/ai/roles-service';
+import { AI_ROLE_DEFINITIONS } from './src/lib/ai/roles';
 
 dotenv.config();
 
@@ -44,6 +46,34 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/health/database', async (_req, res) => {
   const result = await checkPostgres();
   res.status(result.ok ? 200 : 503).json(result);
+});
+
+app.get('/api/ai/roles', (_req, res) => {
+  res.json({ roles: Object.values(AI_ROLE_DEFINITIONS) });
+});
+
+app.post('/api/ai/role', async (req, res) => {
+  try {
+    const { role, task, context, provider } = req.body;
+    if (role !== 'attorney' && role !== 'dataScientist') {
+      return res.status(400).json({ error: 'role must be attorney or dataScientist' });
+    }
+    if (!task || typeof task !== 'string') {
+      return res.status(400).json({ error: 'task is required' });
+    }
+    const result = await runAIRole(role, task, context ?? {}, provider);
+    return res.json({
+      role,
+      output: result.text,
+      modelUsed: result.model,
+      provider: result.provider,
+      disclaimer: AI_ROLE_DEFINITIONS[role].disclaimer,
+    });
+  } catch (error) {
+    return res.status(502).json({
+      error: error instanceof Error ? error.message : 'AI role analysis failed',
+    });
+  }
 });
 
 app.get('/api/ai/providers', (_req, res) => {

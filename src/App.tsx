@@ -13,6 +13,7 @@ import { DataControlDashboard } from './components/DataControlDashboard';
 import { GmailGovernanceTab } from './components/GmailGovernanceTab';
 import { DriveGovernanceTab } from './components/DriveGovernanceTab';
 import { AiModelsCollaborationManagement } from './components/AiModelsCollaborationManagement';
+import { AIRoleCommandCenter } from './components/AIRoleCommandCenter';
 import { 
   initialStats, 
   initialFootprints, 
@@ -489,6 +490,10 @@ export default function App() {
             onUpdatePolicy={handleUpdatePolicy}
             footprints={footprints}
           />
+        )}
+
+        {activeTab === 'ai_roles' && (
+          <AIRoleCommandCenter />
         )}
 
         {activeTab === 'ai_collaboration' && (

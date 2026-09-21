@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { aiOrchestrator } from './src/lib/ai/orchestrator';
 import { checkPostgres } from './src/lib/db/postgres';
+import { readAppState, upsertState, updateOffer, updateGrant, addTransaction, addTelemetry } from './src/lib/db/app-state';
 import { runAIRole } from './src/lib/ai/roles-service';
 import { AI_ROLE_DEFINITIONS } from './src/lib/ai/roles';
 import { getRevenueSummary, initializeRevenueLedger, recordRevenueEvent, verifyRevenueWebhook } from './src/lib/revenue/engine';
@@ -92,6 +93,104 @@ function requireRevenueAdmin(req: express.Request, res: express.Response): boole
   }
   return true;
 }
+
+
+// Authoritative application state: Railway API is the only write path; Neon is the source of truth.
+app.get('/api/state', async (req, res) => {
+  try {
+    return res.json(await readAppState(String(req.query.userReference || 'anonymous')));
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Application state unavailable' });
+  }
+});
+
+app.put('/api/state', async (req, res) => {
+  try {
+    const { userReference, ...payload } = req.body || {};
+    return res.json(await upsertState(String(userReference || 'anonymous'), payload));
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Application state update failed' });
+  }
+});
+
+app.post('/api/marketplace/offers/:offerId/accept', async (req, res) => {
+  try {
+    const state = await updateOffer(String(req.body?.userReference || 'anonymous'), req.params.offerId, { status: 'ACCEPTED' });
+    return res.json(state);
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer acceptance failed' });
+  }
+});
+
+app.post('/api/marketplace/offers/:offerId/reject', async (req, res) => {
+  try {
+    return res.json(await updateOffer(String(req.body?.userReference || 'anonymous'), req.params.offerId, { status: 'REJECTED' }));
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer rejection failed' });
+  }
+});
+
+app.post('/api/marketplace/offers/:offerId/counter', async (req, res) => {
+  try {
+    const counterAmount = Number(req.body?.counterAmount);
+    if (!Number.isFinite(counterAmount) || counterAmount < 0) return res.status(400).json({ error: 'counterAmount must be a valid non-negative number' });
+    return res.json(await updateOffer(String(req.body?.userReference || 'anonymous'), req.params.offerId, { status: 'COUNTERED', counterOfferAmount: counterAmount }));
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer counter failed' });
+  }
+});
+
+app.post('/api/grants/:grantId/revoke', async (req, res) => {
+  try {
+    return res.json(await updateGrant(String(req.body?.userReference || 'anonymous'), req.params.grantId, { status: 'revoked', ttlHoursRemaining: 0 }));
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Grant revocation failed' });
+  }
+});
+
+app.patch('/api/grants/:grantId', async (req, res) => {
+  try {
+    const sharedFields = Array.isArray(req.body?.sharedFields) ? req.body.sharedFields : [];
+    return res.json(await updateGrant(String(req.body?.userReference || 'anonymous'), req.params.grantId, { sharedFields }));
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Grant update failed' });
+  }
+});
+
+app.post('/api/telemetry/usage', async (req, res) => {
+  try {
+    const model = String(req.body?.model || '');
+    const allowed = ['Per-Query','Data Shapley','Cohort Subscription','Proof Attestation'];
+    if (!allowed.includes(model)) return res.status(400).json({ error: 'Unsupported usage model' });
+    // This endpoint records a platform event. It deliberately does not create money from a client-side simulation.
+    const event = {
+      id: `telemetry-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+      timestamp: new Date().toISOString(),
+      grantId: 'user-triggered-test',
+      recipientOrg: 'Glorifier AI test gateway',
+      dataCategory: 'ecommerce',
+      eventType: 'dp_query_laplace',
+      queryUnits: 1,
+      compensationUsd: 0,
+      calculationModel: model,
+      zkProofHash: 'not-issued',
+      epsilonConsumed: 0,
+      source: 'user_test',
+    };
+    return res.json(await addTelemetry(String(req.body?.userReference || 'anonymous'), event));
+  } catch (error) {
+    return res.status(400).json({ error: error instanceof Error ? error.message : 'Usage event failed' });
+  }
+});
+
+app.post('/api/settlements/clear', async (req, res) => {
+  try {
+    const state = await readAppState(String(req.body?.userReference || 'anonymous'));
+    return res.json({ stats: { ...state.stats, pendingSettlementUsd: 0 } });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Settlement state unavailable' });
+  }
+});
 
 app.get('/api/monetization/plans', (_req, res) => {
   res.json({ plans: Object.values(MONETIZATION_PLANS) });

@@ -27,7 +27,7 @@ export async function getPayPalAccessToken(): Promise<string> {
   return data.access_token;
 }
 
-export async function createPayPalOrder(amount: string, currency = 'USD', referenceId?: string) {
+export async function createPayPalOrder(amount: string, currency = 'USD', referenceId?: string, custom?: { planId?: string; customerReference?: string }) {
   if (!/^\d+(\.\d{1,2})?$/.test(amount) || Number(amount) <= 0) {
     throw new Error('Invalid PayPal amount');
   }
@@ -43,7 +43,12 @@ export async function createPayPalOrder(amount: string, currency = 'USD', refere
     },
     body: JSON.stringify({
       intent: 'CAPTURE',
-      purchase_units: [{ amount: { currency_code: currency, value: amount } }],
+      purchase_units: [{
+        custom_id: custom?.planId,
+        invoice_id: referenceId,
+        description: custom?.planId ? `GLORIFIER ${custom.planId} subscription` : 'GLORIFIER purchase',
+        amount: { currency_code: currency, value: amount },
+      }],
     }),
   });
   if (!response.ok) throw new Error(`PayPal order creation failed: ${response.status}`);

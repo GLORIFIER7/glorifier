@@ -37,7 +37,7 @@ export const initialFootprints: DataFootprintSource[] = [
     samples: [
       { field: 'Search Query', rawValue: 'best low latency AI inference engine 2026', anonymizedValue: '[Tech / Machine Learning Infrastructure query]', noiseLevel: 'Laplacian ε=0.45' },
       { field: 'Domain Visited', rawValue: 'github.com/vllm-project/vllm', anonymizedValue: 'Top 500 Open-Source Repository', noiseLevel: 'Category Masking' },
-      { field: 'Session IP / Geo', rawValue: '198.51.100.42 (San Francisco, CA)', anonymizedValue: 'US West Coastal Metro (Radius > 45km)', noiseLevel: 'Coarse Truncation' },
+      { field: 'Session IP / Geo', rawValue: '203.0.113.0 (Example Metro)', anonymizedValue: 'US West Coastal Metro (Radius > 45km)', noiseLevel: 'Coarse Truncation' },
       { field: 'Dwell Time', rawValue: '4m 32s on technical documentation', anonymizedValue: 'Medium Engagement [3m - 6m bucket]', noiseLevel: 'k=50 Binning' }
     ]
   },
@@ -60,8 +60,8 @@ export const initialFootprints: DataFootprintSource[] = [
     samples: [
       { field: 'Item Purchased', rawValue: 'Sony WH-1000XM5 Noise Cancelling Headphones ($348)', anonymizedValue: 'ZK-Proof: Consumer Tech item > $250 purchased in Q1', noiseLevel: 'Zero-Knowledge Attestation' },
       { field: 'Grocery Intent', rawValue: 'Organic Almond Milk, Fair-trade Dark Roast Coffee', anonymizedValue: 'High-Affinity Organic Food Consumer cluster', noiseLevel: 'Differential ε=0.2' },
-      { field: 'Delivery Address', rawValue: '742 Evergreen Terrace, Apt 4B', anonymizedValue: 'ZIP3 Code Prefix: 941XX (San Francisco metro)', noiseLevel: 'k-Anonymity (k=100)' },
-      { field: 'Payment Medium', rawValue: 'Amex Platinum ending in 4092', anonymizedValue: 'Tier-1 Credit Card Network', noiseLevel: 'Tokenized Redaction' }
+      { field: 'Delivery Address', rawValue: '[REDACTED DEMO ADDRESS]', anonymizedValue: 'ZIP3 Code Prefix: 941XX (San Francisco metro)', noiseLevel: 'k-Anonymity (k=100)' },
+      { field: 'Payment Medium', rawValue: '[REDACTED DEMO PAYMENT TOKEN]', anonymizedValue: 'Tier-1 Credit Card Network', noiseLevel: 'Tokenized Redaction' }
     ]
   },
   {
@@ -104,10 +104,10 @@ export const initialFootprints: DataFootprintSource[] = [
     description: 'Resting heart rate, sleep architecture, daily step cadence, cardio fitness trends.',
     leakRiskScore: 89,
     samples: [
-      { field: 'Resting Heart Rate', rawValue: '58 bpm (athlete baseline)', anonymizedValue: 'Synthetic Twin: 57.8 ± 1.2 bpm distribution', noiseLevel: 'Generative Synthetic Twin' },
-      { field: 'Sleep Metrics', rawValue: '7h 42m (REM: 1h 55m, Deep: 1h 22m)', anonymizedValue: 'Normal circadian restorative score (88/100)', noiseLevel: 'Differential ε=0.15' },
-      { field: 'Activity Calorie', rawValue: '740 active kcal burned running', anonymizedValue: 'Cardio fitness group: Top 15th percentile', noiseLevel: 'Decile Cohort' },
-      { field: 'Medical Conditions', rawValue: 'None / Non-smoker', anonymizedValue: 'ZK-Proof: Verified Clean Health Status for Research', noiseLevel: 'Cryptographic ZK Proof' }
+      { field: 'Resting Heart Rate', rawValue: '[REDACTED DEMO HEALTH DATA]', anonymizedValue: 'Synthetic Twin: 57.8 ± 1.2 bpm distribution', noiseLevel: 'Generative Synthetic Twin' },
+      { field: 'Sleep Metrics', rawValue: '[REDACTED DEMO HEALTH DATA]', anonymizedValue: 'Normal circadian restorative score (88/100)', noiseLevel: 'Differential ε=0.15' },
+      { field: 'Activity Calorie', rawValue: '[REDACTED DEMO HEALTH DATA]', anonymizedValue: 'Cardio fitness group: Top 15th percentile', noiseLevel: 'Decile Cohort' },
+      { field: 'Medical Conditions', rawValue: '[REDACTED DEMO HEALTH DATA]', anonymizedValue: 'ZK-Proof: Verified Clean Health Status for Research', noiseLevel: 'Cryptographic ZK Proof' }
     ]
   },
   {
@@ -443,10 +443,10 @@ export const defaultPolicy: MonetizationPolicy = {
   globalEpsilon: 0.35,
   autoNegotiateHighBids: true,
   payoutMethod: 'binance_auto',
-  walletAddress: 'SolData8vG...7k9wM3pQ',
+  walletAddress: 'DEMO_WALLET_NOT_CONNECTED',
   binanceConfig: {
     enabled: true,
-    binancePayIdOrEmail: 'johnpaularlos28@gmail.com',
+    binancePayIdOrEmail: 'demo@example.invalid',
     defaultAsset: 'USDT',
     network: 'Binance_Pay_Direct',
     autoSweepThresholdUsd: 25.00,
@@ -455,8 +455,8 @@ export const defaultPolicy: MonetizationPolicy = {
   },
   gcashConfig: {
     enabled: true,
-    mobileNumber: '09171234567',
-    accountName: 'JOHN PAUL ARLOS',
+    mobileNumber: '09000000000',
+    accountName: 'DEMO ACCOUNT',
     autoCashOut: true,
     cadence: 'instant',
     minimumThresholdUsd: 10.00,

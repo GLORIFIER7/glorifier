@@ -42,6 +42,52 @@ function now() {
   return new Date().toISOString();
 }
 
+// Firebase Admin verifies the Firebase ID token issued to the browser.
+// The verified UID, never a browser-supplied userReference, becomes the Neon tenant key.
+let firebaseAdmin: typeof import('firebase-admin') | null = null;
+let firebaseAuth: import('firebase-admin/auth').Auth | null = null;
+
+async function getFirebaseAuth() {
+  if (firebaseAuth) return firebaseAuth;
+  const admin = await import('firebase-admin');
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GCLOUD_PROJECT;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\\\n/g, '\\n');
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error('Firebase Admin authentication is not configured on Railway.');
+  }
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({ projectId, clientEmail, privateKey }),
+    });
+  }
+  firebaseAdmin = admin;
+  firebaseAuth = admin.auth();
+  return firebaseAuth;
+}
+
+async function requireFirebaseUser(req: express.Request, res: express.Response): Promise<string | null> {
+  const header = req.header('authorization');
+  if (!header?.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return null;
+  }
+  const token = header.slice('Bearer '.length).trim();
+  if (!token) {
+    res.status(401).json({ error: 'Authentication required.' });
+    return null;
+  }
+  try {
+    const auth = await getFirebaseAuth();
+    const decoded = await auth.verifyIdToken(token, true);
+    return decoded.uid;
+  } catch (error) {
+    console.warn('Firebase token verification failed:', error instanceof Error ? error.message : error);
+    res.status(401).json({ error: 'Invalid or expired authentication token.' });
+    return null;
+  }
+}
+
 // Public operational endpoints.
 app.get('/api/health', (_req, res) => {
   res.json({
@@ -95,107 +141,115 @@ function requireRevenueAdmin(req: express.Request, res: express.Response): boole
 }
 
 
-// Authoritative application state: Railway API is the only write path; Neon is the source of truth.
+// Authoritative application state. Every protected request derives its tenant from Firebase.
 app.get('/api/state', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    return res.json(await readAppState(String(req.query.userReference || 'anonymous')));
+    return res.json(await readAppState(uid));
   } catch (error) {
     return res.status(503).json({ error: error instanceof Error ? error.message : 'Application state unavailable' });
   }
 });
 
 app.put('/api/state', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    const { userReference, ...payload } = req.body || {};
-    return res.json(await upsertState(String(userReference || 'anonymous'), payload));
+    const { userReference: _ignoredUserReference, ...payload } = req.body || {};
+    return res.json(await upsertState(uid, payload));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Application state update failed' });
   }
 });
 
 app.post('/api/marketplace/offers/:offerId/accept', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    const state = await updateOffer(String(req.body?.userReference || 'anonymous'), req.params.offerId, { status: 'ACCEPTED' });
-    return res.json(state);
+    return res.json(await updateOffer(uid, req.params.offerId, { status: 'ACCEPTED' }));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer acceptance failed' });
   }
 });
 
 app.post('/api/marketplace/offers/:offerId/reject', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    return res.json(await updateOffer(String(req.body?.userReference || 'anonymous'), req.params.offerId, { status: 'REJECTED' }));
+    return res.json(await updateOffer(uid, req.params.offerId, { status: 'REJECTED' }));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer rejection failed' });
   }
 });
 
 app.post('/api/marketplace/offers/:offerId/counter', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
     const counterAmount = Number(req.body?.counterAmount);
     if (!Number.isFinite(counterAmount) || counterAmount < 0) return res.status(400).json({ error: 'counterAmount must be a valid non-negative number' });
-    return res.json(await updateOffer(String(req.body?.userReference || 'anonymous'), req.params.offerId, { status: 'COUNTERED', counterOfferAmount: counterAmount }));
+    return res.json(await updateOffer(uid, req.params.offerId, { status: 'COUNTERED', counterOfferAmount: counterAmount }));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Offer counter failed' });
   }
 });
 
 app.post('/api/grants/:grantId/revoke', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    return res.json(await updateGrant(String(req.body?.userReference || 'anonymous'), req.params.grantId, { status: 'revoked', ttlHoursRemaining: 0 }));
+    return res.json(await updateGrant(uid, req.params.grantId, { status: 'revoked', ttlHoursRemaining: 0 }));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Grant revocation failed' });
   }
 });
 
 app.patch('/api/grants/:grantId', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
     const sharedFields = Array.isArray(req.body?.sharedFields) ? req.body.sharedFields : [];
-    return res.json(await updateGrant(String(req.body?.userReference || 'anonymous'), req.params.grantId, { sharedFields }));
+    return res.json(await updateGrant(uid, req.params.grantId, { sharedFields }));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Grant update failed' });
   }
 });
 
 app.post('/api/telemetry/usage', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
     const model = String(req.body?.model || '');
     const allowed = ['Per-Query','Data Shapley','Cohort Subscription','Proof Attestation'];
     if (!allowed.includes(model)) return res.status(400).json({ error: 'Unsupported usage model' });
-    // This endpoint records a platform event. It deliberately does not create money from a client-side simulation.
     const event = {
       id: `telemetry-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
-      timestamp: new Date().toISOString(),
-      grantId: 'user-triggered-test',
-      recipientOrg: 'Glorifier AI test gateway',
-      dataCategory: 'ecommerce',
-      eventType: 'dp_query_laplace',
-      queryUnits: 1,
-      compensationUsd: 0,
-      calculationModel: model,
-      zkProofHash: 'not-issued',
-      epsilonConsumed: 0,
-      source: 'user_test',
+      timestamp: new Date().toISOString(), grantId: 'user-triggered-test',
+      recipientOrg: 'Glorifier AI test gateway', dataCategory: 'ecommerce', eventType: 'dp_query_laplace',
+      queryUnits: 1, compensationUsd: 0, calculationModel: model, zkProofHash: 'not-issued',
+      epsilonConsumed: 0, source: 'user_test',
     };
-    return res.json(await addTelemetry(String(req.body?.userReference || 'anonymous'), event));
+    return res.json(await addTelemetry(uid, event));
   } catch (error) {
     return res.status(400).json({ error: error instanceof Error ? error.message : 'Usage event failed' });
   }
 });
 
 app.post('/api/payouts/request', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
     const amount = Number(req.body?.amount);
-    const userReference = String(req.body?.userReference || 'anonymous');
     const method = String(req.body?.method || '');
     const destination = String(req.body?.destination || '');
     if (!Number.isFinite(amount) || amount <= 0) return res.status(400).json({ error: 'amount must be positive' });
     if (!method || !destination) return res.status(400).json({ error: 'payout method and destination are required' });
-    const state = await readAppState(userReference);
+    const state = await readAppState(uid);
     if (amount > Number(state.stats.totalEarnedUsd || 0)) return res.status(400).json({ error: 'Insufficient verified available balance' });
     const id = `payout-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
     const db = (await import('./src/lib/db/postgres')).getPostgresPool();
-    await db.query('INSERT INTO payout_requests(id,user_reference,amount_minor,currency,method,destination,status) VALUES($1,$2,$3,$4,$5,$6,$7)', [id,userReference,Math.round(amount*100),'USD',method,destination,'pending']);
+    await db.query('INSERT INTO payout_requests(id,user_reference,amount_minor,currency,method,destination,status) VALUES($1,$2,$3,$4,$5,$6,$7)', [id,uid,Math.round(amount*100),'USD',method,destination,'pending']);
     return res.status(202).json({ accepted: true, status: 'pending', payoutRequestId: id, message: 'Payout request recorded. No transfer is claimed until a connected payment provider confirms it.' });
   } catch (error) {
     return res.status(503).json({ error: error instanceof Error ? error.message : 'Payout request failed' });
@@ -203,8 +257,10 @@ app.post('/api/payouts/request', async (req, res) => {
 });
 
 app.post('/api/settlements/clear', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
   try {
-    const state = await readAppState(String(req.body?.userReference || 'anonymous'));
+    const state = await readAppState(uid);
     return res.json({ stats: { ...state.stats, pendingSettlementUsd: 0 } });
   } catch (error) {
     return res.status(503).json({ error: error instanceof Error ? error.message : 'Settlement state unavailable' });

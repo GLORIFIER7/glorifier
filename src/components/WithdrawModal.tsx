@@ -20,6 +20,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
+import { authenticatedFetch } from '../lib/firebase';
 
 interface WithdrawModalProps {
   stats: SovereignStats;
@@ -312,10 +313,10 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
         ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}`
         : fiatMethod;
       const destination = payoutCategory === 'crypto' ? walletAddress : fiatAccount;
-      const res = await fetch('/api/payouts/request', {
+      const res = await authenticatedFetch('/api/payouts/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, method, destination, userReference })
+        body: JSON.stringify({ amount, method, destination })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Payout request HTTP ${res.status}`);
@@ -952,11 +953,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-base font-bold text-white">Disbursement Confirmed!</h4>
+              <h4 className="text-base font-bold text-white">Payout Request Submitted</h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {settledReceipt.isCrypto
-                  ? `Stablecoin funds broadcast to ${settledReceipt.network} network.`
-                  : 'Fiat transfer queued for clearing.'}
+                  ? `Payout is pending provider confirmation on ${settledReceipt.network}.`
+                  : 'Fiat payout request is pending provider confirmation.'}
               </p>
             </div>
 
@@ -976,7 +977,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 <span className="text-slate-300 truncate max-w-[210px]">{settledReceipt.destination}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Proof Tx Hash:</span>
+                <span className="text-slate-500">Payout Request ID:</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-cyan-400 truncate max-w-[160px]">{settledReceipt.txHash}</span>
                   <button
@@ -989,11 +990,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Relayer Gas:</span>
-                <span className="text-emerald-400">$0.00 (Sponsored by Protocol)</span>
+                <span className="text-slate-500">Provider Status:</span>
+                <span className="text-emerald-400">PENDING — no transfer claimed</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-slate-500">Settled At:</span>
+                <span className="text-slate-500">Requested At:</span>
                 <span className="text-slate-400">{settledReceipt.timestamp}</span>
               </div>
             </div>

@@ -253,3 +253,30 @@ export interface UsageTelemetryEvent {
   zkProofHash: string;
   epsilonConsumed: number;
 }
+
+
+export type DataAssetOrigin = 'demo' | 'real_app_activity' | 'connected_integration' | 'imported';
+export type DataAssetConsent = 'verified' | 'user_required' | 'unknown' | 'not_applicable';
+export type DataAssetSensitivity = 'low' | 'moderate' | 'high' | 'restricted';
+export type DataAssetCommercialization = 'eligible_after_review' | 'blocked' | 'research_only' | 'not_ready';
+
+export interface DataAsset {
+  id: string;
+  name: string;
+  source: string;
+  ownerReference: 'current_user' | 'system' | 'third_party';
+  origin: DataAssetOrigin;
+  consentStatus: DataAssetConsent;
+  fields: string[];
+  category: DataCategoryType;
+  sensitivity: DataAssetSensitivity;
+  anonymizationStatus: 'not_started' | 'aggregation_required' | 'anonymized' | 'synthetic_only';
+  allowedUse: string[];
+  prohibitedUse: string[];
+  commercializationStatus: DataAssetCommercialization;
+  estimatedMarketValueUsdMonthly: number | null;
+  productIdea: string;
+  buyerProfile: string;
+  evidence: string;
+  lastAuditedAt: string;
+}

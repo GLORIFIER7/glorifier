@@ -80,6 +80,14 @@ app.get('/api/ai/providers', (_req, res) => {
   res.json({ providers: aiOrchestrator.registry() });
 });
 
+app.get('/api/ai/metrics', (_req, res) => {
+  res.json({
+    providers: aiOrchestrator.metrics(),
+    generatedAt: new Date().toISOString(),
+    note: 'Cost values are estimates based on optional per-1K-token environment rates; latency and reliability are measured by this server process.',
+  });
+});
+
 app.post('/api/ai/orchestrate', async (req, res) => {
   try {
     const { messages, provider = 'auto', model, temperature, maxTokens } = req.body;

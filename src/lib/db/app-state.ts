@@ -37,7 +37,8 @@ export async function readAppState(userReference?: string): Promise<AppState> {
     db.query('SELECT exposure_data FROM app_exposures WHERE user_reference=$1 ORDER BY updated_at DESC', [u]),
   ]);
 
-  const tx = transactions.rows.map(r => r.transaction_data);
+  const txResult = await db.query('SELECT id, offer_id, amount_minor, currency, status, created_at FROM marketplace_transactions WHERE user_reference=$1 ORDER BY created_at DESC LIMIT 100', [u]);
+  const tx = txResult.rows.map((r: any) => ({ id: r.id, offerId: r.offer_id, amountUsd: Number(r.amount_minor) / 100, currency: r.currency, status: r.status, createdAt: r.created_at }));
   const revenue = await db.query(`SELECT COALESCE(SUM(CASE WHEN status='paid' THEN amount_minor ELSE 0 END),0)::bigint AS paid_minor, COALESCE(SUM(CASE WHEN status='refunded' THEN amount_minor ELSE 0 END),0)::bigint AS refunded_minor, COALESCE(SUM(CASE WHEN status='disputed' THEN amount_minor ELSE 0 END),0)::bigint AS disputed_minor FROM revenue_ledger WHERE user_reference=$1`, [u]);
   const ledgerBalanceUsd = (Number(revenue.rows[0]?.paid_minor || 0) - Number(revenue.rows[0]?.refunded_minor || 0) - Number(revenue.rows[0]?.disputed_minor || 0)) / 100;
   const telemetryEvents = telemetry.rows.map(r => r.event_data);
@@ -82,7 +83,7 @@ export async function upsertState(userReference: string | undefined, payload: Pa
       if (key === 'offers') jobs.push(db.query('INSERT INTO app_offers(user_reference,offer_id,offer) VALUES($1,$2,$3) ON CONFLICT(user_reference,offer_id) DO UPDATE SET offer=EXCLUDED.offer,updated_at=now()', [u,id,item]));
       if (key === 'grants') jobs.push(db.query('INSERT INTO app_grants(user_reference,grant_id,grant_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,grant_id) DO UPDATE SET grant_data=EXCLUDED.grant_data,updated_at=now()', [u,id,item]));
       if (key === 'telemetryEvents') jobs.push(db.query('INSERT INTO app_telemetry(user_reference,event_id,event_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,event_id) DO UPDATE SET event_data=EXCLUDED.event_data,occurred_at=now()', [u,id,item]));
-      if (key === 'transactions') jobs.push(db.query('INSERT INTO app_transactions(user_reference,transaction_id,transaction_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,transaction_id) DO UPDATE SET transaction_data=EXCLUDED.transaction_data', [u,id,item]));
+      if (key === 'transactions') continue;
       if (key === 'footprints') jobs.push(db.query('INSERT INTO app_footprints(user_reference,footprint_id,footprint_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,footprint_id) DO UPDATE SET footprint_data=EXCLUDED.footprint_data,updated_at=now()', [u,id,item]));
       if (key === 'exposures') jobs.push(db.query('INSERT INTO app_exposures(user_reference,exposure_id,exposure_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,exposure_id) DO UPDATE SET exposure_data=EXCLUDED.exposure_data,updated_at=now()', [u,id,item]));
     }

@@ -21,4 +21,5 @@ jobs:
         env:
           BRAND_MONITOR_BASE_URL: ${{ secrets.BRAND_MONITOR_BASE_URL }}
           BRAND_MONITOR_WEBHOOK_SECRET: ${{ secrets.BRAND_MONITOR_WEBHOOK_SECRET }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/brand-monitor.mjs

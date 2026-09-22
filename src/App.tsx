@@ -19,6 +19,7 @@ import { BinanceNftDashboard } from './components/BinanceNftDashboard';
 import { DataAssetRegistry } from './components/DataAssetRegistry';
 import { BusinessIntelligenceDashboard } from './components/BusinessIntelligenceDashboard';
 import { CompetitiveIntelligenceEngine } from './components/CompetitiveIntelligenceEngine';
+import { BrandWebMonitoring } from './components/BrandWebMonitoring';
 import { 
   initialStats, 
   initialFootprints, 
@@ -398,6 +399,10 @@ export default function App() {
 
         {activeTab === 'competitive_intelligence' && (
           <CompetitiveIntelligenceEngine />
+        )}
+
+        {activeTab === 'brand_monitoring' && (
+          <BrandWebMonitoring />
         )}
 
         {activeTab === 'business_intelligence' && (

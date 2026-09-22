@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Globe2, ShieldCheck, Search, Bell, Plus, RefreshCw, ExternalLink } from 'lucide-react';
+import { authenticatedFetch } from '../lib/firebase';
 
 type Term={id:string;term:string;termType:string;status:string};
 type Observation={id:string;term_id:string;source_name:string;source_url:string;observedAt:string;matched_text:string;classification:string;confidence:number;review_status:string};
@@ -18,8 +19,8 @@ export const BrandWebMonitoring: React.FC = () => {
   }finally{setLoading(false)}};
   useEffect(()=>{void load()},[]);
 
-  const add=async()=>{if(!newTerm.trim())return; const r=await fetch('/api/brand-monitor/terms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({term:newTerm.trim(),termType:'phrase'})}); if(r.ok){setNewTerm('');void load()}};
-  const scan=async()=>{await fetch('/api/brand-monitor/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});void load()};
+  const add=async()=>{if(!newTerm.trim())return; const r=await authenticatedFetch('/api/brand-monitor/terms',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({term:newTerm.trim(),termType:'phrase'})}); if(r.ok){setNewTerm('');void load()}};
+  const scan=async()=>{await authenticatedFetch('/api/brand-monitor/scan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});void load()};
 
   return <div className="space-y-6">
     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

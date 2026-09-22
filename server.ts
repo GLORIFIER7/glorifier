@@ -374,6 +374,45 @@ app.post('/api/revenue/webhook', async (req, res) => {
   }
 });
 
+
+// GLORIFIER Business Intelligence report endpoint
+app.get('/api/business-intelligence/report', async (_req, res) => {
+  try {
+    const generatedAt = now();
+    let recentCommits = 0;
+    let latestCommit: string | null = null;
+    try {
+      const response = await fetch('https://api.github.com/repos/GLORIFIER7/glorifier-artificial-intelligence/commits?per_page=10', {
+        headers: { 'Accept': 'application/vnd.github+json', 'User-Agent': 'GLORIFIER-AI-BI' },
+      });
+      if (response.ok) {
+        const commits = await response.json() as Array<{ sha?: string }>;
+        recentCommits = commits.length;
+        latestCommit = commits[0]?.sha?.slice(0, 7) ?? null;
+      }
+    } catch (error) {
+      console.warn('GitHub BI collector unavailable:', error);
+    }
+
+    return res.json({
+      generatedAt,
+      executiveSummary: 'GLORIFIER Business Intelligence combines public web intelligence, project activity, market signals, governed first-party telemetry, verified financial metrics and data-product opportunities.',
+      insights: [
+        { id: 'web_mentions', title: 'GLORIFIER public-web mentions', status: 'connector', summary: 'Public pages, brand mentions and indexed footprint.', metrics: [{ label: 'Source', value: 'Public web' }, { label: 'Privacy', value: 'Public only' }], actions: ['Track new mentions', 'Detect brand changes', 'Add verified signals to reports'] },
+        { id: 'github', title: 'GitHub / project activity', status: 'live', summary: 'Live public activity for the GLORIFIER AI repository.', metrics: [{ label: 'Recent commits', value: String(recentCommits) }, { label: 'Latest SHA', value: latestCommit ?? 'n/a' }], actions: ['Monitor engineering velocity', 'Track releases', 'Use activity as a development KPI'] },
+        { id: 'competitors', title: 'Competitor intelligence', status: 'connector', summary: 'Comparable AI, software, data and digital-service businesses.', metrics: [{ label: 'Coverage', value: 'Connector-ready' }, { label: 'Output', value: 'Market signals' }], actions: ['Track public launches and pricing', 'Compare positioning', 'Identify market gaps'] },
+        { id: 'trends', title: 'AI / software industry trends', status: 'connector', summary: 'AI, software, cybersecurity and data-product research and market signals.', metrics: [{ label: 'Coverage', value: 'AI + software' }, { label: 'Output', value: 'Trend signals' }], actions: ['Track emerging technologies', 'Surface relevant research', 'Create product hypotheses'] },
+        { id: 'search', title: 'Traffic / search signals', status: 'connector', summary: 'Legally available aggregate search and traffic indicators.', metrics: [{ label: 'Privacy', value: 'Aggregate' }, { label: 'PII', value: 'Excluded' }], actions: ['Connect approved analytics providers', 'Track aggregate demand', 'Avoid individual profiling'] },
+        { id: 'telemetry', title: 'First-party product telemetry', status: 'protected', summary: 'Authenticated GLORIFIER activity becomes a business signal after consent, purpose limitation, aggregation and privacy checks.', metrics: [{ label: 'Source', value: 'First-party' }, { label: 'Gate', value: 'Consent required' }], actions: ['Aggregate product usage', 'Apply cohort thresholds', 'Keep individual events governed'] },
+        { id: 'revenue', title: 'Revenue and customer metrics', status: 'protected', summary: 'Verified revenue is read from the authoritative PostgreSQL ledger and shown as aggregated business metrics.', metrics: [{ label: 'Ledger', value: 'PostgreSQL' }, { label: 'Money', value: 'Verified only' }], actions: ['Track verified revenue', 'Measure subscriptions', 'Separate forecasts from realized revenue'] },
+        { id: 'opportunities', title: 'Data-product opportunities', status: 'live', summary: 'Converts market signals and governed aggregates into potential APIs, reports and datasets.', metrics: [{ label: 'Decision', value: 'Governed' }, { label: 'Product', value: 'Privacy-safe' }], actions: ['Prioritize aggregate products', 'Document buyers and permitted use', 'Connect approved products to monetization'] },
+      ],
+    });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Business intelligence report unavailable' });
+  }
+});
+
 app.get('/api/ai/providers', (_req, res) => {
   res.json({ providers: aiOrchestrator.registry() });
 });

@@ -1,0 +1,24 @@
+name: GLORIFIER Brand Web Monitoring
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glorifier-brand-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Run public-source brand scan
+        env:
+          BRAND_MONITOR_BASE_URL: ${{ secrets.BRAND_MONITOR_BASE_URL }}
+          BRAND_MONITOR_WEBHOOK_SECRET: ${{ secrets.BRAND_MONITOR_WEBHOOK_SECRET }}
+        run: node scripts/brand-monitor.mjs

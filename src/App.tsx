@@ -17,6 +17,7 @@ import { AIRoleCommandCenter } from './components/AIRoleCommandCenter';
 import { MonetizationManager } from './components/MonetizationManager';
 import { BinanceNftDashboard } from './components/BinanceNftDashboard';
 import { DataAssetRegistry } from './components/DataAssetRegistry';
+import { BusinessIntelligenceDashboard } from './components/BusinessIntelligenceDashboard';
 import { 
   initialStats, 
   initialFootprints, 
@@ -392,6 +393,10 @@ export default function App() {
 
         {activeTab === 'data_registry' && (
           <DataAssetRegistry />
+        )}
+
+        {activeTab === 'business_intelligence' && (
+          <BusinessIntelligenceDashboard />
         )}
 
         {activeTab === 'overview' && (

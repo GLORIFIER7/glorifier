@@ -44,7 +44,7 @@ export const Header: React.FC<HeaderProps> = ({
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-11 h-11 rounded-full overflow-hidden border border-cyan-400/40 shadow-lg shadow-cyan-950/40 shrink-0 bg-slate-950">
-              <img src="/glorifier-logo.svg" alt="Glorifier Services" className="w-full h-full object-cover" />
+              <img src={`${import.meta.env.BASE_URL}glorifier-logo.svg`} alt="Glorifier AI" className="w-full h-full object-cover" />
             </div>
             <div className="min-w-0">
               <h1 className="text-base font-bold tracking-tight text-white truncate">

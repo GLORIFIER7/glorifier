@@ -378,6 +378,15 @@ app.get('/api/ai/providers', (_req, res) => {
   res.json({ providers: aiOrchestrator.registry() });
 });
 
+app.get('/api/ai/ceo', (_req, res) => {
+  res.json({
+    executive: aiOrchestrator.executive(),
+    generatedAt: now(),
+    mode: 'automatic',
+    note: 'The executive is selected from connected providers by configured model capability; reliability and latency break ties. If the executive fails, the orchestrator falls back to the next connected candidate.'
+  });
+});
+
 app.get('/api/ai/metrics', (_req, res) => {
   res.json({
     providers: aiOrchestrator.metrics(),

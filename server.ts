@@ -375,6 +375,26 @@ app.post('/api/revenue/webhook', async (req, res) => {
 });
 
 
+
+
+// GLORIFIER Competitive Intelligence Engine (CIE)
+app.get('/api/business-intelligence/competitive', async (_req, res) => {
+  const generatedAt = now();
+  const signals = [
+    { id: 'dataiku-ai', competitor: 'Dataiku', dimension: 'AI features', status: 'connector_ready', summary: 'Monitor public releases, platform capabilities, pricing and governance positioning.', evidence: ['Public-company/product sources should be attached by the collector.'], opportunity: 'Track capability gaps that could inform GLORIFIER product experiments.' },
+    { id: 'salesforce-ai', competitor: 'Salesforce', dimension: 'Products', status: 'connector_ready', summary: 'Monitor AI agents, automation, CRM data and enterprise product changes.', evidence: ['Public product sources should be attached by the collector.'], opportunity: 'Identify integration and workflow opportunities for smaller teams.' },
+    { id: 'zapier-ai', competitor: 'Zapier', dimension: 'API capabilities', status: 'connector_ready', summary: 'Monitor automation, integrations, AI workflows and pricing changes.', evidence: ['Public product sources should be attached by the collector.'], opportunity: 'Track underserved automation workflows and connector demand.' },
+    { id: 'hubspot-ai', competitor: 'HubSpot', dimension: 'Customer segments', status: 'connector_ready', summary: 'Monitor CRM, marketing intelligence, AI agents and customer-platform changes.', evidence: ['Public product sources should be attached by the collector.'], opportunity: 'Look for data-intelligence products that complement customer workflows.' },
+    { id: 'market-wide', competitor: 'Market-wide', dimension: 'Technology changes', status: 'connector_ready', summary: 'Cross-competitor change detection is prepared for public-source connectors.', evidence: ['No private competitor data is collected.'], opportunity: 'Turn repeated market changes into evidence-backed product hypotheses.' },
+  ];
+  return res.json({
+    generatedAt,
+    executiveSummary: 'CIE organizes competitor products, pricing, AI features, funding/M&A, customer segments, APIs, data products, marketing and technology changes. Current profiles are configured; public-source collection is connector-ready and should attach evidence before an opportunity is treated as verified.',
+    counts: { competitors: 7, observed: 0, connectorReady: 7, opportunities: signals.length },
+    signals,
+  });
+});
+
 // GLORIFIER Business Intelligence report endpoint
 app.get('/api/business-intelligence/report', async (_req, res) => {
   try {

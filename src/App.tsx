@@ -18,6 +18,7 @@ import { MonetizationManager } from './components/MonetizationManager';
 import { BinanceNftDashboard } from './components/BinanceNftDashboard';
 import { DataAssetRegistry } from './components/DataAssetRegistry';
 import { BusinessIntelligenceDashboard } from './components/BusinessIntelligenceDashboard';
+import { CompetitiveIntelligenceEngine } from './components/CompetitiveIntelligenceEngine';
 import { 
   initialStats, 
   initialFootprints, 
@@ -393,6 +394,10 @@ export default function App() {
 
         {activeTab === 'data_registry' && (
           <DataAssetRegistry />
+        )}
+
+        {activeTab === 'competitive_intelligence' && (
+          <CompetitiveIntelligenceEngine />
         )}
 
         {activeTab === 'business_intelligence' && (

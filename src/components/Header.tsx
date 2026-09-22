@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Wallet, Sparkles, SlidersHorizontal, Database, Scale, Layers, ShieldAlert,
+  Wallet, Sparkles, SlidersHorizontal, Database, Scale, Layers, ShieldAlert, Activity,
   ArrowUpRight, Coins, Lock, Cloud, Mail, HardDrive, Users, Bot, WalletCards
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
@@ -24,6 +24,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
     { id: 'data_registry', label: 'Data Asset Registry', icon: Database, badge: 'Governance' },
+    { id: 'business_intelligence', label: 'Business Intelligence', icon: Activity, badge: 'Live Intel' },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: 'Google Workspace' },
     { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: 'Google Workspace' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },

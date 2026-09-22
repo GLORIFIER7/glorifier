@@ -91,6 +91,25 @@ async function requireFirebaseUser(req: express.Request, res: express.Response):
 }
 
 // Public operational endpoints.
+// Game Asset Intelligence. Returns public-source connector configuration and permitted reference metadata.
+// Actual collection should be performed by source-compliant schedulers/connectors and submitted as evidence.
+app.get('/api/game-assets', async (_req, res) => {
+  return res.json({
+    generatedAt: now(),
+    connectorStatus: 'public-source connectors ready',
+    policy: 'Store public references/metadata and permitted previews; do not redistribute restricted game files.',
+    assetTypes: ['2D / UI', 'Sprites', 'Textures', '3D models', 'Animation', 'Audio', 'Music', 'Game metadata'],
+    sources: [
+      { name: 'OpenGameArt', url: 'https://opengameart.org/', scope: 'Open/community game assets' },
+      { name: 'Kenney Assets', url: 'https://kenney.nl/assets', scope: 'Game development assets' },
+    ],
+    assets: [
+      { id:'ga-1', title:'Open game UI icon set', game:'Open-source sample', assetType:'2D / UI', sourceName:'OpenGameArt', sourceUrl:'https://opengameart.org/', license:'Verify source license', status:'indexed', observedAt:now() },
+      { id:'ga-2', title:'Community character model', game:'Open-source sample', assetType:'3D model', sourceName:'Kenney Assets', sourceUrl:'https://kenney.nl/assets', license:'Verify source license', status:'indexed', observedAt:now() },
+    ],
+  });
+});
+
 // Brand/Web monitoring. Scans only public evidence supplied by permitted connectors or the signed scheduler.
 // Matching a term never establishes ownership; possible conflicts are routed to human/legal review.
 app.get('/api/brand-monitor/terms', async (_req, res) => {

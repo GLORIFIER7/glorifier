@@ -25,15 +25,65 @@ function evaluateResponse(response: AIResponse): ResponseEvaluation {
   return { score: Math.max(0, score), passed: score >= 60, reasons };
 }
 
+function modelCapabilityScore(model: string): number {
+  const value = model.toLowerCase();
+  let score = 50;
+
+  // Prefer frontier/reasoning and larger-capacity model families when available.
+  if (/gpt-5/.test(value)) score = 100;
+  else if (/o[3-9]/.test(value)) score = 98;
+  else if (/claude.*opus/.test(value)) score = 97;
+  else if (/gemini.*pro|gemini.*ultra/.test(value)) score = 96;
+  else if (/llama.*405b|405b/.test(value)) score = 95;
+  else if (/gpt-4\.1/.test(value)) score = 92;
+  else if (/gemini.*flash/.test(value)) score = 82;
+  else if (/70b/.test(value)) score = 85;
+  else if (/large/.test(value)) score = 80;
+
+  return score;
+}
+
+function providerCapabilityScore(provider: AIProvider): number {
+  const models = provider.models();
+  if (!models.length) return 0;
+  return Math.max(...models.map(modelCapabilityScore));
+}
+
 function selectProviders(providers: AIProvider[]): AIProvider[] {
   return [...providers].sort((a, b) => {
+    const capabilityDiff = providerCapabilityScore(b) - providerCapabilityScore(a);
+    if (capabilityDiff !== 0) return capabilityDiff;
+
     const reliabilityDiff = providerReliability(b.id) - providerReliability(a.id);
     if (Math.abs(reliabilityDiff) > 0.05) return reliabilityDiff;
+
     const aLatency = averageLatencyMs(a.id);
     const bLatency = averageLatencyMs(b.id);
     if (aLatency && bLatency && Math.abs(aLatency - bLatency) > 150) return aLatency - bLatency;
     return 0;
   });
+}
+
+function executiveProfile(providers: AIProvider[]) {
+  const candidates = selectProviders(providers);
+  const leader = candidates[0];
+  if (!leader) {
+    return {
+      status: 'vacant' as const,
+      provider: null,
+      model: null,
+      capabilityScore: 0,
+      basis: 'No connected AI provider is available.',
+    };
+  }
+
+  return {
+    status: 'active' as const,
+    provider: leader.id,
+    model: leader.models()[0] || null,
+    capabilityScore: providerCapabilityScore(leader),
+    basis: 'Highest configured model capability; reliability and latency break ties.',
+  };
 }
 
 export class AIOrchestrator {
@@ -53,7 +103,11 @@ export class AIOrchestrator {
   }
 
   async generate(request: OrchestratorRequest): Promise<AIResponse> {
-    const connected = request.provider && request.provider !== 'auto' ? [getProvider(request.provider)] : getConnectedProviders();
+    // CEO mode is the default: automatically put the highest-capability connected
+    // model in charge, with reliability/latency used only as tie-breakers.
+    const connected = request.provider && request.provider !== 'auto'
+      ? [getProvider(request.provider)]
+      : getConnectedProviders();
     const candidates = selectProviders(connected);
     if (candidates.length === 0) throw new Error('No AI providers are connected.');
 
@@ -81,7 +135,17 @@ export class AIOrchestrator {
       .map((result) => result.value);
   }
 
-  registry() { return listProviders(); }
+  registry() {
+    return listProviders().map((entry) => ({
+      ...entry,
+      capabilityScore: providerCapabilityScore(getProvider(entry.id)),
+    }));
+  }
+
+  executive() {
+    return executiveProfile(getConnectedProviders());
+  }
+
   metrics() { return snapshotProviderMetrics(); }
 }
 

@@ -19,6 +19,7 @@ if (provider === 'none') {
   console.error('Checks failed and no Guardian AI key is configured.');
   process.exit(2);
 }
+const protectedPaths = ['.github/workflows/', '.env', '.env.', 'firebase-applet-config.json', 'package-lock.json', 'pnpm-lock.yaml', 'yarn.lock'];
 const user = `Repository: ${process.env.GITHUB_REPOSITORY || 'GLORIFIER7/glorifier-artificial-intelligence'}
 Diagnostics:
 LINT:
@@ -48,6 +49,9 @@ async function askGemini() {
 let patch = (provider === 'gemini' ? await askGemini() : await askOpenAI()).trim();
 patch = patch.replace(/^\`\`\`(?:diff)?\s*/i,'').replace(/\s*\`\`\`$/i,'').trim();
 if (!patch.startsWith('diff --git ')) throw new Error('Guardian did not return a valid unified diff.');
+const changedPaths = [...patch.matchAll(/^diff --git a\/(.+?) b\/(.+)$/gm)].flatMap(m => [m[1], m[2]]);
+if (changedPaths.some(path => protectedPaths.some(rule => rule.endsWith('/') ? path.startsWith(rule) : path === rule))) throw new Error('Safety policy rejected a protected-file change.');
+if (changedPaths.length > 12) throw new Error('Safety policy rejected an overly broad repair.');
 await writeFile('/tmp/glorifier-guardian.patch', patch);
 const applied=run('git',['apply','--whitespace=fix','--recount','/tmp/glorifier-guardian.patch']);
 if (!applied.ok) throw new Error('Patch rejected: '+applied.output);

@@ -11,7 +11,43 @@ const run = (cmd, args = []) => {
 };
 
 const result = (cmd, args = []) => run(cmd, args).output;
-const provider = process.env.GUARDIAN_PROVIDER || (process.env.OPENAI_API_KEY ? 'openai' : process.env.GEMINI_API_KEY ? 'gemini' : 'none');
+
+function modelCapabilityScore(model = '') {
+  const value = model.toLowerCase();
+  if (/gpt-5/.test(value)) return 100;
+  if (/o[3-9]/.test(value)) return 98;
+  if (/claude.*opus/.test(value)) return 97;
+  if (/gemini.*pro|gemini.*ultra/.test(value)) return 96;
+  if (/llama.*405b|405b/.test(value)) return 95;
+  if (/gpt-4\.1/.test(value)) return 92;
+  if (/70b/.test(value)) return 85;
+  if (/gemini.*flash/.test(value)) return 82;
+  return 50;
+}
+
+function electExecutiveProvider() {
+  const candidates = [];
+  if (process.env.OPENAI_API_KEY) candidates.push({
+    id: 'openai',
+    model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    score: modelCapabilityScore(process.env.OPENAI_MODEL || 'gpt-4o-mini'),
+  });
+  if (process.env.GEMINI_API_KEY) candidates.push({
+    id: 'gemini',
+    model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
+    score: modelCapabilityScore(process.env.GEMINI_MODEL || 'gemini-3.8-flash'),
+  });
+  if (process.env.META_API_KEY) candidates.push({
+    id: 'meta',
+    model: process.env.META_MODEL || 'meta-default',
+    score: modelCapabilityScore(process.env.META_MODEL || 'meta-default'),
+  });
+  candidates.sort((a, b) => b.score - a.score);
+  return candidates[0] || { id: 'none', model: '', score: 0 };
+}
+
+const executive = electExecutiveProvider();
+const provider = executive.id;
 
 const protectedPaths = [
   '.github/workflows/**',
@@ -91,7 +127,24 @@ async function askGemini() {
   return (await response.json()).candidates?.[0]?.content?.parts?.map((part) => part.text || '').join('') || '';
 }
 
-let patch = (provider === 'gemini' ? await askGemini() : await askOpenAI()).trim();
+async function askMeta() {
+  const baseUrl = (process.env.META_BASE_URL || 'https://api.groq.com/openai/v1').replace(/\/+$/, '');
+  const response = await fetch(`${baseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.META_API_KEY}` },
+    body: JSON.stringify({
+      model: process.env.META_MODEL || 'meta-default',
+      temperature: 0,
+      messages: [{ role: 'system', content: system }, { role: 'user', content: user }]
+    })
+  });
+  if (!response.ok) throw new Error(`Meta HTTP ${response.status}`);
+  return (await response.json()).choices?.[0]?.message?.content || '';
+}
+
+console.log(`GLORIFIER_AI_CEO provider=${executive.id} model=${executive.model} capabilityScore=${executive.score}`);
+
+let patch = (provider === 'gemini' ? await askGemini() : provider === 'meta' ? await askMeta() : await askOpenAI()).trim();
 if (patch === 'NO_CHANGE') {
   console.log('GLORIFIER_NO_CHANGE');
   process.exit(0);

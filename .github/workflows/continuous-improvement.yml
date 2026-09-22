@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 concurrency:
   group: glorifier-autonomous-improvement
@@ -18,7 +19,7 @@ concurrency:
 jobs:
   improve:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,6 +33,8 @@ jobs:
       - run: npm install --no-audit --no-fund
 
       - name: AI autonomous development cycle
+        id: improve
+        continue-on-error: true
         env:
           GUARDIAN_PROVIDER: ${{ vars.GUARDIAN_PROVIDER }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -39,10 +42,14 @@ jobs:
           OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          META_API_KEY: ${{ secrets.META_API_KEY }}
+          META_BASE_URL: ${{ vars.META_BASE_URL }}
+          META_MODEL: ${{ vars.META_MODEL }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/continuous-improvement-agent.mjs
 
       - name: Auto-commit verified improvement
+        if: steps.improve.outcome == 'success'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -55,3 +62,14 @@ jobs:
           git add -A
           git commit -m "chore: autonomous Glorifier AI improvement [skip ci]"
           git push origin HEAD:main
+
+      - name: Self-heal failed development cycle
+        if: steps.improve.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: node scripts/self-healing-agent.mjs
+
+      - name: Fail only after self-healing attempt
+        if: steps.improve.outcome == 'failure'
+        run: exit 1

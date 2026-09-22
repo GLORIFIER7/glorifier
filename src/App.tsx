@@ -20,6 +20,7 @@ import { DataAssetRegistry } from './components/DataAssetRegistry';
 import { BusinessIntelligenceDashboard } from './components/BusinessIntelligenceDashboard';
 import { CompetitiveIntelligenceEngine } from './components/CompetitiveIntelligenceEngine';
 import { BrandWebMonitoring } from './components/BrandWebMonitoring';
+import { GameAssetsIntelligence } from './components/GameAssetsIntelligence';
 import { 
   initialStats, 
   initialFootprints, 

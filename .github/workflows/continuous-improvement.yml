@@ -1,4 +1,4 @@
-name: Glorifier AI Autonomous Improvement
+name: GLORIFIER AI 24/7 Autonomous Development Bot
 
 on:
   workflow_dispatch:
@@ -16,7 +16,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: "0 2 * * *"
+    # Runs continuously; GitHub may delay scheduled jobs during high load.\n    - cron: "17,47 * * * *"
 
 permissions:
   contents: write
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   improve:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with:
@@ -41,7 +41,7 @@ jobs:
 
       - run: npm install --no-audit --no-fund
 
-      - name: Autonomous improvement agent
+      - name: AI autonomous development cycle
         env:
           GUARDIAN_PROVIDER: ${{ github.event.inputs.provider != '' && github.event.inputs.provider != 'auto' && github.event.inputs.provider || vars.GUARDIAN_PROVIDER }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -52,7 +52,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: node scripts/continuous-improvement-agent.mjs
 
-      - name: Commit verified improvement
+      - name: Auto-commit verified improvement
         env:
           GH_TOKEN: ${{ github.token }}
         run: |

@@ -10,6 +10,7 @@ import { runAIRole } from './src/lib/ai/roles-service';
 import { AI_ROLE_DEFINITIONS } from './src/lib/ai/roles';
 import { getRevenueSummary, initializeRevenueLedger, recordRevenueEvent, verifyRevenueWebhook } from './src/lib/revenue/engine';
 import { captureCheckout, createCheckout, getSubscription, initializeMonetizationTables, MONETIZATION_PLANS } from './src/lib/revenue/monetization';
+import { initializeBrandMonitorTables, listBrandTerms, addBrandTerm, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 
 dotenv.config();
 
@@ -90,6 +91,69 @@ async function requireFirebaseUser(req: express.Request, res: express.Response):
 }
 
 // Public operational endpoints.
+// Brand/Web monitoring. Scans only public evidence supplied by permitted connectors or the signed scheduler.
+// Matching a term never establishes ownership; possible conflicts are routed to human/legal review.
+app.get('/api/brand-monitor/terms', async (_req, res) => {
+  try { return res.json(await listBrandTerms()); }
+  catch (error) { return res.status(503).json({ error: error instanceof Error ? error.message : 'Brand terms unavailable' }); }
+});
+
+app.post('/api/brand-monitor/terms', async (req, res) => {
+  const uid = await requireFirebaseUser(req, res);
+  if (!uid) return;
+  try {
+    const term = String(req.body?.term || '').trim();
+    if (!term || term.length > 160) return res.status(400).json({ error: 'A term between 1 and 160 characters is required.' });
+    return res.status(201).json(await addBrandTerm({
+      term, termType: req.body?.termType, jurisdictions: Array.isArray(req.body?.jurisdictions) ? req.body.jurisdictions : [],
+      ownershipEvidence: Array.isArray(req.body?.ownershipEvidence) ? req.body.ownershipEvidence : [], notes: req.body?.notes || null
+    }));
+  } catch (error) { return res.status(400).json({ error: error instanceof Error ? error.message : 'Brand term creation failed' }); }
+});
+
+app.get('/api/brand-monitor/observations', async (_req, res) => {
+  try { return res.json(await listBrandObservations(Number(_req.query.limit || 100))); }
+  catch (error) { return res.status(503).json({ error: error instanceof Error ? error.message : 'Brand observations unavailable' }); }
+});
+
+app.get('/api/brand-monitor/alerts', async (_req, res) => {
+  try { return res.json(await listBrandAlerts(Number(_req.query.limit || 100))); }
+  catch (error) { return res.status(503).json({ error: error instanceof Error ? error.message : 'Brand alerts unavailable' }); }
+});
+
+app.post('/api/brand-monitor/scan', async (req, res) => {
+  const secret = process.env.BRAND_MONITOR_WEBHOOK_SECRET;
+  const supplied = req.header('x-brand-monitor-secret');
+  const internal = secret && supplied === secret;
+  const uid = internal ? null : await requireFirebaseUser(req, res);
+  if (!internal && !uid) return;
+  try {
+    await initializeBrandMonitorTables();
+    // Connector ingestion is intentionally conservative: the scheduler can submit public observations
+    // through this endpoint after collecting them under the source's permitted API/terms.
+    const submitted = Array.isArray(req.body?.observations) ? req.body.observations : [];
+    const terms = await listBrandTerms();
+    const termById = new Map(terms.map(t => [t.id, t]));
+    const recorded = [];
+    for (const item of submitted.slice(0, 100)) {
+      const term = termById.get(String(item.termId || ''));
+      const matchedText = String(item.matchedText || '').trim();
+      const sourceUrl = String(item.sourceUrl || '').trim();
+      if (!term || !matchedText || !sourceUrl) continue;
+      const classification = classifyBrandMatch(term.term, matchedText, sourceUrl);
+      recorded.push(await recordBrandObservation({
+        termId: term.id, sourceType: String(item.sourceType || 'public_web'), sourceUrl,
+        sourceName: String(item.sourceName || 'Public source'), observedAt: item.observedAt || now(),
+        matchedText, context: String(item.context || ''), classification,
+        confidence: Math.min(1, Math.max(0, Number(item.confidence ?? 0.5)))
+      }));
+    }
+    return res.json({ status: 'ok', generatedAt: now(), submitted: submitted.length, recorded: recorded.length,
+      connectorStatus: 'public-source connectors ready; only supplied permitted observations are persisted',
+      ownershipRule: 'A phrase match is evidence of use, not proof of ownership.' });
+  } catch (error) { return res.status(503).json({ error: error instanceof Error ? error.message : 'Brand scan failed' }); }
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',

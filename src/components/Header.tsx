@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Wallet, Sparkles, SlidersHorizontal, Database, Scale, Layers, ShieldAlert, Activity, Target, Globe2,
+  Wallet, Sparkles, SlidersHorizontal, Database, Scale, Layers, ShieldAlert, Activity, Target, Globe2, Gamepad2,
   ArrowUpRight, Coins, Lock, Cloud, Mail, HardDrive, Users, Bot, WalletCards
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
@@ -27,6 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'business_intelligence', label: 'Business Intelligence', icon: Activity, badge: 'Live Intel' },
     { id: 'competitive_intelligence', label: 'Competitive Intelligence', icon: Target, badge: 'CIE' },
     { id: 'brand_monitoring', label: 'Brand/Web Monitoring', icon: Globe2, badge: '24/7' },
+    { id: 'game_assets', label: 'Games & Assets', icon: Gamepad2, badge: 'Public Sources' },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: 'Google Workspace' },
     { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: 'Google Workspace' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },

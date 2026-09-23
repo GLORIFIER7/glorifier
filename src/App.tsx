@@ -20,6 +20,7 @@ import { ComplianceScientistBot } from './components/ComplianceScientistBot';
 import { WorkTogetherWithGptStudio } from './components/WorkTogetherWithGptStudio';
 import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { IntegrationControl } from './components/IntegrationControl';
+import { AICeoControl } from './components/AICeoControl';
 import { 
   initialStats, 
   initialFootprints, 
@@ -698,6 +699,10 @@ export default function App() {
 
         {activeTab === 'compute' && (
           <IndependentComputeLayer />
+        )}
+
+        {activeTab === 'ai_ceo' && (
+          <AICeoControl />
         )}
 
         {activeTab === 'integrations' && (

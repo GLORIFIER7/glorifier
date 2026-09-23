@@ -15,6 +15,7 @@ import { DriveGovernanceTab } from './components/DriveGovernanceTab';
 import { AiModelsCollaborationManagement } from './components/AiModelsCollaborationManagement';
 import { AiCodeSentinelManagement } from './components/AiCodeSentinelManagement';
 import { InternetAccountsFederation } from './components/InternetAccountsFederation';
+import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { 
   initialStats, 
   initialFootprints, 
@@ -670,6 +671,13 @@ export default function App() {
             onRejectOffer={handleRejectOffer}
             onCounterOffer={handleCounterOffer}
             policy={policy}
+          />
+        )}
+
+        {activeTab === 'patent' && (
+          <PatentDisclosureDossier
+            onOpenBrokerTab={() => setActiveTab('broker')}
+            onOpenSentinelTab={() => setActiveTab('sentinel')}
           />
         )}
 

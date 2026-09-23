@@ -103,6 +103,6 @@ export function classifyBrandMatch(term:string, matchedText:string, sourceUrl:st
   const lower=matchedText.toLowerCase();
   if (lower === term.toLowerCase()) return 'needs_review';
   if (/official|authorized|partner|owned by glorifier/i.test(lower)) return 'owned_or_authorized';
-  if (/github\.com\\/glorifier7/i.test(sourceUrl) || /glorifier/i.test(sourceUrl)) return 'needs_review';
+  if (/github\.com\/glorifier7/i.test(sourceUrl) || /glorifier/i.test(sourceUrl)) return 'needs_review';
   return 'likely_unrelated';
 }

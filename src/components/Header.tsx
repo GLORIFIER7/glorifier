@@ -21,7 +21,8 @@ import {
   HardDrive,
   Users,
   Globe,
-  Bot
+  Bot,
+  FileText
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
@@ -62,6 +63,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'footprints', label: 'Footprint Tiers', icon: Database },
     { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
+    { id: 'patent', label: 'Patent & IP Disclosure', icon: Scale, badge: 'AI Attorney Scientist' },
     { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },
   ];
 

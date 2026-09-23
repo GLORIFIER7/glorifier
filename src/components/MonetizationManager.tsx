@@ -141,17 +141,17 @@ export const MonetizationManager: React.FC<MonetizationManagerProps> = ({ policy
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {[
-          ['Current Pacing', '$' + stats.monthlyPacingUsd.toFixed(2), TrendingUp],
-          ['Active Streams', String(stats.activeDataStreamsCount), Gauge],
-          ['Privacy Shield', String(stats.privacyShieldIndex) + '%', ShieldCheck],
-          ['Claimable Yield', '$' + stats.totalEarnedUsd.toFixed(2), Wallet],
-        ].map(([label, value, Icon]) => (
-          <div key={String(label)} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
+          { label: 'Current Pacing', value: '$' + stats.monthlyPacingUsd.toFixed(2), icon: TrendingUp },
+          { label: 'Active Streams', value: String(stats.activeDataStreamsCount), icon: Gauge },
+          { label: 'Privacy Shield', value: String(stats.privacyShieldIndex) + '%', icon: ShieldCheck },
+          { label: 'Claimable Yield', value: '$' + stats.totalEarnedUsd.toFixed(2), icon: Wallet },
+        ].map((item) => (
+          <div key={item.label} className="rounded-xl border border-slate-800 bg-slate-900/70 p-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">{label}</span>
-              {React.createElement(Icon as React.ElementType, { className: 'w-4 h-4 text-emerald-400' })}
+              <span className="text-xs text-slate-400">{item.label}</span>
+              <item.icon className="w-4 h-4 text-emerald-400" />
             </div>
-            <div className="mt-2 text-xl font-bold font-mono text-white">{value}</div>
+            <div className="mt-2 text-xl font-bold font-mono text-white">{item.value}</div>
           </div>
         ))}
       </div>

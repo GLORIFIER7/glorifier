@@ -89,6 +89,20 @@ const INITIAL_NODES: ModelNodeConfig[] = [
     privacyBoundary: 'Statutory PII Redaction'
   },
   {
+    id: 'patent-attorney-scientist',
+    name: 'A.I. Bot Patent Attorney Scientist',
+    provider: 'USPTO Bar & AI Research Core',
+    role: 'Patent Prosecution, Claim Engineering & Scientific Enablement',
+    specialization: '35 U.S.C. § 101 Alice/Mayo technical character briefs, § 112 mathematical enablement, prior art differentiation & USPTO claim drafting',
+    badge: 'USPTO / AI Scientist',
+    weight: 20,
+    enabled: true,
+    status: 'online',
+    latencyMs: 104,
+    color: 'purple',
+    privacyBoundary: 'Zero-Knowledge Enclave'
+  },
+  {
     id: 'arbitrator-core',
     name: 'Sovereign Arbitrator Core',
     provider: 'DataSovereign Local Protocol',
@@ -99,7 +113,7 @@ const INITIAL_NODES: ModelNodeConfig[] = [
     enabled: true,
     status: 'online',
     latencyMs: 12,
-    color: 'purple',
+    color: 'emerald',
     privacyBoundary: 'Sovereign Core Arbitrator'
   }
 ];

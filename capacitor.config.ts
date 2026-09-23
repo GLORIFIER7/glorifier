@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.glorifier.ai',
   appName: 'GLORIFIER AI',
   webDir: 'dist',
-  bundledWebRuntime: false,
   android: {
     allowMixedContent: false,
   },

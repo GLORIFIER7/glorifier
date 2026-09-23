@@ -1,16 +1,10 @@
 import { getConnectedProviders, getProvider, listProviders } from './registry';
-import type { AIMessage, AIRequest, AIResponse, AIProviderId, AIProvider } from './types';
+import type { AIMessage, AIRequest, AIResponse, AIProviderId, AIProvider, ResponseEvaluation } from './types';
 import { averageLatencyMs, providerReliability, recordProviderFailure, recordProviderSuccess, snapshotProviderMetrics } from './metrics';
 
 export interface OrchestratorRequest extends AIRequest {
   provider?: AIProviderId | 'auto';
   evaluate?: boolean;
-}
-
-export interface ResponseEvaluation {
-  score: number;
-  passed: boolean;
-  reasons: string[];
 }
 
 function evaluateResponse(response: AIResponse): ResponseEvaluation {

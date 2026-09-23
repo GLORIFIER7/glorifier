@@ -69,6 +69,25 @@ function executiveProfile(providers: AIProvider[]) {
 }
 
 export class AIOrchestrator {
+  private providerCooldownUntil = new Map<AIProviderId, number>();
+  private readonly quotaCooldownMs = 15 * 60_000;
+
+  private isProviderCoolingDown(providerId: AIProviderId): boolean {
+    const until = this.providerCooldownUntil.get(providerId) || 0;
+    if (until <= Date.now()) {
+      this.providerCooldownUntil.delete(providerId);
+      return false;
+    }
+    return true;
+  }
+
+  private markProviderUnavailable(providerId: AIProviderId, error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/\b429\b|quota|insufficient_quota|credit_balance_exhausted|rate.?limit/i.test(message)) {
+      this.providerCooldownUntil.set(providerId, Date.now() + this.quotaCooldownMs);
+    }
+  }
+
   private async callProvider(provider: AIProvider, request: AIRequest): Promise<AIResponse> {
     const started = Date.now();
     try {
@@ -89,8 +108,8 @@ export class AIOrchestrator {
 
   async generate(request: OrchestratorRequest): Promise<AIResponse> {
     const connected = request.provider && request.provider !== 'auto' ? [getProvider(request.provider)] : getConnectedProviders();
-    const candidates = selectProviders(connected);
-    if (candidates.length === 0) throw new Error('No AI providers are connected.');
+    const candidates = selectProviders(connected).filter((provider) => !this.isProviderCoolingDown(provider.id));
+    if (candidates.length === 0) throw new Error('No AI providers are currently available; all selected providers are disconnected or cooling down after quota/rate-limit failures.');
 
     const errors: string[] = [];
     for (const provider of candidates) {
@@ -102,6 +121,7 @@ export class AIOrchestrator {
         }
         return result;
       } catch (error) {
+        this.markProviderUnavailable(provider.id, error);
         errors.push(`${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
@@ -119,7 +139,10 @@ export class AIOrchestrator {
   }
 
   executive() { return executiveProfile(getConnectedProviders()); }
-  metrics() { return snapshotProviderMetrics(); }
+  metrics() {
+    const cooldowns = [...this.providerCooldownUntil.entries()].map(([provider, until]) => ({ provider, until, remainingMs: Math.max(0, until - Date.now()) }));
+    return { ...snapshotProviderMetrics(), cooldowns };
+  }
 }
 
 export const aiOrchestrator = new AIOrchestrator();

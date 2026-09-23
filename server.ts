@@ -5,6 +5,7 @@ import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
+import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 
 dotenv.config();
 
@@ -1057,6 +1058,30 @@ app.post('/api/sentinel/crud', async (req: Request, res: Response) => {
   }
 });
 
+
+// Independent Compute Layer: self-hosted GPU / external worker / CPU orchestration
+app.get('/api/compute', (_req: Request, res: Response) => {
+  res.json(getComputeSnapshot());
+});
+
+app.post('/api/compute/task', async (req: Request, res: Response) => {
+  try {
+    const { objective, taskType, preferredModel, priority } = req.body || {};
+    if (typeof objective !== 'string' || !objective.trim()) {
+      return res.status(400).json({ error: 'objective is required' });
+    }
+    const result = await executeComputeTask({
+      id: `compute-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      objective: objective.trim(),
+      taskType: ['inference', 'batch', 'embedding', 'code', 'data'].includes(taskType) ? taskType : 'inference',
+      preferredModel: typeof preferredModel === 'string' && preferredModel.trim() ? preferredModel.trim() : undefined,
+      priority: typeof priority === 'number' ? priority : 0
+    });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Compute task failed' });
+  }
+});
 
 // GLORIFIER AI Specialist Council
 app.get('/api/ai/specialists', (_req: Request, res: Response) => {

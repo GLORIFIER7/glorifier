@@ -21,6 +21,8 @@ import {
   HardDrive,
   Users,
   Globe,
+  Globe2,
+  Cpu,
   Bot,
   FileText
 } from 'lucide-react';
@@ -65,6 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
     { id: 'patent', label: 'Patent & IP Disclosure', icon: Scale, badge: 'AI Attorney Scientist' },
+    { id: 'compute', label: 'Independent Compute', icon: Cpu, badge: 'Provider-Neutral' },
+    { id: 'integrations', label: 'Integration Control', icon: Globe2, badge: 'All Services' },
     { id: 'compliance', label: 'Compliance AI Scientist', icon: ShieldAlert, badge: 'GDPR / AI Act' },
     { id: 'exposures', label: 'Clawback Audit', icon: FileText },
   ];

@@ -12,7 +12,7 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '10mb' }));\n
+app.use(express.json({ limit: '10mb' }));
 // Public integration/control registry. Secrets are never returned to clients.
 const integrationStatus = [
   { id: 'github', name: 'GitHub', category: 'code', status: 'connected', detail: 'Repository control and CI source', publicUrl: 'https://github.com/GLORIFIER7/glorifier-artificial-intelligence' },

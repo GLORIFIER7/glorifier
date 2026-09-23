@@ -18,6 +18,8 @@ import { InternetAccountsFederation } from './components/InternetAccountsFederat
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { ComplianceScientistBot } from './components/ComplianceScientistBot';
 import { WorkTogetherWithGptStudio } from './components/WorkTogetherWithGptStudio';
+import { IndependentComputeLayer } from './components/IndependentComputeLayer';
+import { IntegrationControl } from './components/IntegrationControl';
 import { 
   initialStats, 
   initialFootprints, 
@@ -692,6 +694,14 @@ export default function App() {
             onOpenSentinelTab={() => setActiveTab('sentinel')}
             onOpenGptCoWorkTab={() => setActiveTab('gpt_cowork')}
           />
+        )}
+
+        {activeTab === 'compute' && (
+          <IndependentComputeLayer />
+        )}
+
+        {activeTab === 'integrations' && (
+          <IntegrationControl />
         )}
 
         {activeTab === 'compliance' && (

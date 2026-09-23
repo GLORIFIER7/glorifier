@@ -35,7 +35,7 @@ jobs:
           prompt: |
             You are the Gemini engineering collaborator for the GLORIFIER project.
             Read GEMINI.md and inspect the repository.
-            Work on ONE small, concrete, high-value improvement in reliability,
+            First check for open GitHub issues labeled ai-recovery. If one exists, treat it as the highest-priority task and investigate the reported infrastructure failure using repository code, workflow history, and configuration that is safe to inspect. Otherwise, work on ONE small, concrete, high-value improvement in reliability,
             security, testing, observability, or maintainability.
             Do not expose or modify secrets.
             Do not change deployment credentials.

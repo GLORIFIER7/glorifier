@@ -19,6 +19,19 @@ const PORT = Number(process.env.PORT || 3000);
 const isProduction = process.env.NODE_ENV === 'production';
 
 app.set('trust proxy', 1);
+app.use((req, res, next) => {
+  const origin = req.header('origin');
+  const allowed = process.env.CORS_ORIGINS?.split(',').map(value => value.trim()).filter(Boolean) || [];
+  if (origin && (allowed.includes('*') || allowed.includes(origin))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');
+  }
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
+
 app.use(express.json({
   limit: '2mb',
   verify: (req, _res, buf) => {

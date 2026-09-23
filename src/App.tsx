@@ -17,8 +17,7 @@ import { AiCodeSentinelManagement } from './components/AiCodeSentinelManagement'
 import { InternetAccountsFederation } from './components/InternetAccountsFederation';
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { ComplianceScientistBot } from './components/ComplianceScientistBot';
-import { IndependentComputeLayer } from './components/IndependentComputeLayer';
-import { IntegrationControl } from './components/IntegrationControl';
+import { WorkTogetherWithGptStudio } from './components/WorkTogetherWithGptStudio';
 import { 
   initialStats, 
   initialFootprints, 
@@ -548,14 +547,6 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'integrations' && (
-          <IntegrationControl />
-        )}
-
-        {activeTab === 'compute' && (
-          <IndependentComputeLayer />
-        )}
-
         {activeTab === 'sentinel' && (
           <AiCodeSentinelManagement
             errors={sentinelErrors}
@@ -566,6 +557,7 @@ export default function App() {
             onAutoFixError={handleAutoFixSentinelError}
             onToggleMonitoring={(enabled) => setSentinelState(s => ({ ...s, isMonitoringActive: enabled }))}
             onToggleAutoHeal={(enabled) => setSentinelState(s => ({ ...s, autoHealEnabled: enabled }))}
+            onOpenCoWorkingStudio={() => setActiveTab('gpt_cowork')}
           />
         )}
 
@@ -666,6 +658,15 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'gpt_cowork' && (
+          <WorkTogetherWithGptStudio
+            policy={policy}
+            onUpdatePolicy={handleUpdatePolicy}
+            footprints={footprints}
+            onOpenSentinelTab={() => setActiveTab('sentinel')}
+          />
+        )}
+
         {activeTab === 'ai_collaboration' && (
           <AiModelsCollaborationManagement
             policy={policy}
@@ -689,6 +690,7 @@ export default function App() {
           <PatentDisclosureDossier
             onOpenBrokerTab={() => setActiveTab('broker')}
             onOpenSentinelTab={() => setActiveTab('sentinel')}
+            onOpenGptCoWorkTab={() => setActiveTab('gpt_cowork')}
           />
         )}
 
@@ -699,6 +701,7 @@ export default function App() {
             exposures={exposures}
             onOpenClawbackTab={() => setActiveTab('exposures')}
             onOpenPrivacyLabTab={() => setActiveTab('privacy_lab')}
+            onOpenGptCoWorkTab={() => setActiveTab('gpt_cowork')}
           />
         )}
 

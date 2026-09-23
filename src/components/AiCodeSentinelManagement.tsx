@@ -37,6 +37,7 @@ interface AiCodeSentinelManagementProps {
   onAutoFixError: (errorId: string) => void;
   onToggleMonitoring: (enabled: boolean) => void;
   onToggleAutoHeal: (enabled: boolean) => void;
+  onOpenCoWorkingStudio?: () => void;
 }
 
 export const AiCodeSentinelManagement: React.FC<AiCodeSentinelManagementProps> = ({
@@ -47,7 +48,8 @@ export const AiCodeSentinelManagement: React.FC<AiCodeSentinelManagementProps> =
   onCreateError,
   onAutoFixError,
   onToggleMonitoring,
-  onToggleAutoHeal
+  onToggleAutoHeal,
+  onOpenCoWorkingStudio
 }) => {
   const [selectedError, setSelectedError] = useState<CodeSentinelError | null>(errors[0] || null);
   const [isFixModalOpen, setIsFixModalOpen] = useState(false);
@@ -248,6 +250,17 @@ export const AiCodeSentinelManagement: React.FC<AiCodeSentinelManagementProps> =
               <span>Auto-Heal: {sentinelState.autoHealEnabled ? 'ON' : 'OFF'}</span>
             </button>
 
+            {onOpenCoWorkingStudio && (
+              <button
+                onClick={onOpenCoWorkingStudio}
+                className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-md shadow-emerald-950/40 transition-colors"
+                title="Open Interactive Work Together with GPT & Gemini Studio"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-200" />
+                <span>Work Together with GPT</span>
+              </button>
+            )}
+
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md transition-colors"
@@ -373,11 +386,11 @@ export const AiCodeSentinelManagement: React.FC<AiCodeSentinelManagementProps> =
 
                       <button
                         onClick={() => handleRunGptCollaboration(err)}
-                        className="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[11px] font-semibold flex items-center gap-1 transition-colors"
-                        title="Collaborate with GPT & Gemini"
+                        className="px-2.5 py-1 rounded bg-emerald-950/40 hover:bg-emerald-900/50 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-colors"
+                        title="Work together with OpenAI GPT-4o and Gemini to diagnose and fix this error"
                       >
-                        <Sparkles className="w-3 h-3 text-cyan-400" />
-                        <span>GPT Fix</span>
+                        <Sparkles className="w-3 h-3 text-emerald-400" />
+                        <span>Work with GPT to Fix</span>
                       </button>
 
                       <button

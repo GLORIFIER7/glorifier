@@ -22,8 +22,7 @@ import {
   Users,
   Globe,
   Bot,
-  FileText,
-  Gauge
+  FileText
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
@@ -54,10 +53,9 @@ export const Header: React.FC<HeaderProps> = ({
   const tabs = [
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
     { id: 'sentinel', label: '24/7 AI Code Sentinel', icon: Bot, badge: '24/7 Auto' },
-    { id: 'compute', label: 'Independent Compute', icon: Gauge, badge: 'GPU / Local' },
-    { id: 'integrations', label: 'Global Integrations', icon: Globe, badge: 'Control' },
+    { id: 'gpt_cowork', label: 'Work Together with GPT', icon: Sparkles, badge: 'Interactive Pair' },
     { id: 'accounts', label: 'Internet Accounts', icon: Globe, badge: 'All Web' },
-    { id: 'ai_collaboration', label: 'AI Collaboration Management', icon: Users, badge: 'All AI' },
+    { id: 'ai_collaboration', label: 'AI Models Council', icon: Users, badge: 'All AI' },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: currentUser ? 'Connected' : 'Auth Required' },
     { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: currentUser ? 'Connected' : 'Auth Required' },

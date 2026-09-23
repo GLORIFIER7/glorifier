@@ -22,12 +22,14 @@ import {
   Play
 } from 'lucide-react';
 import { MonetizationPolicy, DataFootprintSource, CouncilConsensusResult, ModelCollaborationParticipant } from '../types';
+import { WorkTogetherWithGptStudio } from './WorkTogetherWithGptStudio';
 
 interface AiModelsCollaborationManagementProps {
   policy: MonetizationPolicy;
   onUpdatePolicy: (updates: Partial<MonetizationPolicy>) => void;
   footprints: DataFootprintSource[];
   onOpenBrokerTab?: () => void;
+  initialTabSection?: 'orchestration' | 'council_session' | 'rules' | 'work_with_gpt';
 }
 
 export interface ModelNodeConfig {
@@ -136,12 +138,13 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
   policy,
   onUpdatePolicy,
   footprints,
-  onOpenBrokerTab
+  onOpenBrokerTab,
+  initialTabSection
 }) => {
   const [nodes, setNodes] = useState<ModelNodeConfig[]>(INITIAL_NODES);
   const [consensusThreshold, setConsensusThreshold] = useState<number>(85); // Required agreement %
   const [collaborationMode, setCollaborationMode] = useState<'council-weighted' | 'strict-unanimous' | 'peer-debate'>('council-weighted');
-  const [activeTabSection, setActiveTabSection] = useState<'orchestration' | 'council_session' | 'rules'>('orchestration');
+  const [activeTabSection, setActiveTabSection] = useState<'orchestration' | 'council_session' | 'rules' | 'work_with_gpt'>(initialTabSection || 'work_with_gpt');
   
   // Council Execution State
   const [selectedTopic, setSelectedTopic] = useState<string>('Holistic Digital Sovereignty & Data Monetization Strategy');
@@ -313,6 +316,20 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
         <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center gap-2 overflow-x-auto scrollbar-none">
           <button
             type="button"
+            onClick={() => setActiveTabSection('work_with_gpt')}
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+              activeTabSection === 'work_with_gpt'
+                ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 font-bold shadow-md ring-1 ring-emerald-400'
+                : 'text-emerald-400 hover:text-white hover:bg-slate-800/60 border border-emerald-500/30'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>🤝 Work Together with GPT Studio</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-950/70 text-emerald-300 font-mono">PAIR</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setActiveTabSection('orchestration')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
               activeTabSection === 'orchestration'
@@ -321,7 +338,7 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
             }`}
           >
             <Cpu className="w-3.5 h-3.5" />
-            Model Node Fleet & Weights ({activeNodeCount} Active)
+            Model Fleet ({activeNodeCount} Active)
           </button>
 
           <button
@@ -334,7 +351,7 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
             }`}
           >
             <Users className="w-3.5 h-3.5" />
-            Convene All-AI Deliberation Session
+            Convene All-AI Council
           </button>
 
           <button
@@ -347,7 +364,7 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
             }`}
           >
             <Scale className="w-3.5 h-3.5" />
-            Collaboration Protocols & Quorum Rules
+            Quorum & Privacy Rules
           </button>
         </div>
       </div>
@@ -804,6 +821,15 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
             </div>
           </div>
         </div>
+      )}
+
+      {/* 4. WORK TOGETHER WITH GPT & GEMINI INTERACTIVE STUDIO */}
+      {activeTabSection === 'work_with_gpt' && (
+        <WorkTogetherWithGptStudio
+          policy={policy}
+          onUpdatePolicy={onUpdatePolicy}
+          footprints={footprints}
+        />
       )}
     </div>
   );

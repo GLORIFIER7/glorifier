@@ -32,6 +32,7 @@ import {
 interface PatentDisclosureDossierProps {
   onOpenBrokerTab?: () => void;
   onOpenSentinelTab?: () => void;
+  onOpenGptCoWorkTab?: () => void;
 }
 
 export type PatentSpecialtyMode = 
@@ -43,7 +44,8 @@ export type PatentSpecialtyMode =
 
 export const PatentDisclosureDossier: React.FC<PatentDisclosureDossierProps> = ({
   onOpenBrokerTab,
-  onOpenSentinelTab
+  onOpenSentinelTab,
+  onOpenGptCoWorkTab
 }) => {
   const [activeSubTab, setActiveSubTab] = useState<'spec' | 'claims' | 'diagrams' | 'alice101' | 'attorney_ai'>('diagrams');
   const [selectedFigure, setSelectedFigure] = useState<number>(1);
@@ -1421,6 +1423,16 @@ generate an interactive patent and legal defense interface displaying system arc
                     <option value="consensus" className="bg-slate-900 text-slate-200">Dual-Consensus (Gemini + GPT)</option>
                   </select>
                 </div>
+
+                {onOpenGptCoWorkTab && (
+                  <button
+                    onClick={onOpenGptCoWorkTab}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-semibold shadow-md shadow-emerald-950/40 transition-colors"
+                    title="Open Work Together with GPT Studio"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-200" /> Work Together with GPT
+                  </button>
+                )}
 
                 <button
                   onClick={handleExportConsultation}

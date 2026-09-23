@@ -44,6 +44,7 @@ interface ComplianceScientistBotProps {
   exposures?: DataBrokerExposure[];
   onOpenClawbackTab?: () => void;
   onOpenPrivacyLabTab?: () => void;
+  onOpenGptCoWorkTab?: () => void;
 }
 
 export const ComplianceScientistBot: React.FC<ComplianceScientistBotProps> = ({
@@ -51,7 +52,8 @@ export const ComplianceScientistBot: React.FC<ComplianceScientistBotProps> = ({
   footprints = [],
   exposures = [],
   onOpenClawbackTab,
-  onOpenPrivacyLabTab
+  onOpenPrivacyLabTab,
+  onOpenGptCoWorkTab
 }) => {
   const [specialtyMode, setSpecialtyMode] = useState<ComplianceSpecialtyMode>('gdpr_erasure_dpia');
   const [aiModel, setAiModel] = useState<'gemini-3.8-flash' | 'gpt-4o' | 'consensus'>('gemini-3.8-flash');
@@ -219,6 +221,15 @@ How may I assist your compliance prosecution, statutory clawback demands, or DPI
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
+            {onOpenGptCoWorkTab && (
+              <button
+                onClick={onOpenGptCoWorkTab}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold text-xs transition-colors shadow-lg shadow-emerald-950/40"
+                title="Launch Work Together with GPT Studio"
+              >
+                <Sparkles className="w-4 h-4 text-emerald-200" /> Work Together with GPT
+              </button>
+            )}
             <button
               onClick={handleExportAudit}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold text-xs transition-colors shadow-lg shadow-amber-950/40"

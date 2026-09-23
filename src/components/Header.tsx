@@ -24,7 +24,8 @@ import {
   Globe2,
   Cpu,
   Bot,
-  FileText
+  FileText,
+  BrainCircuit
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
@@ -68,6 +69,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
     { id: 'patent', label: 'Patent & IP Disclosure', icon: Scale, badge: 'AI Attorney Scientist' },
     { id: 'compute', label: 'Independent Compute', icon: Cpu, badge: 'Provider-Neutral' },
+    { id: 'ai_ceo', label: 'AI CEO Command', icon: BrainCircuit, badge: 'Human Authority' },
     { id: 'integrations', label: 'Integration Control', icon: Globe2, badge: 'All Services' },
     { id: 'compliance', label: 'Compliance AI Scientist', icon: ShieldAlert, badge: 'GDPR / AI Act' },
     { id: 'exposures', label: 'Clawback Audit', icon: FileText },

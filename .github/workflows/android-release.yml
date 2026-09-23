@@ -3,6 +3,8 @@ name: Build Android App Bundle
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - 'android-v*'
 

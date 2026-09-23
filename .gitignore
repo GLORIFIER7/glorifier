@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+*.jks
+*.keystore
+android/key.properties
+signing/
+credentials/

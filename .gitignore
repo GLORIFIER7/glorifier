@@ -1,3 +1,4 @@
+.gitignore
 node_modules/
 build/
 dist/
@@ -11,3 +12,5 @@ coverage/
 android/key.properties
 signing/
 credentials/
+.gemini/
+gha-creds-*.json

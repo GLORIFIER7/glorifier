@@ -17,6 +17,7 @@ import { AiCodeSentinelManagement } from './components/AiCodeSentinelManagement'
 import { InternetAccountsFederation } from './components/InternetAccountsFederation';
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { ComplianceScientistBot } from './components/ComplianceScientistBot';
+import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { 
   initialStats, 
   initialFootprints, 
@@ -544,6 +545,10 @@ export default function App() {
             onNavigateToTab={setActiveTab}
             transactions={transactions}
           />
+        )}
+
+        {activeTab === 'compute' && (
+          <IndependentComputeLayer />
         )}
 
         {activeTab === 'sentinel' && (

@@ -26,7 +26,7 @@ export interface SpecialistFinding {
   latencyMs?: number;
 }
 
-export const specialistRoles: SpecialistRole[] = [
+export const specialistRoles: SpecialistRole[] = ([
   ['policy-scientist','AI Policy Scientist','policy','Analyze policies, governance rules, public-policy constraints, and policy conflicts.'],
   ['attorney-scientist','AI Attorney Scientist','legal','Analyze legal issues, contracts, intellectual property, regulatory requirements, and legal risk; outputs are research support, not legal representation.',true],
   ['compliance-scientist','AI Compliance Scientist','compliance','Map requirements to controls, identify compliance gaps, and maintain evidence-oriented compliance checks.'],

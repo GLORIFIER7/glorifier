@@ -21,6 +21,7 @@ import { BusinessIntelligenceDashboard } from './components/BusinessIntelligence
 import { CompetitiveIntelligenceEngine } from './components/CompetitiveIntelligenceEngine';
 import { BrandWebMonitoring } from './components/BrandWebMonitoring';
 import { GameAssetsIntelligence } from './components/GameAssetsIntelligence';
+import { CryptoFiatAssetIntelligence } from './components/CryptoFiatAssetIntelligence';
 import { 
   initialStats, 
   initialFootprints, 

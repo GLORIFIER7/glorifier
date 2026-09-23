@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CheckCircle2, CircleAlert, ExternalLink, Globe2, LockKeyhole, RefreshCw } from 'lucide-react';
+import { IntelligenceHub } from './IntelligenceHub';
 
 type Integration = {
   id: string;
@@ -54,7 +55,9 @@ export const IntegrationControl: React.FC = () => {
   useEffect(() => { void load(); }, []);
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-10">
+      <IntelligenceHub />
+      <div className="border-t border-slate-800 pt-8" />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">

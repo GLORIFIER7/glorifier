@@ -254,29 +254,73 @@ export interface UsageTelemetryEvent {
   epsilonConsumed: number;
 }
 
+// ----------------------------------------------------
+// Internet Account Federation & Approval Hub Types
+// ----------------------------------------------------
+export type InternetAccountCategory = 'google' | 'developer' | 'social' | 'financial' | 'cloud' | 'commerce';
 
-export type DataAssetOrigin = 'demo' | 'real_app_activity' | 'connected_integration' | 'imported';
-export type DataAssetConsent = 'verified' | 'user_required' | 'unknown' | 'not_applicable';
-export type DataAssetSensitivity = 'low' | 'moderate' | 'high' | 'restricted';
-export type DataAssetCommercialization = 'eligible_after_review' | 'blocked' | 'research_only' | 'not_ready';
-
-export interface DataAsset {
+export interface InternetAccount {
   id: string;
-  name: string;
-  source: string;
-  ownerReference: 'current_user' | 'system' | 'third_party';
-  origin: DataAssetOrigin;
-  consentStatus: DataAssetConsent;
-  fields: string[];
-  category: DataCategoryType;
-  sensitivity: DataAssetSensitivity;
-  anonymizationStatus: 'not_started' | 'aggregation_required' | 'anonymized' | 'synthetic_only';
-  allowedUse: string[];
-  prohibitedUse: string[];
-  commercializationStatus: DataAssetCommercialization;
-  estimatedMarketValueUsdMonthly: number | null;
-  productIdea: string;
-  buyerProfile: string;
-  evidence: string;
-  lastAuditedAt: string;
+  provider: string; // e.g., 'Google Workspace & Search', 'GitHub', 'Binance Pay', 'GCash', 'X / Twitter'
+  category: InternetAccountCategory;
+  accountIdentifier: string; // e.g., 'johnpaularlos28@gmail.com', '@johnpaularlos', '0917-882-9102'
+  connected: boolean;
+  status: 'authenticated' | 'pending_auth' | 'disconnected';
+  authMethod: 'OAuth2_PKCE' | 'Passkey_FIDO2' | 'API_Token' | 'Crypto_Sign' | 'Mobile_OTP';
+  lastSync: string;
+  dataItemsGoverned: number;
+  monthlyEstValueUsd: number;
+  isApprovalGatekeeper: boolean; // Account used for cryptographic approvals & MFA gating
+  approvalWeight: number; // 1 to 5 stars or weight in multi-sig
+  governedDataTypes: string[];
+  privacyShieldActive: boolean;
+  autoSyncEnabled: boolean;
+  apiHealth: 'optimal' | 'warning' | 'offline';
 }
+
+// ----------------------------------------------------
+// 24/7 AI Code Sentinel Bot & Error CRUD Types
+// ----------------------------------------------------
+export type ErrorSeverity = 'critical' | 'high' | 'medium' | 'low';
+export type ErrorLifecycleStatus = 'active' | 'analyzing' | 'patch_ready' | 'resolved' | 'dismissed';
+
+export interface CodeSentinelError {
+  id: string;
+  code: string; // e.g., 'ERR_503_GEMINI_OVERLOAD', 'ERR_QUOTA_429_EXCEEDED', 'ERR_DIFF_PRIVACY_BOUND'
+  message: string;
+  source: string; // e.g., 'server.ts:callGeminiSafe', 'api/ai/collaborate-council'
+  severity: ErrorSeverity;
+  status: ErrorLifecycleStatus;
+  timestamp: string;
+  occurrences: number;
+  rootCause: string;
+  gptAnalysis: string;
+  geminiAnalysis: string;
+  collaborativeFixProposal: string;
+  patchDiff?: string;
+  canAutoFix: boolean;
+  autoFixedAt?: string;
+  assignedBot: 'GPT-Sentinel' | 'Gemini-Inspector' | 'Dual-Consensus-Healer';
+}
+
+export interface SentinelLogEntry {
+  id: string;
+  timestamp: string;
+  action: 'SCAN' | 'DETECT' | 'GPT_COLLABORATE' | 'AUTO_FIX' | 'EDIT' | 'DELETE' | 'DISMISS';
+  details: string;
+  errorId?: string;
+  model: string;
+}
+
+export interface SentinelBotState {
+  isMonitoring24x7: boolean;
+  healthScore: number; // 0-100
+  autoHealEnabled: boolean;
+  activeErrorsCount: number;
+  resolvedTotalCount: number;
+  lastScanTimestamp: string;
+  collaboratingModels: string[];
+  scanFrequencySeconds: number;
+  sentinelLogs: SentinelLogEntry[];
+}
+

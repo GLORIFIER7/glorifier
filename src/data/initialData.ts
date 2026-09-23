@@ -465,3 +465,297 @@ export const defaultPolicy: MonetizationPolicy = {
   },
   aiModel: 'gpt-4o'
 };
+
+export const initialInternetAccounts: import('../types').InternetAccount[] = [
+  {
+    id: 'acc-google',
+    provider: 'Google Workspace & Cloud',
+    category: 'google',
+    accountIdentifier: 'johnpaularlos28@gmail.com',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'OAuth2_PKCE',
+    lastSync: '2 mins ago',
+    dataItemsGoverned: 142300,
+    monthlyEstValueUsd: 84.50,
+    isApprovalGatekeeper: true,
+    approvalWeight: 5,
+    governedDataTypes: ['Gmail Metadata', 'Drive Governance', 'YouTube Intent', 'Chrome Browsing Centroids'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-github',
+    provider: 'GitHub Enterprise & Code Graph',
+    category: 'developer',
+    accountIdentifier: 'johnpaularlos',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'Crypto_Sign',
+    lastSync: '5 mins ago',
+    dataItemsGoverned: 68400,
+    monthlyEstValueUsd: 62.00,
+    isApprovalGatekeeper: true,
+    approvalWeight: 4,
+    governedDataTypes: ['Commit Signatures', 'PR Review Telemetry', 'Repo Syntax Patterns', 'Copilot Interaction Logs'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-binance',
+    provider: 'Binance Pay & BEP-20',
+    category: 'financial',
+    accountIdentifier: 'johnpaularlos28@gmail.com (Pay ID: 89420412)',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'Crypto_Sign',
+    lastSync: 'Just now',
+    dataItemsGoverned: 15400,
+    monthlyEstValueUsd: 48.00,
+    isApprovalGatekeeper: true,
+    approvalWeight: 5,
+    governedDataTypes: ['Direct USDT Settlement', 'Auto-Sweep Proofs', 'Cryptographic Nonces'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-gcash',
+    provider: 'GCash Philippines Mobile Money',
+    category: 'financial',
+    accountIdentifier: '09171234567 (JOHN PAUL ARLOS)',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'Mobile_OTP',
+    lastSync: '8 mins ago',
+    dataItemsGoverned: 8900,
+    monthlyEstValueUsd: 32.50,
+    isApprovalGatekeeper: true,
+    approvalWeight: 4,
+    governedDataTypes: ['Direct PHP Cashout', 'InstaPay Attestation', 'Merchant QR Pay Hash'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-x',
+    provider: 'X / Twitter Public Discourse',
+    category: 'social',
+    accountIdentifier: '@johnpaularlos',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'OAuth2_PKCE',
+    lastSync: '14 mins ago',
+    dataItemsGoverned: 45200,
+    monthlyEstValueUsd: 28.00,
+    isApprovalGatekeeper: false,
+    approvalWeight: 2,
+    governedDataTypes: ['Topic Engagement', 'Sentiment Vectors', 'Public Bookmarks'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-meta',
+    provider: 'Meta & Instagram Social Graph',
+    category: 'social',
+    accountIdentifier: 'john.paul.arlos',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'OAuth2_PKCE',
+    lastSync: '22 mins ago',
+    dataItemsGoverned: 72100,
+    monthlyEstValueUsd: 38.00,
+    isApprovalGatekeeper: false,
+    approvalWeight: 2,
+    governedDataTypes: ['Social Graph Connections', 'Creator Engagements', 'Content Preferences'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-msft',
+    provider: 'Microsoft 365 & LinkedIn',
+    category: 'developer',
+    accountIdentifier: 'johnpaularlos@live.com',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'Passkey_FIDO2',
+    lastSync: '40 mins ago',
+    dataItemsGoverned: 31000,
+    monthlyEstValueUsd: 42.00,
+    isApprovalGatekeeper: true,
+    approvalWeight: 3,
+    governedDataTypes: ['Professional Graph', 'Skill Endorsements', 'Outlook Calendar Busy Telemetry'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-apple',
+    provider: 'Apple ID & Secure Enclave',
+    category: 'cloud',
+    accountIdentifier: 'johnpaularlos@icloud.com',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'Passkey_FIDO2',
+    lastSync: '12 mins ago',
+    dataItemsGoverned: 58000,
+    monthlyEstValueUsd: 55.00,
+    isApprovalGatekeeper: true,
+    approvalWeight: 5,
+    governedDataTypes: ['Biometric Attestation', 'Health Activity Summaries', 'Screen Time Buckets'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-amazon',
+    provider: 'Amazon Prime & Retail Graph',
+    category: 'commerce',
+    accountIdentifier: 'johnpaularlos28@gmail.com',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'Passkey_FIDO2',
+    lastSync: '1 hour ago',
+    dataItemsGoverned: 22400,
+    monthlyEstValueUsd: 35.00,
+    isApprovalGatekeeper: false,
+    approvalWeight: 2,
+    governedDataTypes: ['Order Frequency Category', 'Search Baskets', 'Delivery Geo Coarse Centroids'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  },
+  {
+    id: 'acc-discord',
+    provider: 'Discord Developer Guilds',
+    category: 'social',
+    accountIdentifier: 'jparlos#8421',
+    connected: true,
+    status: 'authenticated',
+    authMethod: 'OAuth2_PKCE',
+    lastSync: '30 mins ago',
+    dataItemsGoverned: 19800,
+    monthlyEstValueUsd: 18.50,
+    isApprovalGatekeeper: true,
+    approvalWeight: 3,
+    governedDataTypes: ['Developer Guild Roles', 'Voice Dwell Telemetry', 'AI Prompt Feedback Channels'],
+    privacyShieldActive: true,
+    autoSyncEnabled: true,
+    apiHealth: 'optimal'
+  }
+];
+
+export const initialSentinelErrors: import('../types').CodeSentinelError[] = [
+  {
+    id: 'err-503-gemini',
+    code: 'ERR_503_GEMINI_HIGH_DEMAND',
+    message: 'Gemini call [model=gemini-3.8-flash] returned 503 UNAVAILABLE: Model currently experiencing high demand',
+    source: 'server.ts:callGeminiSafe',
+    severity: 'high',
+    status: 'patch_ready',
+    timestamp: 'Just now',
+    occurrences: 2,
+    rootCause: 'Upstream Google DeepMind traffic spike on gemini-3.8-flash preview endpoint during peak hours.',
+    gptAnalysis: 'OpenAI GPT-4o analysis: Gemini is returning HTTP 503 with status UNAVAILABLE. The current retry logic sleeps 800ms and retries the exact same model. We should immediately short-circuit to OpenAI GPT-4o or gemini-3.1-flash-lite instead of blocking the user pipeline.',
+    geminiAnalysis: 'Google Gemini 3.8 Flash analysis: Concur with GPT-4o. Rate-limit backoff on 503 is insufficient when traffic spikes occur. Dynamic failover to gemini-3.1-flash-lite (high rate-limit headroom) and concurrent GPT-4o synthesis ensures 99.99% uptime.',
+    collaborativeFixProposal: 'Implement dynamic Multi-Model Circuit Breaker: On HTTP 503, immediately divert inference payload to GPT-4o or gemini-3.1-flash-lite without re-triggering quota burn.',
+    patchDiff: `// Auto-generated collaborative patch by GPT-4o & Gemini 3.8 Flash
+- if (isUnavailable && attempt === 0) { await sleep(800); continue; }
++ if (isUnavailable) {
++   console.info('[Sentinel-Bot] Diverting 503 spike to OpenAI GPT-4o & Flash-Lite');
++   return await runModelExecution({ model: 'gpt-4o', ...params });
++ }`,
+    canAutoFix: true,
+    assignedBot: 'Dual-Consensus-Healer'
+  },
+  {
+    id: 'err-429-quota',
+    code: 'ERR_QUOTA_429_RATE_LIMIT',
+    message: 'Quota exceeded for generativelanguage.googleapis.com tokens per user',
+    source: 'server.ts:runModelExecution',
+    severity: 'medium',
+    status: 'resolved',
+    timestamp: '15 mins ago',
+    occurrences: 4,
+    rootCause: 'High burst of concurrent Council debate prompts exceeded tier 1 token velocity.',
+    gptAnalysis: 'Token velocity exceeded window limit. Enforce client-side request debouncing and stream caching.',
+    geminiAnalysis: 'Resolved via fast-bailout bypass and local differential privacy enclave fallback.',
+    collaborativeFixProposal: 'Added 400ms request coalescence and instant switchover to local differential privacy synthesis.',
+    patchDiff: `// Resolved patch verified by Council
+const cacheKey = hashPrompt(userPrompt);
+if (promptCache.has(cacheKey)) return promptCache.get(cacheKey);`,
+    canAutoFix: true,
+    autoFixedAt: '12 mins ago',
+    assignedBot: 'GPT-Sentinel'
+  },
+  {
+    id: 'err-diff-privacy',
+    code: 'ERR_DP_EPSILON_BUDGET_WARN',
+    message: 'Differential Privacy daily epsilon consumption reached 82% of threshold (ε=0.28 / 0.35)',
+    source: 'src/lib/differentialPrivacy.ts:verifyLaplacianBudget',
+    severity: 'low',
+    status: 'active',
+    timestamp: '28 mins ago',
+    occurrences: 1,
+    rootCause: 'High-frequency buyer querying on ecommerce and developer browsing footprints.',
+    gptAnalysis: 'Increase buyer price per query by 30% when epsilon budget exceeds 80% to deter over-polling and compensate user for privacy exhaustion.',
+    geminiAnalysis: 'Enforce Gaussian perturbation with tighter composition theorem (Renyi DP) to compress privacy loss parameter.',
+    collaborativeFixProposal: 'Apply dynamic privacy surge-pricing: charge $0.12/query (up from $0.057) and switch to advanced composition theorem.',
+    patchDiff: `// Dynamic privacy budget surge
+if (currentEpsilon > targetEpsilon * 0.8) {
+  queryFeeUsd *= 1.30;
+  noiseMultiplier = computeRenyiLaplaceScale(0.35);
+}`,
+    canAutoFix: true,
+    assignedBot: 'Gemini-Inspector'
+  }
+];
+
+export const initialSentinelState: import('../types').SentinelBotState = {
+  isMonitoring24x7: true,
+  healthScore: 97,
+  autoHealEnabled: true,
+  activeErrorsCount: 2,
+  resolvedTotalCount: 38,
+  lastScanTimestamp: 'Just now (continuous 24/7 stream)',
+  collaboratingModels: ['OpenAI GPT-4o', 'Google Gemini 3.8 Flash', 'Meta LLaMA 3.3', 'Sovereign Enclave Core'],
+  scanFrequencySeconds: 5,
+  sentinelLogs: [
+    {
+      id: 'log-1',
+      timestamp: 'Just now',
+      action: 'SCAN',
+      details: '24/7 Health probe completed across all 10 Internet Accounts & API endpoints. Zero fatal crashes.',
+      model: 'Dual-Consensus-Healer'
+    },
+    {
+      id: 'log-2',
+      timestamp: '1 min ago',
+      action: 'GPT_COLLABORATE',
+      details: 'OpenAI GPT-4o & Gemini 3.8 Flash formulated collaborative hot-patch for ERR_503_GEMINI_HIGH_DEMAND.',
+      errorId: 'err-503-gemini',
+      model: 'OpenAI GPT-4o'
+    },
+    {
+      id: 'log-3',
+      timestamp: '12 mins ago',
+      action: 'AUTO_FIX',
+      details: 'Auto-healed ERR_QUOTA_429_RATE_LIMIT with request coalescence and differential privacy cache.',
+      errorId: 'err-429-quota',
+      model: 'GPT-Sentinel'
+    },
+    {
+      id: 'log-4',
+      timestamp: '25 mins ago',
+      action: 'DETECT',
+      details: 'Monitored telemetry consumption: Epsilon budget tracking at 82% threshold.',
+      errorId: 'err-diff-privacy',
+      model: 'Gemini-Inspector'
+    }
+  ]
+};
+

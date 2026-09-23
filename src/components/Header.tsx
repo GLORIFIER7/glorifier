@@ -1,11 +1,30 @@
 import React from 'react';
-import {
-  Wallet, Sparkles, SlidersHorizontal, Database, Scale, Layers, ShieldAlert, Activity, Target, Globe2, Gamepad2,
-  ArrowUpRight, Coins, Lock, Cloud, Mail, HardDrive, Users, Bot, WalletCards
+import { 
+  ShieldCheck, 
+  Wallet, 
+  Sparkles, 
+  Zap, 
+  Sliders, 
+  Database, 
+  Scale, 
+  Layers, 
+  ShieldAlert,
+  ArrowUpRight,
+  SlidersHorizontal,
+  Coins,
+  Lock,
+  LogIn,
+  LogOut,
+  User as UserIcon,
+  Cloud,
+  Mail,
+  HardDrive,
+  Users,
+  Globe,
+  Bot
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
-import { AuthPanel } from './AuthPanel';
 
 interface HeaderProps {
   activeTab: string;
@@ -15,30 +34,33 @@ interface HeaderProps {
   onOpenWithdraw: () => void;
   pendingOffersCount: number;
   currentUser: User | null;
+  onLogin: () => void;
+  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
-  activeTab, setActiveTab, stats, policy, onOpenWithdraw, pendingOffersCount, currentUser,
+  activeTab,
+  setActiveTab,
+  stats,
+  policy,
+  onOpenWithdraw,
+  pendingOffersCount,
+  currentUser,
+  onLogin,
+  onLogout
 }) => {
   const tabs = [
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
+    { id: 'sentinel', label: '24/7 AI Code Sentinel', icon: Bot, badge: '24/7 Auto' },
+    { id: 'accounts', label: 'Internet Accounts', icon: Globe, badge: 'All Web' },
+    { id: 'ai_collaboration', label: 'AI Collaboration Management', icon: Users, badge: 'All AI' },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
-    { id: 'data_registry', label: 'Data Asset Registry', icon: Database, badge: 'Governance' },
-    { id: 'business_intelligence', label: 'Business Intelligence', icon: Activity, badge: 'Live Intel' },
-    { id: 'competitive_intelligence', label: 'Competitive Intelligence', icon: Target, badge: 'CIE' },
-    { id: 'brand_monitoring', label: 'Brand/Web Monitoring', icon: Globe2, badge: '24/7' },
-    { id: 'game_assets', label: 'Games & Assets', icon: Gamepad2, badge: 'Public Sources' },
-    { id: 'crypto_fiat_assets', label: 'Crypto & Fiat Assets', icon: WalletCards, badge: 'Watch-only' },
-    { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: 'Google Workspace' },
-    { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: 'Google Workspace' },
+    { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: currentUser ? 'Connected' : 'Auth Required' },
+    { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: currentUser ? 'Connected' : 'Auth Required' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },
     { id: 'privacy_lab', label: 'Privacy Tech Lab (PETs)', icon: Lock },
     { id: 'footprints', label: 'Footprint Tiers', icon: Database },
     { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
-    { id: 'ai_roles', label: 'AI Specialists', icon: Scale, badge: 'Attorney + Data Scientist' },
-    { id: 'monetization_manager', label: 'AI Monetization Manager', icon: Bot, badge: 'AI Bot' },
-    { id: 'binance_nft', label: 'Binance & NFTs', icon: WalletCards, badge: 'Crypto' },
-    { id: 'ai_collaboration', label: 'AI Collaboration Management', icon: Users, badge: 'All AI' },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
     { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },
   ];
@@ -47,21 +69,26 @@ export const Header: React.FC<HeaderProps> = ({
     <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="w-11 h-11 rounded-full overflow-hidden border border-cyan-400/40 shadow-lg shadow-cyan-950/40 shrink-0 bg-slate-950">
-              <img src={`${import.meta.env.BASE_URL}glorifier-logo.svg`} alt="Glorifier AI" className="w-full h-full object-cover" />
+          {/* Logo & Platform Name */}
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-lg shadow-emerald-950/50 flex items-center justify-center">
+              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+              </div>
             </div>
-            <div className="min-w-0">
-              <h1 className="text-base font-bold tracking-tight text-white truncate">
-                GLORIFIER <span className="text-cyan-400">AI</span>
-                <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20 font-mono">COMMAND CENTER</span>
-              </h1>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+                  DataSovereign <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">AI AGENT</span>
+                </h1>
+              </div>
               <p className="text-xs text-slate-400 hidden sm:block">
-                Artificial Intelligence • Orchestration • Security • Data • Monetization
+                Personal Data Governance & Fair Compensation Network
               </p>
             </div>
           </div>
 
+          {/* Center Status Indicators */}
           <div className="hidden lg:flex items-center gap-4 text-xs font-medium">
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -80,9 +107,14 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
+          {/* Right: Wallet Balance & Cashout & Auth */}
           <div className="flex items-center gap-3">
-            <AuthPanel currentUser={currentUser} />
-            <div onClick={onOpenWithdraw} id="wallet-payout-button" className="group cursor-pointer flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition-all shadow-sm" title="Click to claim or withdraw funds">
+            <div 
+              onClick={onOpenWithdraw}
+              id="wallet-payout-button"
+              className="group cursor-pointer flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition-all shadow-sm"
+              title="Click to claim or withdraw funds"
+            >
               <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Wallet className="w-4 h-4" />
               </div>
@@ -94,46 +126,71 @@ export const Header: React.FC<HeaderProps> = ({
                 </div>
               </div>
             </div>
-            <button onClick={onOpenWithdraw} id="withdraw-cta-btn" className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition-colors">
+
+            {currentUser ? (
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+                <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-semibold text-xs border border-emerald-500/30">
+                  {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
+                </div>
+                <span className="text-xs text-slate-300 hidden md:inline max-w-[120px] truncate">
+                  {currentUser.displayName || currentUser.email}
+                </span>
+                <button
+                  onClick={onLogout}
+                  title="Sign out"
+                  className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={onLogin}
+                id="google-signin-btn"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors"
+              >
+                <LogIn className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Sign in</span>
+              </button>
+            )}
+
+            <button
+              onClick={onOpenWithdraw}
+              id="withdraw-cta-btn"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition-colors"
+            >
               Withdraw
             </button>
           </div>
         </div>
 
-        <div className="border-t border-slate-900 py-2">
-          <div className="sm:hidden">
-            <label htmlFor="mobile-command-navigation" className="sr-only">Command Center section</label>
-            <select
-              id="mobile-command-navigation"
-              value={activeTab}
-              onChange={(e) => setActiveTab(e.target.value)}
-              className="w-full rounded-lg border border-slate-800 bg-slate-900 px-3 py-2.5 text-sm font-semibold text-slate-200 outline-none focus:border-emerald-500"
-            >
-              {tabs.map((tab) => <option key={tab.id} value={tab.id}>{tab.label}</option>)}
-            </select>
-          </div>
-          <nav aria-label="Command Center sections" className="hidden sm:flex space-x-1 overflow-x-auto scrollbar-none">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  id={`tab-btn-${tab.id}`}
-                  onClick={() => setActiveTab(tab.id)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
-                    isActive ? 'bg-slate-800 text-emerald-400 shadow-sm border border-slate-700/80' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-                  }`}
-                >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                  <span>{tab.label}</span>
-                  {tab.badge && <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">{tab.badge}</span>}
-                </button>
-              );
-            })}
-          </nav>
-        </div>
+        {/* Navigation Tabs */}
+        <nav className="flex space-x-1 sm:space-x-2 overflow-x-auto py-2 scrollbar-none border-t border-slate-900">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                id={`tab-btn-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-slate-800 text-emerald-400 shadow-sm border border-slate-700/80'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                }`}
+              >
+                <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
+                <span>{tab.label}</span>
+                {tab.badge && (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    {tab.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
       </div>
     </header>
   );

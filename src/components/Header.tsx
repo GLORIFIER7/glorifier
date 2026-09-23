@@ -55,6 +55,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'overview', label: 'Overview & Yield', icon: Layers },
     { id: 'sentinel', label: '24/7 AI Code Sentinel', icon: Bot, badge: '24/7 Auto' },
     { id: 'compute', label: 'Independent Compute', icon: Gauge, badge: 'GPU / Local' },
+    { id: 'integrations', label: 'Global Integrations', icon: Globe, badge: 'Control' },
     { id: 'accounts', label: 'Internet Accounts', icon: Globe, badge: 'All Web' },
     { id: 'ai_collaboration', label: 'AI Collaboration Management', icon: Users, badge: 'All AI' },
     { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },

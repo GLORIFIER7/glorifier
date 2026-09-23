@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
-import { aiOrchestrator } from './src/lib/ai';
+import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
 
 dotenv.config();
 
@@ -1054,6 +1054,37 @@ app.post('/api/sentinel/crud', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     res.status(500).json({ error: 'Sentinel CRUD operation failed', details: err.message });
+  }
+});
+
+
+// GLORIFIER AI Specialist Council
+app.get('/api/ai/specialists', (_req: Request, res: Response) => {
+  res.json({
+    executive: aiOrchestrator.executive(),
+    count: specialistRoles.length,
+    roles: specialistRoles
+  });
+});
+
+app.post('/api/ai/specialist-council', async (req: Request, res: Response) => {
+  try {
+    const { objective, roles, providerIds, temperature } = req.body || {};
+    if (typeof objective !== 'string' || !objective.trim()) {
+      return res.status(400).json({ error: 'objective is required' });
+    }
+    const result = await runSpecialistCouncil({
+      objective: objective.trim(),
+      roles: Array.isArray(roles) ? roles : undefined,
+      providerIds: Array.isArray(providerIds) ? providerIds : undefined,
+      temperature: typeof temperature === 'number' ? temperature : undefined
+    });
+    res.json(result);
+  } catch (err: any) {
+    console.error('Specialist council execution error:', err);
+    res.status(500).json({
+      error: err?.message || 'Failed to convene specialist council'
+    });
   }
 });
 

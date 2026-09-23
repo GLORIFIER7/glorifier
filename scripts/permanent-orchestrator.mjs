@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
+import { buildAICeoStatus } from '../src/lib/ai-ceo.ts';
 
 const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health';
 const SPECIALIST_COUNCIL_URL = process.env.GLORIFIER_SPECIALIST_COUNCIL_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/specialist-council');
@@ -12,8 +13,10 @@ let running = false;
 let healthFailures = 0;
 let stopping = false;
 
+const AI_CEO = buildAICeoStatus();
+
 function log(event, details = {}) {
-  console.log(JSON.stringify({ timestamp: new Date().toISOString(), event, ...details }));
+  console.log(JSON.stringify({ timestamp: new Date().toISOString(), event, aiCeo: AI_CEO.role, ...details }));
 }
 
 function run(command, args = [], timeoutMs = 25 * 60_000) {
@@ -151,6 +154,7 @@ async function autonomousCycle() {
 
 async function main() {
   log('GLORIFIER_PERMANENT_ORCHESTRATOR_START', {
+    aiCeoGovernance: AI_CEO.authority,
     appHealthUrl: APP_HEALTH_URL,
     specialistCouncilUrl: SPECIALIST_COUNCIL_URL,
     watchdogMs: WATCHDOG_MS,

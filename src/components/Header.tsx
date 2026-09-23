@@ -64,7 +64,8 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
     { id: 'patent', label: 'Patent & IP Disclosure', icon: Scale, badge: 'AI Attorney Scientist' },
-    { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },
+    { id: 'compliance', label: 'Compliance AI Scientist', icon: ShieldAlert, badge: 'GDPR / AI Act' },
+    { id: 'exposures', label: 'Clawback Audit', icon: FileText },
   ];
 
   return (

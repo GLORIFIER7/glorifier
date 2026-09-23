@@ -19,11 +19,13 @@ import { DataBrokerExposure } from '../types';
 interface BrokerExposureAuditProps {
   exposures: DataBrokerExposure[];
   onDispatchClawback: (id: string) => void;
+  onOpenComplianceBot?: () => void;
 }
 
 export const BrokerExposureAudit: React.FC<BrokerExposureAuditProps> = ({
   exposures,
-  onDispatchClawback
+  onDispatchClawback,
+  onOpenComplianceBot
 }) => {
   const [activeNoticeModal, setActiveNoticeModal] = useState<{
     brokerName: string;
@@ -83,6 +85,17 @@ export const BrokerExposureAudit: React.FC<BrokerExposureAuditProps> = ({
             <p className="text-xs text-slate-400 mt-1 max-w-2xl">
               Commercial shadow brokers scrape, syndicate, and monetize your digital footprint across the internet without your consent or compensation. Generate statutory deletion orders backed by CCPA, CPRA, and GDPR.
             </p>
+            {onOpenComplianceBot && (
+              <div className="mt-3">
+                <button
+                  onClick={onOpenComplianceBot}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600/20 hover:bg-amber-600/30 text-amber-300 border border-amber-500/30 text-xs font-medium transition-colors"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Consult A.I. Bot Compliance Scientist for Statutory Legal Opinions</span>
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-4 bg-slate-950 px-4 py-2.5 rounded-lg border border-slate-800">

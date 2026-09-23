@@ -16,6 +16,7 @@ import { AiModelsCollaborationManagement } from './components/AiModelsCollaborat
 import { AiCodeSentinelManagement } from './components/AiCodeSentinelManagement';
 import { InternetAccountsFederation } from './components/InternetAccountsFederation';
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
+import { ComplianceScientistBot } from './components/ComplianceScientistBot';
 import { 
   initialStats, 
   initialFootprints, 
@@ -681,10 +682,21 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'compliance' && (
+          <ComplianceScientistBot
+            policy={policy}
+            footprints={footprints}
+            exposures={exposures}
+            onOpenClawbackTab={() => setActiveTab('exposures')}
+            onOpenPrivacyLabTab={() => setActiveTab('privacy_lab')}
+          />
+        )}
+
         {activeTab === 'exposures' && (
           <BrokerExposureAudit
             exposures={exposures}
             onDispatchClawback={handleDispatchClawback}
+            onOpenComplianceBot={() => setActiveTab('compliance')}
           />
         )}
       </main>

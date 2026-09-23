@@ -103,6 +103,20 @@ const INITIAL_NODES: ModelNodeConfig[] = [
     privacyBoundary: 'Zero-Knowledge Enclave'
   },
   {
+    id: 'compliance-scientist',
+    name: 'A.I. Bot Compliance Scientist',
+    provider: 'EU GDPR & FTC Regulatory Core',
+    role: 'Regulatory Compliance & Statistical Privacy Science',
+    specialization: 'GDPR Articles 17/25/35 DPIA, CCPA § 1798.105 automated clawbacks, EU AI Act conformity & HIPAA Expert Determination bounds',
+    badge: 'CIPP / Privacy Ph.D.',
+    weight: 20,
+    enabled: true,
+    status: 'online',
+    latencyMs: 92,
+    color: 'amber',
+    privacyBoundary: 'Statutory PII Redaction'
+  },
+  {
     id: 'arbitrator-core',
     name: 'Sovereign Arbitrator Core',
     provider: 'DataSovereign Local Protocol',

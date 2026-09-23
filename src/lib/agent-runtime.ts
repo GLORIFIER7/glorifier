@@ -1,0 +1,74 @@
+export type AgentCard = {
+  id: string;
+  name: string;
+  role: string;
+  capabilities: string[];
+  endpoint: string;
+  protocol: 'GLORIFIER-A2A-v1';
+  status: 'active' | 'offline' | 'degraded';
+};
+
+export type AgentTask = {
+  id: string;
+  capability: string;
+  objective: string;
+  input?: unknown;
+  requester: string;
+  createdAt: string;
+  status: 'queued' | 'running' | 'completed' | 'failed';
+  result?: unknown;
+  error?: string;
+};
+
+const agents: AgentCard[] = [
+  { id: 'ai-ceo', name: 'GLORIFIER AI CEO', role: 'orchestrator', capabilities: ['delegate', 'prioritize', 'synthesize', 'govern'], endpoint: '/api/agents/ai-ceo', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'gpt', name: 'GPT', role: 'reasoning', capabilities: ['reason', 'code-review', 'synthesis'], endpoint: '/api/agents/gpt', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'gemini', name: 'Gemini', role: 'engineering-collaborator', capabilities: ['research', 'code-analysis', 'recovery'], endpoint: '/api/agents/gemini', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'specialists', name: 'Specialist Council', role: 'domain-agents', capabilities: ['security', 'data', 'revenue-analysis', 'operations', 'research'], endpoint: '/api/agents/specialists', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
+];
+
+const tasks = new Map<string, AgentTask>();
+
+export function listAgentCards() { return agents; }
+
+export function createAgentTask(input: Pick<AgentTask, 'capability'|'objective'|'input'|'requester'>) {
+  const task: AgentTask = {
+    id: `task-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+    ...input,
+    createdAt: new Date().toISOString(),
+    status: 'queued'
+  };
+  tasks.set(task.id, task);
+  return task;
+}
+
+export function updateAgentTask(id: string, patch: Partial<AgentTask>) {
+  const task = tasks.get(id);
+  if (!task) return null;
+  const updated = { ...task, ...patch };
+  tasks.set(id, updated);
+  return updated;
+}
+
+export function getAgentTask(id: string) { return tasks.get(id) || null; }
+export function listAgentTasks(limit = 50) {
+  return [...tasks.values()].sort((a,b)=>b.createdAt.localeCompare(a.createdAt)).slice(0, limit);
+}
+
+export function agentManifest() {
+  return {
+    protocol: 'GLORIFIER-A2A-v1',
+    description: 'Agent-to-agent task protocol for GLORIFIER autonomous AI collaboration.',
+    discovery: '/api/agents',
+    taskEndpoint: '/api/agents/tasks',
+    taskStatus: '/api/agents/tasks/:id',
+    humanAuthority: {
+      finalAuthority: true,
+      autonomousProductionDeploy: false,
+      autonomousMerge: false,
+      autonomousFinancialCommitment: false,
+      autonomousLegalCommitment: false
+    },
+    agents
+  };
+}

@@ -64,6 +64,10 @@ if (!root) {
   throw new Error('Glorifier AI root element was not found.');
 }
 
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch((error) => console.warn('PWA service worker unavailable:', error)));
+}
+
 createRoot(root).render(
   <StrictMode>
     <AppErrorBoundary>

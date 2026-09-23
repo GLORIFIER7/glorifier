@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execFileSync, spawn } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 
 const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health';
 const WATCHDOG_MS = Math.max(30_000, Number(process.env.ORCHESTRATOR_WATCHDOG_MS || 60_000));
@@ -43,8 +43,6 @@ async function healthCheck() {
     log('APP_HEALTH_FAILED', { failures: healthFailures, error: error instanceof Error ? error.message : String(error) });
     if (healthFailures >= MAX_FAILURES) {
       log('WATCHDOG_RESTART_REQUESTED', { reason: 'application health check failed repeatedly' });
-      // Let Railway restart this worker cleanly. The main application remains protected by its own
-      // Railway restart policy; this watchdog does not claim to repair infrastructure it cannot access.
       process.exit(1);
     }
     return false;
@@ -57,10 +55,15 @@ async function autonomousCycle() {
   log('AUTONOMOUS_CYCLE_START');
 
   try {
+    // Railway production containers do not guarantee the git executable.
+    // Git status is optional metadata, so its absence must never crash the orchestrator.
     const status = run('git', ['status', '--short']);
-    if (!status.ok) throw new Error(status.output);
-
-    if (status.output.trim()) {
+    if (!status.ok) {
+      log('GIT_METADATA_UNAVAILABLE', {
+        action: 'continue_cycle',
+        reason: status.output.slice(-1000),
+      });
+    } else if (status.output.trim()) {
       log('DIRTY_WORKTREE', { action: 'skip_cycle' });
       return;
     }

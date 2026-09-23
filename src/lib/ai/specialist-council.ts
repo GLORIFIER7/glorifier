@@ -2,38 +2,12 @@ import { aiOrchestrator } from './orchestrator';
 import type { AIProviderId, AIResponse } from './types';
 
 export type SpecialistDomain =
-  | 'policy'
-  | 'legal'
-  | 'compliance'
-  | 'ethics'
-  | 'finance'
-  | 'revenue'
-  | 'risk'
-  | 'data'
-  | 'research'
-  | 'ai_ml'
-  | 'engineering'
-  | 'software_architecture'
-  | 'cybersecurity'
-  | 'threat_intelligence'
-  | 'privacy'
-  | 'identity'
-  | 'economics'
-  | 'market'
-  | 'competitive_intelligence'
-  | 'product'
-  | 'operations'
-  | 'cloud_infrastructure'
-  | 'database'
-  | 'api'
-  | 'ai_infrastructure'
-  | 'blockchain'
-  | 'game_technology'
-  | 'web'
-  | 'ux'
-  | 'growth'
-  | 'marketplace'
-  | 'frontier_exploration';
+  | 'policy' | 'legal' | 'compliance' | 'ethics' | 'finance' | 'revenue' | 'risk' | 'data'
+  | 'research' | 'ai_ml' | 'engineering' | 'software_architecture' | 'cybersecurity'
+  | 'threat_intelligence' | 'privacy' | 'identity' | 'economics' | 'market'
+  | 'competitive_intelligence' | 'product' | 'operations' | 'cloud_infrastructure'
+  | 'database' | 'api' | 'ai_infrastructure' | 'blockchain' | 'game_technology' | 'web'
+  | 'ux' | 'growth' | 'marketplace' | 'frontier_exploration';
 
 export interface SpecialistRole {
   id: string;
@@ -85,32 +59,47 @@ export const specialistRoles: SpecialistRole[] = [
   ['growth-scientist','AI Growth Scientist','growth','Analyze acquisition, activation, retention, experimentation, and sustainable growth mechanisms.'],
   ['marketplace-scientist','AI Marketplace Scientist','marketplace','Analyze marketplace liquidity, matching, trust, pricing, and participant incentives.'],
   ['frontier-exploration-scientist','Frontier Exploration Intelligence Scientist','frontier_exploration','Challenge assumptions, generate unconventional alternatives, combine distant domains, explore future scenarios, and identify possibilities missed by conventional specialist analysis.']
-].map(([id,title,domain,mission]) => ({ id, title, domain: domain as SpecialistDomain, mission }));
+].map(([id,title,domain,mission,requiresHumanReview]) => ({
+  id, title, domain: domain as SpecialistDomain, mission, ...(requiresHumanReview ? { requiresHumanReview: true } : {})
+}));
 
 export interface CouncilRequest {
   objective: string;
   roles?: string[];
   providerIds?: AIProviderId[];
   temperature?: number;
+  standingMission?: boolean;
 }
 
-function specialistPrompt(role: SpecialistRole, objective: string): string {
+export const STANDING_REVENUE_MISSION = {
+  target: 1_000_000,
+  currency: 'USD',
+  successCondition: 'verified settled funds received in an authorized bank/payment account',
+  mode: 'continuous intelligence, opportunity discovery, risk review, measurement, and system improvement',
+  humanControl: 'No autonomous bank transfers, withdrawals, contracts, or other consequential financial actions without required human authorization.'
+} as const;
+
+function specialistPrompt(role: SpecialistRole, objective: string, standingMission: boolean): string {
+  const mandate = standingMission ? [
+    'This is a standing GLORIFIER mission, not a one-time user command.',
+    'Continue looking for lawful, evidence-based ways to create, improve, measure, and protect legitimate revenue opportunities across the system.',
+    'Treat the objective as an ongoing 24/7 operating mandate while the permanent orchestrator is running.',
+    'Do not equate ideas, pipeline value, bookings, invoices, crypto balances, or accounting entries with money received.',
+    'The milestone is reached only when settled funds are independently verified as received in an authorized bank/payment account.',
+    'Never autonomously execute bank transfers, withdrawals, binding contracts, or other consequential financial actions; surface them for required human authorization.'
+  ].join('\n') : '';
+
   return [
     `You are the ${role.title} within the GLORIFIER AI specialist council.`,
     `Mission: ${role.mission}`,
     'Work as an independent specialist. State assumptions, distinguish evidence from inference, identify material uncertainty, and do not claim authority you do not possess.',
+    mandate,
     `Objective: ${objective}`
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 function reconcile(objective: string, findings: SpecialistFinding[]) {
   const conflicts: string[] = [];
-  const domains = new Map<string, string[]>();
-  for (const finding of findings) {
-    const bucket = domains.get(finding.role.domain) || [];
-    bucket.push(finding.output);
-    domains.set(finding.role.domain, bucket);
-  }
   if (findings.length > 1) {
     const uniqueOutputs = new Set(findings.map((f) => f.output.trim()).filter(Boolean));
     if (uniqueOutputs.size > 1) conflicts.push('Specialists produced distinct analyses; the executive layer should reconcile evidence and assumptions rather than treating plurality as proof.');
@@ -130,11 +119,12 @@ export async function runSpecialistCouncil(request: CouncilRequest) {
     : specialistRoles
   ).slice(0, 40);
 
+  const standingMission = request.standingMission === true;
   const responses = await Promise.allSettled(selected.map(async (role) => {
     const response = await aiOrchestrator.generate({
       provider: 'auto',
       messages: [
-        { role: 'system', content: specialistPrompt(role, request.objective) },
+        { role: 'system', content: specialistPrompt(role, request.objective, standingMission) },
         { role: 'user', content: request.objective }
       ],
       temperature: request.temperature ?? 0.2,
@@ -146,17 +136,14 @@ export async function runSpecialistCouncil(request: CouncilRequest) {
   const findings: SpecialistFinding[] = responses
     .filter((r): r is PromiseFulfilledResult<{role: SpecialistRole; response: AIResponse}> => r.status === 'fulfilled')
     .map(({ role, response }) => ({
-      role,
-      provider: response.provider,
-      model: response.model,
-      output: response.text,
-      evaluation: response.evaluation,
-      latencyMs: response.latencyMs
+      role, provider: response.provider, model: response.model, output: response.text,
+      evaluation: response.evaluation, latencyMs: response.latencyMs
     }));
 
   const executive = aiOrchestrator.executive();
   return {
     executive,
+    standingMission: standingMission ? STANDING_REVENUE_MISSION : null,
     availableRoles: specialistRoles,
     selectedRoles: selected,
     result: reconcile(request.objective, findings)

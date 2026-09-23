@@ -65,7 +65,7 @@ async function runOllama(resource: ReturnType<typeof listComputeResources>[numbe
   const model = task.preferredModel || resource.models[0];
   if (!model) throw new Error('OLLAMA_MODELS must contain at least one model for self-hosted inference.');
 
-  const baseUrl = resource.endpoint!.replace(/\\/$/, '');
+  const baseUrl = resource.endpoint!.replace(/\/$/, '');
   const token = process.env.OLLAMA_AUTH_TOKEN?.trim();
   const response = await fetchWithTimeout(`${baseUrl}/api/generate`, {
     method: 'POST',

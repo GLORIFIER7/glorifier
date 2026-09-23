@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   WalletCards, Coins, Globe2, ShieldCheck, RefreshCw, Search, ExternalLink,
-  Network, CircleDollarSign, AlertTriangle, LockKeyhole
+  Network, CircleDollarSign, AlertTriangle, LockKeyhole, Bot, BrainCircuit, BarChart3, TrendingUp, PieChart, Landmark, Zap
 } from 'lucide-react';
 
 type Asset = {
@@ -27,6 +27,9 @@ export const CryptoFiatAssetIntelligence: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>(seed);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('Connector-ready');
+  const [scientistBusy, setScientistBusy] = useState(false);
+  const [scientistReport, setScientistReport] = useState<any | null>(null);
+  const [scientistError, setScientistError] = useState('');
 
   const load = async () => {
     setStatus('Refreshing…');
@@ -43,6 +46,25 @@ export const CryptoFiatAssetIntelligence: React.FC = () => {
   };
 
   useEffect(() => { void load(); }, []);
+
+  const runFinanceScientists = async () => {
+    setScientistBusy(true);
+    setScientistError('');
+    try {
+      const res = await fetch('/api/ai/finance-scientists', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ assets }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Finance scientist council failed');
+      setScientistReport(data);
+    } catch (error) {
+      setScientistError(error instanceof Error ? error.message : 'Finance scientist council failed');
+    } finally {
+      setScientistBusy(false);
+    }
+  };
 
   const filtered = useMemo(() => assets.filter((asset) =>
     [asset.name, asset.symbol, asset.category, asset.network, asset.source, asset.status]
@@ -75,6 +97,36 @@ export const CryptoFiatAssetIntelligence: React.FC = () => {
       </div>
       <div className="mt-5 flex items-center gap-2 text-xs text-slate-300">
         <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> {status}
+      </div>
+    </div>
+
+    <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 text-cyan-300 text-xs font-bold uppercase tracking-widest"><BrainCircuit className="w-4 h-4" /> Finance Scientist Bots</div>
+          <h3 className="mt-2 text-lg font-bold text-white">Unified GLORIFIER Asset Report — AI finance council</h3>
+          <p className="mt-1 text-sm text-slate-400 max-w-3xl">Five specialist bots analyze Crypto + Fiat + NFTs + Game Assets + Business Intelligence + verified Revenue data, then return evidence, gaps and monitoring priorities. They do not execute trades or move funds.</p>
+        </div>
+        <button onClick={() => void runFinanceScientists()} disabled={scientistBusy} className="inline-flex items-center gap-2 rounded-lg bg-cyan-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50"><Bot className="w-4 h-4" /> {scientistBusy ? 'Analyzing…' : 'Run finance scientists'}</button>
+      </div>
+      {scientistError && <div className="mt-3 text-xs text-rose-300">{scientistError}</div>}
+      {scientistReport && <div className="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-3">
+        {(scientistReport.scientists || []).map((scientist: any) => <div key={scientist.id} className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
+          <div className="flex items-center justify-between gap-2"><span className="font-semibold text-white">{scientist.name}</span><span className="text-[10px] uppercase tracking-wide text-cyan-300">{scientist.priority}</span></div>
+          <div className="mt-1 text-xs text-slate-500">{scientist.specialty}</div>
+          <p className="mt-3 text-sm text-slate-300 whitespace-pre-wrap">{scientist.output}</p>
+        </div>)}
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 lg:col-span-2">
+          <div className="flex items-center gap-2 font-semibold text-cyan-200"><Zap className="w-4 h-4" /> Unified command-center priorities</div>
+          <ul className="mt-2 space-y-1 text-sm text-slate-300">{(scientistReport.priorities || []).map((p: string) => <li key={p}>• {p}</li>)}</ul>
+        </div>
+      </div>}
+    </div>
+
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+      <div className="flex items-center gap-2 font-semibold text-white"><BarChart3 className="w-5 h-5 text-violet-400" /> Unified asset report coverage</div>
+      <div className="mt-4 grid grid-cols-2 md:grid-cols-3 gap-3">
+        {[['Crypto + tokens', 'Public/on-chain'], ['Fiat + FX', 'Market data'], ['NFTs', 'Public references'], ['Game Assets', 'Public metadata'], ['Business Intelligence', 'Connector-ready'], ['Revenue', 'Verified ledger']].map(([label, value]) => <div key={label} className="rounded-lg border border-slate-800 bg-slate-950 p-3"><div className="text-sm font-semibold text-white">{label}</div><div className="mt-1 text-xs text-slate-500">{value}</div></div>)}
       </div>
     </div>
 

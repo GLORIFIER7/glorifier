@@ -2,9 +2,11 @@
 import { execFileSync } from 'node:child_process';
 
 const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health';
+const SPECIALIST_COUNCIL_URL = process.env.GLORIFIER_SPECIALIST_COUNCIL_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/specialist-council');
 const WATCHDOG_MS = Math.max(30_000, Number(process.env.ORCHESTRATOR_WATCHDOG_MS || 60_000));
 const IMPROVEMENT_MS = Math.max(5 * 60_000, Number(process.env.ORCHESTRATOR_IMPROVEMENT_MS || 30 * 60_000));
 const MAX_FAILURES = Math.max(1, Number(process.env.ORCHESTRATOR_MAX_HEALTH_FAILURES || 3));
+const REVENUE_MILESTONE_VERIFIED = process.env.GLORIFIER_REVENUE_MILESTONE_VERIFIED === 'true';
 let running = false;
 let healthFailures = 0;
 let stopping = false;
@@ -49,14 +51,47 @@ async function healthCheck() {
   }
 }
 
+async function standingSpecialistMission() {
+  if (REVENUE_MILESTONE_VERIFIED) {
+    log('STANDING_REVENUE_MISSION_COMPLETE', {
+      reason: 'verified milestone flag is enabled',
+      targetUsd: 1_000_000,
+    });
+    return;
+  }
+
+  try {
+    const response = await fetch(SPECIALIST_COUNCIL_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        objective: 'Continuously identify, validate, prioritize, measure, and improve lawful opportunities that can generate real settled revenue for GLORIFIER. Review product, market, growth, revenue, finance, risk, legal, compliance, cybersecurity, data, engineering, operations, and frontier opportunities. Focus on evidence, conversion paths, customer value, unit economics, bottlenecks, and the next highest-leverage authorized action.',
+        standingMission: true,
+        temperature: 0.2
+      }),
+      signal: AbortSignal.timeout(10 * 60_000),
+    });
+    const body = await response.text();
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
+    log('STANDING_SPECIALIST_MISSION_OK', {
+      targetUsd: 1_000_000,
+      successCondition: 'verified settled funds received in an authorized bank/payment account',
+      response: body.slice(-4000),
+    });
+  } catch (error) {
+    log('STANDING_SPECIALIST_MISSION_FAILED', {
+      error: error instanceof Error ? error.message : String(error),
+      action: 'continue_next_cycle',
+    });
+  }
+}
+
 async function autonomousCycle() {
   if (running || stopping) return;
   running = true;
   log('AUTONOMOUS_CYCLE_START');
 
   try {
-    // Railway production containers do not guarantee the git executable.
-    // Git status is optional metadata, so its absence must never crash the orchestrator.
     const status = run('git', ['status', '--short']);
     if (!status.ok) {
       log('GIT_METADATA_UNAVAILABLE', {
@@ -67,6 +102,8 @@ async function autonomousCycle() {
       log('DIRTY_WORKTREE', { action: 'skip_cycle' });
       return;
     }
+
+    await standingSpecialistMission();
 
     const agent = run('node', ['scripts/continuous-improvement-agent.mjs']);
     log(agent.ok ? 'AUTONOMOUS_CYCLE_OK' : 'AUTONOMOUS_CYCLE_FAILED', {
@@ -87,8 +124,12 @@ async function autonomousCycle() {
 async function main() {
   log('GLORIFIER_PERMANENT_ORCHESTRATOR_START', {
     appHealthUrl: APP_HEALTH_URL,
+    specialistCouncilUrl: SPECIALIST_COUNCIL_URL,
     watchdogMs: WATCHDOG_MS,
     improvementMs: IMPROVEMENT_MS,
+    standingRevenueMission: true,
+    revenueTargetUsd: 1_000_000,
+    milestoneVerified: REVENUE_MILESTONE_VERIFIED,
   });
 
   await healthCheck();

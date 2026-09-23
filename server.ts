@@ -518,18 +518,33 @@ app.post('/api/ai/finance-scientists', async (req, res) => {
       { id: 'risk-scientist', name: 'Financial Risk Scientist', specialty: 'anomalies, data gaps, counterparty and governance risk' },
     ];
     const base = 'You are a finance research scientist inside GLORIFIER. Analyze only the supplied evidence. Distinguish observed facts, missing data and hypotheses. Do not give personalized investment advice, do not predict prices, and do not instruct trades or transfers. Return a concise analyst note with: evidence, key risk/data gap, and monitoring action. ';
-    const messages = roles.map((role) => ({
-      role: { role: 'user', content: base + 'Your specialty is ' + role.specialty + '. Analyze this unified asset context: ' + JSON.stringify(context) }
-    })).map((x) => x.role);
-    const responses = await aiOrchestrator.collaborate([
-      { role: 'system', content: base },
-      { role: 'user', content: JSON.stringify(context) },
-    ]);
-    const scientists = roles.map((role, index) => ({
-      ...role,
-      priority: index < 2 ? 'P1' : index < 4 ? 'P2' : 'P3',
-      output: responses[index]?.text || 'No connected AI provider returned an analysis for this specialist.'
-    }));
+    const scientists = [];
+    for (let index = 0; index < roles.length; index += 1) {
+      const role = roles[index];
+      try {
+        const result = await aiOrchestrator.generate({
+          provider: 'auto',
+          temperature: 0.2,
+          messages: [
+            { role: 'system', content: base + 'Your specialist role is ' + role.name + ', focused on ' + role.specialty + '.' },
+            { role: 'user', content: JSON.stringify(context) },
+          ],
+        });
+        scientists.push({
+          ...role,
+          priority: index < 2 ? 'P1' : index < 4 ? 'P2' : 'P3',
+          output: result.text,
+          provider: result.provider,
+          model: result.model,
+        });
+      } catch {
+        scientists.push({
+          ...role,
+          priority: index < 2 ? 'P1' : index < 4 ? 'P2' : 'P3',
+          output: 'No connected AI provider returned an analysis for this specialist.',
+        });
+      }
+    }
     return res.json({
       generatedAt: now(),
       report: 'Unified GLORIFIER Asset Report',

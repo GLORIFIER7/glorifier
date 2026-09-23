@@ -6,6 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
+import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
 
 dotenv.config();
 
@@ -1385,6 +1386,96 @@ app.post('/api/ai/specialist-council', async (req: Request, res: Response) => {
       error: err?.message || 'Failed to convene specialist council'
     });
   }
+});
+
+// ============================================================================
+// GLORIFIER GLOBAL INTELLIGENCE HUB
+// Public-source aggregation, cross-model synthesis, evidence ledger and refresh API.
+// ============================================================================
+async function runIntelligenceModel(provider: 'openai' | 'gemini', prompt: string) {
+  if (provider === 'openai') {
+    const client = getOpenAI();
+    if (!client) return null;
+    try {
+      const response = await client.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          { role: 'system', content: 'You are a factual intelligence analyst. Use only the supplied evidence. Do not invent facts, citations, or consensus. Return the requested JSON.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        response_format: { type: 'json_object' }
+      });
+      return { text: response.choices[0]?.message?.content || '', model: 'gpt-4o' };
+    } catch (err) {
+      console.warn('[Intelligence] OpenAI synthesis failed:', err);
+      return null;
+    }
+  }
+
+  const result = await callGeminiSafe({
+    contents: prompt,
+    systemInstruction: 'You are a factual intelligence analyst. Use only the supplied evidence. Do not invent facts, citations, or consensus. Return the requested JSON.',
+    temperature: 0.1,
+    responseMimeType: 'application/json',
+    preferredModel: 'gemini-3.8-flash'
+  });
+  return result ? { text: result.text, model: result.modelUsed } : null;
+}
+
+let intelligenceRefreshPromise: Promise<any> | null = null;
+
+async function refreshIntelligenceReport() {
+  if (!intelligenceRefreshPromise) {
+    intelligenceRefreshPromise = generateIntelligenceReport({
+      runModel: runIntelligenceModel,
+      windowHours: 24
+    }).finally(() => {
+      intelligenceRefreshPromise = null;
+    });
+  }
+  return intelligenceRefreshPromise;
+}
+
+app.get('/api/intelligence/report', async (req: Request, res: Response) => {
+  try {
+    const refresh = req.query.refresh === 'true';
+    const report = refresh ? await refreshIntelligenceReport() : await getLatestIntelligenceReport() || await refreshIntelligenceReport();
+    res.json(report);
+  } catch (err: any) {
+    console.error('[Intelligence] report generation failed:', err);
+    res.status(500).json({ error: 'Intelligence report generation failed', details: err?.message || String(err) });
+  }
+});
+
+app.post('/api/intelligence/report', async (req: Request, res: Response) => {
+  try {
+    const configuredKey = process.env.INTELLIGENCE_INGEST_KEY;
+    if (configuredKey && req.header('x-glorifier-intelligence-key') !== configuredKey) {
+      return res.status(401).json({ error: 'Unauthorized intelligence refresh' });
+    }
+    const report = await refreshIntelligenceReport();
+    res.json(report);
+  } catch (err: any) {
+    console.error('[Intelligence] scheduled refresh failed:', err);
+    res.status(500).json({ error: 'Scheduled intelligence refresh failed', details: err?.message || String(err) });
+  }
+});
+
+app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
+  const report = await getLatestIntelligenceReport();
+  res.json({
+    ok: true,
+    reportId: report?.id || null,
+    generatedAt: report?.generatedAt || null,
+    evidenceCount: report?.evidenceCount || 0,
+    sourceCount: report?.sourceCount || 0,
+    modelStatus: {
+      openai: !!process.env.OPENAI_API_KEY,
+      gemini: !!process.env.GEMINI_API_KEY
+    },
+    persistence: !!process.env.DATABASE_URL
+  });
 });
 
 // Vite middleware for dev or static serving for prod

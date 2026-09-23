@@ -1,0 +1,46 @@
+name: GLORIFIER Gemini AI Collaborator
+
+on:
+  schedule:
+    - cron: "7 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  gemini-collaborator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run Gemini
+        if: ${{ env.GEMINI_API_KEY != '' }}
+        uses: google-github-actions/run-gemini-cli@main
+        with:
+          gemini_api_key: ${{ env.GEMINI_API_KEY }}
+          gemini_cli_version: latest
+          prompt: |
+            You are the Gemini engineering collaborator for the GLORIFIER project.
+            Read GEMINI.md and inspect the repository.
+            Work on ONE small, concrete, high-value improvement in reliability,
+            security, testing, observability, or maintainability.
+            Do not expose or modify secrets.
+            Do not change deployment credentials.
+            Run npm run lint and npm run build when applicable.
+            Do not make speculative or cosmetic changes.
+            If no safe improvement is justified, make no code changes.
+
+      - name: Report missing Gemini credential
+        if: ${{ env.GEMINI_API_KEY == '' }}
+        run: |
+          echo "::warning::GEMINI_API_KEY is not configured. Add it as a GitHub Actions repository secret to activate the Gemini collaborator."

@@ -1,0 +1,30 @@
+name: GLORIFIER Intelligence Pipeline
+
+on:
+  schedule:
+    - cron: "11,41 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glorifier-intelligence-pipeline
+  cancel-in-progress: false
+
+jobs:
+  refresh-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Refresh production intelligence report
+        env:
+          INTELLIGENCE_URL: ${{ vars.GLORIFIER_INTELLIGENCE_URL }}
+          INTELLIGENCE_KEY: ${{ secrets.INTELLIGENCE_INGEST_KEY }}
+        run: |
+          URL="${INTELLIGENCE_URL:-https://glorifier-artificial-intelligence-production.up.railway.app/api/intelligence/report?refresh=true}"
+          if [ -n "$INTELLIGENCE_KEY" ]; then
+            curl --fail-with-body --retry 2 --retry-delay 5 -X POST               -H "Content-Type: application/json"               -H "x-glorifier-intelligence-key: $INTELLIGENCE_KEY"               "$URL"
+          else
+            curl --fail-with-body --retry 2 --retry-delay 5 "$URL"
+          fi

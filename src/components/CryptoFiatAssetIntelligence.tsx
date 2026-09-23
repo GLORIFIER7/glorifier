@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   WalletCards, Coins, Globe2, ShieldCheck, RefreshCw, Search, ExternalLink,
-  Network, CircleDollarSign, AlertTriangle, LockKeyhole, Bot, BrainCircuit, BarChart3, TrendingUp, PieChart, Landmark, Zap
+  Network, CircleDollarSign, AlertTriangle, LockKeyhole, Bot, BrainCircuit, BarChart3, Zap
 } from 'lucide-react';
 
 type Asset = {

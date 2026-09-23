@@ -62,7 +62,7 @@ import {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTab] = useState<string>('gpt_cowork');
   const [stats, setStats] = useState(initialStats);
   const [footprints, setFootprints] = useState<DataFootprintSource[]>(initialFootprints);
   const [offers, setOffers] = useState<BuyerOffer[]>(initialBuyerOffers);

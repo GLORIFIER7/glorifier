@@ -183,9 +183,10 @@ ${session.geminiPeerReview}
     setTimeout(() => setApplySuccessNotice(null), 4000);
   };
 
-  const handleRunCoWorking = async (overridePrompt?: string) => {
+  const handleRunCoWorking = async (overridePrompt?: string, overrideCode?: string) => {
     const promptToRun = (overridePrompt || userPrompt).trim();
     if (!promptToRun || isLoading) return;
+    const codeToRun = overrideCode !== undefined ? overrideCode : codeContext;
 
     setIsLoading(true);
     setApplySuccessNotice(null);
@@ -197,7 +198,7 @@ ${session.geminiPeerReview}
         body: JSON.stringify({
           taskPrompt: promptToRun,
           domain,
-          codeOrContext: codeContext || undefined
+          codeOrContext: codeToRun || undefined
         })
       });
 
@@ -549,21 +550,43 @@ export async function runSovereignConsensus() {
           </div>
           <div className="flex flex-wrap gap-2">
             {quickTemplates[domain]?.map((tpl, i) => (
-              <button
+              <div
                 key={i}
-                onClick={() => {
-                  setUserPrompt(tpl.prompt);
-                  if (tpl.code) {
-                    setCodeContext(tpl.code);
-                    setShowCodeEditor(true);
-                  }
-                }}
-                className="text-[11px] px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-850 text-slate-300 border border-slate-800 hover:border-emerald-500/40 transition-colors text-left flex items-center gap-1.5"
+                className="group inline-flex items-center rounded-lg bg-slate-950 border border-slate-800 hover:border-emerald-500/40 transition-colors overflow-hidden"
               >
-                <ChevronRight className="w-3 h-3 text-emerald-400" />
-                <span className="font-semibold text-white">{tpl.title}:</span>
-                <span className="text-slate-400 truncate max-w-xs">&ldquo;{tpl.prompt}&rdquo;</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserPrompt(tpl.prompt);
+                    if (tpl.code) {
+                      setCodeContext(tpl.code);
+                      setShowCodeEditor(true);
+                    }
+                  }}
+                  className="text-[11px] px-2.5 py-1.5 text-slate-300 hover:text-white text-left flex items-center gap-1.5 transition-colors"
+                  title="Load into prompt editor"
+                >
+                  <ChevronRight className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                  <span className="font-semibold text-white">{tpl.title}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserPrompt(tpl.prompt);
+                    if (tpl.code) {
+                      setCodeContext(tpl.code);
+                      setShowCodeEditor(true);
+                    }
+                    handleRunCoWorking(tpl.prompt, tpl.code);
+                  }}
+                  disabled={isLoading}
+                  className="px-2 py-1.5 bg-emerald-950/80 hover:bg-emerald-600 text-emerald-300 hover:text-white text-[10px] font-bold border-l border-slate-800 transition-colors flex items-center gap-1 disabled:opacity-50"
+                  title="Run this co-working session instantly with GPT & Gemini"
+                >
+                  <Play className="w-2.5 h-2.5 fill-current" />
+                  <span>Run</span>
+                </button>
+              </div>
             ))}
           </div>
         </div>

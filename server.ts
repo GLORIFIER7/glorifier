@@ -24,7 +24,7 @@ const integrationStatus = [
   { id: 'netlify', name: 'Netlify', category: 'frontend', status: 'available', detail: 'Existing public frontend deployment surface', publicUrl: 'https://www.netlify.com/' },
   { id: 'neon', name: 'Neon', category: 'data', status: process.env.DATABASE_URL ? 'configured' : 'needs-config', detail: process.env.DATABASE_URL ? 'PostgreSQL ledger configured' : 'DATABASE_URL required for authoritative ledger', publicUrl: 'https://neon.tech/' },
   { id: 'binance', name: 'Binance', category: 'digital-assets', status: 'public-monitoring', detail: 'Public NFT/market surface; private keys excluded', publicUrl: 'https://www.binance.com/' },
-  { id: 'web', name: 'Public Web', category: 'monitoring', status: 'planned', detail: 'Public mentions, domains and search monitoring', publicUrl: 'https://www.google.com/' },
+  { id: 'web', name: 'Public Web', category: 'monitoring', status: 'connected', detail: 'Public-source intelligence aggregation and evidence tracking', publicUrl: 'https://news.google.com/' },
   { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' }
 ];
 

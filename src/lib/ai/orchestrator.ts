@@ -22,8 +22,6 @@ function evaluateResponse(response: AIResponse): ResponseEvaluation {
 function modelCapabilityScore(model: string): number {
   const value = model.toLowerCase();
   let score = 50;
-
-  // Prefer frontier/reasoning and larger-capacity model families when available.
   if (/gpt-5/.test(value)) score = 100;
   else if (/o[3-9]/.test(value)) score = 98;
   else if (/claude.*opus/.test(value)) score = 97;
@@ -33,7 +31,6 @@ function modelCapabilityScore(model: string): number {
   else if (/gemini.*flash/.test(value)) score = 82;
   else if (/70b/.test(value)) score = 85;
   else if (/large/.test(value)) score = 80;
-
   return score;
 }
 
@@ -47,10 +44,8 @@ function selectProviders(providers: AIProvider[]): AIProvider[] {
   return [...providers].sort((a, b) => {
     const capabilityDiff = providerCapabilityScore(b) - providerCapabilityScore(a);
     if (capabilityDiff !== 0) return capabilityDiff;
-
     const reliabilityDiff = providerReliability(b.id) - providerReliability(a.id);
     if (Math.abs(reliabilityDiff) > 0.05) return reliabilityDiff;
-
     const aLatency = averageLatencyMs(a.id);
     const bLatency = averageLatencyMs(b.id);
     if (aLatency && bLatency && Math.abs(aLatency - bLatency) > 150) return aLatency - bLatency;
@@ -62,15 +57,8 @@ function executiveProfile(providers: AIProvider[]) {
   const candidates = selectProviders(providers);
   const leader = candidates[0];
   if (!leader) {
-    return {
-      status: 'vacant' as const,
-      provider: null,
-      model: null,
-      capabilityScore: 0,
-      basis: 'No connected AI provider is available.',
-    };
+    return { status: 'vacant' as const, provider: null, model: null, capabilityScore: 0, basis: 'No connected AI provider is available.' };
   }
-
   return {
     status: 'active' as const,
     provider: leader.id,
@@ -85,6 +73,9 @@ export class AIOrchestrator {
     const started = Date.now();
     try {
       const response = await provider.generate(request);
+      if (!response || typeof response !== 'object' || typeof response.provider !== 'string' || typeof response.model !== 'string') {
+        throw new Error(`${provider.id} returned an invalid/empty AI response.`);
+      }
       const latencyMs = Date.now() - started;
       response.latencyMs = latencyMs;
       response.evaluation = evaluateResponse(response);
@@ -97,11 +88,7 @@ export class AIOrchestrator {
   }
 
   async generate(request: OrchestratorRequest): Promise<AIResponse> {
-    // CEO mode is the default: automatically put the highest-capability connected
-    // model in charge, with reliability/latency used only as tie-breakers.
-    const connected = request.provider && request.provider !== 'auto'
-      ? [getProvider(request.provider)]
-      : getConnectedProviders();
+    const connected = request.provider && request.provider !== 'auto' ? [getProvider(request.provider)] : getConnectedProviders();
     const candidates = selectProviders(connected);
     if (candidates.length === 0) throw new Error('No AI providers are connected.');
 
@@ -124,22 +111,14 @@ export class AIOrchestrator {
   async collaborate(messages: AIMessage[], providerIds?: AIProviderId[]): Promise<AIResponse[]> {
     const providers = selectProviders(providerIds?.length ? providerIds.map(getProvider) : getConnectedProviders());
     const results = await Promise.allSettled(providers.map((provider) => this.callProvider(provider, { messages })));
-    return results
-      .filter((result): result is PromiseFulfilledResult<AIResponse> => result.status === 'fulfilled')
-      .map((result) => result.value);
+    return results.filter((result): result is PromiseFulfilledResult<AIResponse> => result.status === 'fulfilled').map((result) => result.value);
   }
 
   registry() {
-    return listProviders().map((entry) => ({
-      ...entry,
-      capabilityScore: providerCapabilityScore(getProvider(entry.id)),
-    }));
+    return listProviders().map((entry) => ({ ...entry, capabilityScore: providerCapabilityScore(getProvider(entry.id)) }));
   }
 
-  executive() {
-    return executiveProfile(getConnectedProviders());
-  }
-
+  executive() { return executiveProfile(getConnectedProviders()); }
   metrics() { return snapshotProviderMetrics(); }
 }
 

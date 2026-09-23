@@ -460,6 +460,44 @@ app.post('/api/revenue/webhook', async (req, res) => {
 
 
 
+// GLORIFIER Crypto & Fiat Asset Intelligence
+app.get('/api/crypto-fiat-assets', (_req, res) => {
+  const generatedAt = now();
+  const assets = [
+    { id: 'cf-btc', name: 'Bitcoin', symbol: 'BTC', category: 'Crypto', network: 'Bitcoin', source: 'Public blockchain', status: 'watch-only' },
+    { id: 'cf-eth', name: 'Ethereum', symbol: 'ETH', category: 'Crypto', network: 'Ethereum', source: 'Public blockchain', status: 'watch-only' },
+    { id: 'cf-bnb', name: 'BNB', symbol: 'BNB', category: 'Crypto', network: 'BNB Chain', source: 'Public blockchain', status: 'watch-only' },
+    { id: 'cf-sol', name: 'Solana', symbol: 'SOL', category: 'Crypto', network: 'Solana', source: 'Public blockchain', status: 'watch-only' },
+    { id: 'cf-usdt', name: 'Tether USD', symbol: 'USDT', category: 'Stablecoin', network: 'Multi-chain', source: 'Public token metadata', status: 'indexed' },
+    { id: 'cf-usdc', name: 'USD Coin', symbol: 'USDC', category: 'Stablecoin', network: 'Multi-chain', source: 'Public token metadata', status: 'indexed' },
+    { id: 'cf-nft', name: 'NFT assets', symbol: 'NFT', category: 'NFT', network: 'Multi-chain', source: 'Public marketplace/blockchain references', status: 'connector-ready' },
+    { id: 'cf-usd', name: 'US Dollar', symbol: 'USD', category: 'Fiat', network: 'FX market', source: 'Public FX data', status: 'market-data' },
+    { id: 'cf-eur', name: 'Euro', symbol: 'EUR', category: 'Fiat', network: 'FX market', source: 'Public FX data', status: 'market-data' },
+    { id: 'cf-gbp', name: 'British Pound', symbol: 'GBP', category: 'Fiat', network: 'FX market', source: 'Public FX data', status: 'market-data' },
+    { id: 'cf-jpy', name: 'Japanese Yen', symbol: 'JPY', category: 'Fiat', network: 'FX market', source: 'Public FX data', status: 'market-data' },
+  ];
+
+  return res.json({
+    generatedAt,
+    coverage: 'broad public/on-chain and authorized connector coverage',
+    connectorStatus: 'connector-ready',
+    supportedDataClasses: [
+      'public blockchain addresses',
+      'on-chain token and NFT metadata',
+      'public market and FX data',
+      'authorized read-only exchange balances and history',
+      'authorized fiat/payment account data',
+    ],
+    securityPolicy: {
+      walletMode: 'watch-only/public-addresses',
+      exchangeMode: 'authorized read-only',
+      secrets: 'never collect private keys, seed phrases, passwords, 2FA codes or withdrawal credentials',
+      fiatPrivacy: 'private bank/payment balances require explicit authorized provider access',
+    },
+    assets,
+  });
+});
+
 // GLORIFIER Competitive Intelligence Engine (CIE)
 app.get('/api/business-intelligence/competitive', async (_req, res) => {
   const generatedAt = now();

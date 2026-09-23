@@ -4,6 +4,24 @@ import { listComputeResources } from './registry';
 const counters = { completed: 0, failed: 0 };
 let activeTasks = 0;
 let queuedTasks = 0;
+const REQUEST_TIMEOUT_MS = Math.max(5_000, Number(process.env.GLORIFIER_COMPUTE_TIMEOUT_MS || 120_000));
+
+function authHeaders(token?: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {})
+  };
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
 
 function chooseResource(task: ComputeTask) {
   const resources = listComputeResources().filter(r => r.status === 'ready');
@@ -22,9 +40,10 @@ function chooseResource(task: ComputeTask) {
 
 async function runRemote(resource: ReturnType<typeof listComputeResources>[number], task: ComputeTask): Promise<ComputeTaskResult> {
   const started = Date.now();
-  const response = await fetch(resource.endpoint!, {
+  const token = process.env.GLORIFIER_COMPUTE_WORKER_TOKEN?.trim();
+  const response = await fetchWithTimeout(resource.endpoint!, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(token),
     body: JSON.stringify({ task })
   });
   const body = await response.text();
@@ -45,9 +64,12 @@ async function runOllama(resource: ReturnType<typeof listComputeResources>[numbe
   const started = Date.now();
   const model = task.preferredModel || resource.models[0];
   if (!model) throw new Error('OLLAMA_MODELS must contain at least one model for self-hosted inference.');
-  const response = await fetch(`${resource.endpoint!.replace(/\\/$/, '')}/api/generate`, {
+
+  const baseUrl = resource.endpoint!.replace(/\\/$/, '');
+  const token = process.env.OLLAMA_AUTH_TOKEN?.trim();
+  const response = await fetchWithTimeout(`${baseUrl}/api/generate`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: authHeaders(token),
     body: JSON.stringify({ model, prompt: task.objective, stream: false })
   });
   const body = await response.text();
@@ -60,7 +82,7 @@ export async function executeComputeTask(task: ComputeTask): Promise<ComputeTask
   const resource = chooseResource(task);
   if (!resource) {
     queuedTasks += 1;
-    return { taskId: task.id, resourceId: 'none', status: 'queued', error: 'No independent compute resource is currently configured.' };
+    return { taskId: task.id, resourceId: 'none', status: 'queued', error: 'No authenticated independent compute resource is currently configured.' };
   }
 
   activeTasks += 1;

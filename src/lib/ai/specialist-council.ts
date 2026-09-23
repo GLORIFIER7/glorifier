@@ -59,8 +59,12 @@ export const specialistRoles: SpecialistRole[] = [
   ['growth-scientist','AI Growth Scientist','growth','Analyze acquisition, activation, retention, experimentation, and sustainable growth mechanisms.'],
   ['marketplace-scientist','AI Marketplace Scientist','marketplace','Analyze marketplace liquidity, matching, trust, pricing, and participant incentives.'],
   ['frontier-exploration-scientist','Frontier Exploration Intelligence Scientist','frontier_exploration','Challenge assumptions, generate unconventional alternatives, combine distant domains, explore future scenarios, and identify possibilities missed by conventional specialist analysis.']
-].map(([id,title,domain,mission,requiresHumanReview]) => ({
-  id, title, domain: domain as SpecialistDomain, mission, ...(requiresHumanReview ? { requiresHumanReview: true } : {})
+] as const).map(([id, title, domain, mission, requiresHumanReview]) => ({
+  id,
+  title,
+  domain: domain as SpecialistDomain,
+  mission,
+  ...(requiresHumanReview === true ? { requiresHumanReview: true as const } : {})
 }));
 
 export interface CouncilRequest {
@@ -134,10 +138,14 @@ export async function runSpecialistCouncil(request: CouncilRequest) {
   }));
 
   const findings: SpecialistFinding[] = responses
-    .filter((r): r is PromiseFulfilledResult<{role: SpecialistRole; response: AIResponse}> => r.status === 'fulfilled')
-    .map(({ role, response }) => ({
-      role, provider: response.provider, model: response.model, output: response.text,
-      evaluation: response.evaluation, latencyMs: response.latencyMs
+    .filter((r): r is PromiseFulfilledResult<{ role: SpecialistRole; response: AIResponse }> => r.status === 'fulfilled')
+    .map((r) => ({
+      role: r.value.role,
+      provider: r.value.response.provider,
+      model: r.value.response.model,
+      output: r.value.response.text,
+      evaluation: r.value.response.evaluation,
+      latencyMs: r.value.response.latencyMs
     }));
 
   const executive = aiOrchestrator.executive();

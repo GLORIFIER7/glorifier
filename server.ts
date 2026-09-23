@@ -1069,7 +1069,7 @@ app.get('/api/ai/specialists', (_req: Request, res: Response) => {
 
 app.post('/api/ai/specialist-council', async (req: Request, res: Response) => {
   try {
-    const { objective, roles, providerIds, temperature } = req.body || {};
+    const { objective, roles, providerIds, temperature, standingMission } = req.body || {};
     if (typeof objective !== 'string' || !objective.trim()) {
       return res.status(400).json({ error: 'objective is required' });
     }
@@ -1077,7 +1077,8 @@ app.post('/api/ai/specialist-council', async (req: Request, res: Response) => {
       objective: objective.trim(),
       roles: Array.isArray(roles) ? roles : undefined,
       providerIds: Array.isArray(providerIds) ? providerIds : undefined,
-      temperature: typeof temperature === 'number' ? temperature : undefined
+      temperature: typeof temperature === 'number' ? temperature : undefined,
+      standingMission: standingMission === true
     });
     res.json(result);
   } catch (err: any) {

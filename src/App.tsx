@@ -18,6 +18,7 @@ import { InternetAccountsFederation } from './components/InternetAccountsFederat
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { ComplianceScientistBot } from './components/ComplianceScientistBot';
 import { IndependentComputeLayer } from './components/IndependentComputeLayer';
+import { IntegrationControl } from './components/IntegrationControl';
 import { 
   initialStats, 
   initialFootprints, 
@@ -545,6 +546,10 @@ export default function App() {
             onNavigateToTab={setActiveTab}
             transactions={transactions}
           />
+        )}
+
+        {activeTab === 'integrations' && (
+          <IntegrationControl />
         )}
 
         {activeTab === 'compute' && (

@@ -1,0 +1,63 @@
+name: GLORIFIER Codex Review of Gemini
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  codex-review:
+    if: startsWith(github.event.pull_request.head.ref, 'ai/gemini/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - name: Checkout Gemini branch
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run Codex review/fix
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ env.OPENAI_API_KEY }}
+          permission-profile: ":workspace"
+          safety-strategy: "drop-sudo"
+          effort: high
+          prompt: |
+            Review the Gemini-generated pull request for GLORIFIER.
+            Read AGENTS.md and GEMINI.md first.
+            Inspect the PR branch and identify concrete reliability, security,
+            type-safety, testing, build, or maintainability problems.
+            If there is a small, safe, verifiable fix, apply it directly to this
+            PR branch. Do not expose or modify secrets, credentials, or deployment
+            configuration. Do not make cosmetic or speculative changes.
+            Run npm run lint and npm run build when applicable.
+            If the Gemini change is already sound, make no code changes.
+
+      - name: Push Codex fixes
+        if: ${{ env.OPENAI_API_KEY != '' && success() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
+            exit 0
+          fi
+          git config user.name "GLORIFIER Codex Reviewer"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ai(codex): review Gemini change"
+          git push "https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git" "HEAD:${{ github.event.pull_request.head.ref }}"
+
+      - name: Report missing Codex credential
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        run: |
+          echo "::warning::OPENAI_API_KEY is not configured. Gemini PRs will still receive normal CI validation."

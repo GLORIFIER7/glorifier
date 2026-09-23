@@ -7,6 +7,7 @@ import OpenAI from 'openai';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
+import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask } from './src/lib/agent-runtime';
 
 dotenv.config();
 
@@ -1476,6 +1477,73 @@ app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
     },
     persistence: !!process.env.DATABASE_URL
   });
+});
+
+// ============================================================================
+// AI-TO-AI RUNTIME
+// The backend is the product runtime; the frontend is an optional observer.
+// ============================================================================
+app.get('/api/agents', (_req: Request, res: Response) => {
+  res.json(agentManifest());
+});
+
+app.get('/.well-known/glorifier-agent.json', (_req: Request, res: Response) => {
+  res.json(agentManifest());
+});
+
+app.get('/api/agents/tasks', (_req: Request, res: Response) => {
+  res.json({ ok: true, tasks: listAgentTasks() });
+});
+
+app.get('/api/agents/tasks/:id', (req: Request, res: Response) => {
+  const task = getAgentTask(req.params.id);
+  if (!task) return res.status(404).json({ ok: false, error: 'Task not found' });
+  res.json({ ok: true, task });
+});
+
+app.post('/api/agents/tasks', async (req: Request, res: Response) => {
+  const { capability, objective, input, requester = 'human-owner' } = req.body || {};
+  if (!capability || !objective) return res.status(400).json({ ok: false, error: 'capability and objective are required' });
+
+  const task = createAgentTask({ capability, objective, input, requester });
+  updateAgentTask(task.id, { status: 'running' });
+
+  // Route through the existing model runtime without exposing provider credentials.
+  try {
+    const prompt = [
+      'You are an AI agent participating in the GLORIFIER AI-to-AI runtime.',
+      `Requested capability: ${capability}`,
+      `Objective: ${objective}`,
+      input ? `Input: ${JSON.stringify(input)}` : '',
+      'Return a concise, evidence-aware result suitable for another agent to consume.',
+      'Do not claim actions were executed unless they actually were.'
+    ].filter(Boolean).join('\n');
+
+    let result: any = null;
+    if (capability.includes('research') || capability.includes('recovery') || capability.includes('gemini')) {
+      result = await runIntelligenceModel('gemini', prompt);
+    } else {
+      result = await runIntelligenceModel('openai', prompt);
+    }
+
+    if (!result) {
+      updateAgentTask(task.id, { status: 'failed', error: 'No configured AI provider available' });
+      return res.status(503).json({ ok: false, task: getAgentTask(task.id) });
+    }
+
+    updateAgentTask(task.id, {
+      status: 'completed',
+      result: { providerModel: result.model, artifact: result.text }
+    });
+    return res.json({ ok: true, task: getAgentTask(task.id) });
+  } catch (error) {
+    updateAgentTask(task.id, { status: 'failed', error: error instanceof Error ? error.message : String(error) });
+    return res.status(500).json({ ok: false, task: getAgentTask(task.id) });
+  }
+});
+
+app.get('/api/agents/capabilities', (_req: Request, res: Response) => {
+  res.json({ ok: true, agents: listAgentCards(), protocol: 'GLORIFIER-A2A-v1' });
 });
 
 // Vite middleware for dev or static serving for prod

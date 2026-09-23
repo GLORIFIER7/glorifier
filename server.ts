@@ -12,7 +12,34 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));\n
+// Public integration/control registry. Secrets are never returned to clients.
+const integrationStatus = [
+  { id: 'github', name: 'GitHub', category: 'code', status: 'connected', detail: 'Repository control and CI source', publicUrl: 'https://github.com/GLORIFIER7/glorifier-artificial-intelligence' },
+  { id: 'npm', name: 'npm', category: 'package', status: 'connected', detail: 'Dependency and package monitoring', publicUrl: 'https://www.npmjs.com/~glorifier' },
+  { id: 'gravatar', name: 'Gravatar', category: 'identity', status: process.env.GLORIFIER_GRAVATAR_EMAIL ? 'configured' : 'ready', detail: process.env.GLORIFIER_GRAVATAR_EMAIL ? 'Server-side avatar configured' : 'Awaiting server-side profile email', publicUrl: 'https://gravatar.com/' },
+  { id: 'railway', name: 'Railway', category: 'compute', status: process.env.RAILWAY_API_TOKEN ? 'configured' : 'connected-via-deployment', detail: 'Production backend/orchestrator', publicUrl: 'https://railway.app/' },
+  { id: 'vercel', name: 'Vercel', category: 'frontend', status: process.env.VERCEL_TOKEN ? 'configured' : 'ready', detail: 'Frontend deployment target', publicUrl: 'https://vercel.com/' },
+  { id: 'netlify', name: 'Netlify', category: 'frontend', status: 'available', detail: 'Existing public frontend deployment surface', publicUrl: 'https://www.netlify.com/' },
+  { id: 'neon', name: 'Neon', category: 'data', status: process.env.DATABASE_URL ? 'configured' : 'needs-config', detail: process.env.DATABASE_URL ? 'PostgreSQL ledger configured' : 'DATABASE_URL required for authoritative ledger', publicUrl: 'https://neon.tech/' },
+  { id: 'binance', name: 'Binance', category: 'digital-assets', status: 'public-monitoring', detail: 'Public NFT/market surface; private keys excluded', publicUrl: 'https://www.binance.com/' },
+  { id: 'web', name: 'Public Web', category: 'monitoring', status: 'planned', detail: 'Public mentions, domains and search monitoring', publicUrl: 'https://www.google.com/' },
+  { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' }
+];
+
+app.get('/api/integrations', (_req: Request, res: Response) => {
+  res.json({
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    policy: {
+      secretsExposed: false,
+      privateCredentialsReturned: false,
+      coreInfrastructureIndependentOfGoogleCloud: true
+    },
+    integrations: integrationStatus
+  });
+});
+
 
 // Lazy/safe initialization of Gemini AI
 let genAIClient: GoogleGenAI | null = null;

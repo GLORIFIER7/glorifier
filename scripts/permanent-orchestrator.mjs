@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import { buildAICeoStatus } from '../src/lib/ai-ceo.ts';
 
 const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health';
 const SPECIALIST_COUNCIL_URL = process.env.GLORIFIER_SPECIALIST_COUNCIL_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/specialist-council');
@@ -13,7 +12,10 @@ let running = false;
 let healthFailures = 0;
 let stopping = false;
 
-const AI_CEO = buildAICeoStatus();
+const AI_CEO = {
+  role: 'GLORIFIER AI CEO',
+  authority: { humanOwnerFinalAuthority: true, autonomousMerge: false, autonomousProductionDeploy: false, autonomousSecretAccess: false, financialAuthority: false, legalAuthority: false }
+};
 
 function log(event, details = {}) {
   console.log(JSON.stringify({ timestamp: new Date().toISOString(), event, aiCeo: AI_CEO.role, ...details }));

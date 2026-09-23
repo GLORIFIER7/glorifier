@@ -11,7 +11,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: glorifier-ai-fleet-${{{{ github.ref }}
+  group: glorifier-ai-fleet-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -30,6 +30,8 @@ jobs:
 
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -42,38 +44,38 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Run Codex
-        if: ${{{{ secrets.OPENAI_API_KEY != '' }}
+        if: ${{ env.OPENAI_API_KEY != '' }}
         uses: openai/codex-action@v1
         with:
-          openai-api-key: ${{{{ secrets.OPENAI_API_KEY }}
+          openai-api-key: ${{ env.OPENAI_API_KEY }}
           permission-profile: ":workspace"
           effort: high
           prompt: |
-            ${{{{ matrix.prompt }}
+            ${{ matrix.prompt }}
 
             Follow AGENTS.md. Keep the change small and reviewable. Never expose or modify secrets. Run npm run lint and npm run build when applicable. If there is no safe worthwhile change, make no code change.
 
       - name: Create PR branch
-        if: ${{{{ secrets.OPENAI_API_KEY != '' && success() }}
+        if: ${{ env.OPENAI_API_KEY != '' && success() }}
         id: branch
         run: |
           if git diff --quiet && [ -z "$(git status --porcelain)" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
-          BRANCH="ai/${{{{ matrix.role }}/${{{{ github.run_id }}"
+          BRANCH="ai/${{ matrix.role }}/${{ github.run_id }}"
           git checkout -b "$BRANCH"
           git add -A
-          git commit -m "ai(${{{{ matrix.role }}): autonomous maintenance"
+          git commit -m "ai(${{ matrix.role }}): autonomous maintenance"
           git push --set-upstream origin "$BRANCH"
           echo "changed=true" >> "$GITHUB_OUTPUT"
           echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
 
       - name: Open pull request
-        if: ${{{{ steps.branch.outputs.changed == 'true' }}
+        if: ${{ steps.branch.outputs.changed == 'true' }}
         env:
-          GH_TOKEN: ${{{{ github.token }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          gh pr create --base main --head "${{{{ steps.branch.outputs.branch }}" --title "AI Fleet: ${{{{ matrix.role }} maintenance" --body "Autonomous GLORIFIER maintenance task. Review CI and the diff before merge."
+          gh pr create --base main --head "${{ steps.branch.outputs.branch }}" --title "AI Fleet: ${{ matrix.role }} maintenance" --body "Autonomous GLORIFIER maintenance task. Review CI and the diff before merge."
 
       - name: Missing API key notice
-        if: ${{{{ secrets.OPENAI_API_KEY == '' }}
+        if: ${{ env.OPENAI_API_KEY == '' }}
         run: |
           echo "::warning::OPENAI_API_KEY is not configured. The AI coding fleet is installed but dormant until the GitHub Actions secret is added."

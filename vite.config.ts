@@ -7,7 +7,7 @@ export default defineConfig(() => {
   return {
     // GitHub Pages project-site URL:
     // https://glorifier7.github.io/glorifier-artificial-intelligence/
-    base: '/glorifier-artificial-intelligence/',
+    base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/glorifier-artificial-intelligence/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

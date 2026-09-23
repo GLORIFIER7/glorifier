@@ -2,7 +2,7 @@ name: GLORIFIER Infrastructure Health Agent
 
 on:
   schedule:
-    - cron: "3,18,33,48 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      GLORIFIER_HEALTH_URL: ${{ secrets.GLORIFIER_HEALTH_URL }}
+      GLORIFIER_HEALTH_URL: ${{ secrets.GLORIFIER_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health' }}
 
     steps:
       - name: Check configured production health endpoint
@@ -32,11 +32,6 @@ jobs:
           cat "$body"
           test "$status" = "200"
           grep -q '"status":"ok"' "$body"
-
-      - name: Report missing health endpoint
-        if: ${{ env.GLORIFIER_HEALTH_URL == '' }}
-        run: |
-          echo "::warning::GLORIFIER_HEALTH_URL is not configured. Add the public /api/health URL as a repository secret to activate infrastructure probing."
 
       - name: Open recovery issue on failure
         if: ${{ env.GLORIFIER_HEALTH_URL != '' && failure() }}

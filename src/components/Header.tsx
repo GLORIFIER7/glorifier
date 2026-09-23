@@ -28,6 +28,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'competitive_intelligence', label: 'Competitive Intelligence', icon: Target, badge: 'CIE' },
     { id: 'brand_monitoring', label: 'Brand/Web Monitoring', icon: Globe2, badge: '24/7' },
     { id: 'game_assets', label: 'Games & Assets', icon: Gamepad2, badge: 'Public Sources' },
+    { id: 'crypto_fiat_assets', label: 'Crypto & Fiat Assets', icon: WalletCards, badge: 'Watch-only' },
     { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: 'Google Workspace' },
     { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: 'Google Workspace' },
     { id: 'compensation', label: 'Compensation Engine', icon: Coins },

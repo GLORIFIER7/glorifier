@@ -8,7 +8,10 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  issues: write
+
+concurrency:
+  group: glorifier-gemini-collaborator
+  cancel-in-progress: false
 
 jobs:
   gemini-collaborator:
@@ -39,6 +42,32 @@ jobs:
             Run npm run lint and npm run build when applicable.
             Do not make speculative or cosmetic changes.
             If no safe improvement is justified, make no code changes.
+            Do not deploy directly. Leave the workspace ready for a reviewable PR.
+
+      - name: Create Gemini PR
+        if: ${{ env.GEMINI_API_KEY != '' && success() }}
+        id: branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet && [ -z "$(git status --porcelain)" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BRANCH="ai/gemini/${{ github.run_id }}"
+          git checkout -b "$BRANCH"
+          git add -A
+          git commit -m "ai(gemini): autonomous maintenance"
+          git push --set-upstream "https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git" "$BRANCH"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Open Gemini pull request
+        if: ${{ steps.branch.outputs.changed == 'true' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr create             --base main             --head "${{ steps.branch.outputs.branch }}"             --title "Gemini: autonomous GLORIFIER maintenance"             --body "Gemini-generated maintenance change. CI must validate this PR before merge. Codex is configured to review AI-generated changes when its credential is available."
 
       - name: Report missing Gemini credential
         if: ${{ env.GEMINI_API_KEY == '' }}

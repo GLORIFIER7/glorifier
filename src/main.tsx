@@ -2,6 +2,19 @@ import React, { Component, ErrorInfo, ReactNode, StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+const nativeApiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\\/$/, '');
+if (nativeApiBase && typeof window !== 'undefined') {
+  const originalFetch = window.fetch.bind(window);
+  window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+    if (typeof input === 'string' && input.startsWith('/api/')) {
+      input = nativeApiBase + input;
+    } else if (input instanceof URL && input.pathname.startsWith('/api/')) {
+      input = new URL(nativeApiBase + input.pathname + input.search);
+    }
+    return originalFetch(input, init);
+  };
+}
+
 
 class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null };

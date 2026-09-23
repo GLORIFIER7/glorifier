@@ -74,7 +74,7 @@ async function askMeta() {
 
 const candidates=availableProviders();
 const executive=candidates[0] || {id:'none',model:'',score:0};
-if (executive.id==='none') { console.error('No AI provider configured; autonomous improvement skipped.'); process.exit(2); }
+if (executive.id==='none') { console.log('GLORIFIER_AI_DEGRADED_MODE reason=no_provider_configured action=skip_improvement'); process.exit(0); }
 
 console.log(`GLORIFIER_AI_CEO provider=${executive.id} model=${executive.model} capabilityScore=${executive.score}`);
 
@@ -90,7 +90,10 @@ for (const candidate of candidates) {
     console.error(`GLORIFIER_AI_PROVIDER_FAILED ${errors.at(-1)}`);
   }
 }
-if (!patch) throw new Error(`All improvement providers failed. ${errors.join(' | ')}`);
+if (!patch) {
+  console.log(`GLORIFIER_AI_DEGRADED_MODE reason=all_providers_unavailable action=queue_next_cycle errors=${errors.join(' | ')}`);
+  process.exit(0);
+}
 if (patch==='NO_CHANGE') { console.log('GLORIFIER_NO_CHANGE'); process.exit(0); }
 patch=patch.replace(/^\`\`\`(?:diff)?\s*/i,'').replace(/\s*\`\`\`$/i,'').trim();
 if (!patch.startsWith('diff --git ')) throw new Error('Agent did not return a valid unified diff.');

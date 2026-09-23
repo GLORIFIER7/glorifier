@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 
 const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health';
 const SPECIALIST_COUNCIL_URL = process.env.GLORIFIER_SPECIALIST_COUNCIL_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/specialist-council');
+const WORK_TOGETHER_GPT_URL = process.env.GLORIFIER_WORK_TOGETHER_GPT_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/work-together-gpt');
 const WATCHDOG_MS = Math.max(30_000, Number(process.env.ORCHESTRATOR_WATCHDOG_MS || 60_000));
 const IMPROVEMENT_MS = Math.max(5 * 60_000, Number(process.env.ORCHESTRATOR_IMPROVEMENT_MS || 30 * 60_000));
 const MAX_FAILURES = Math.max(1, Number(process.env.ORCHESTRATOR_MAX_HEALTH_FAILURES || 3));
@@ -86,6 +87,32 @@ async function standingSpecialistMission() {
   }
 }
 
+async function standingGptCoWorkingMission() {
+  try {
+    const response = await fetch(WORK_TOGETHER_GPT_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        taskPrompt: '24/7 Standing Continuous Pair-Engineering & Sovereign Yield Optimization: Audit system circuit breakers, differential privacy epsilon consumption, and commercial dataset licensing floors.',
+        domain: 'code_engineering',
+        standingMission: true
+      }),
+      signal: AbortSignal.timeout(10 * 60_000),
+    });
+    const body = await response.text();
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
+    log('STANDING_GPT_COWORKING_OK', {
+      mission: '24/7 continuous pairing with GPT-4o & Gemini',
+      response: body.slice(-2000),
+    });
+  } catch (error) {
+    log('STANDING_GPT_COWORKING_FAILED', {
+      error: error instanceof Error ? error.message : String(error),
+      action: 'continue_next_cycle',
+    });
+  }
+}
+
 async function autonomousCycle() {
   if (running || stopping) return;
   running = true;
@@ -103,6 +130,7 @@ async function autonomousCycle() {
       return;
     }
 
+    await standingGptCoWorkingMission();
     await standingSpecialistMission();
 
     const agent = run('node', ['scripts/continuous-improvement-agent.mjs']);
@@ -128,6 +156,8 @@ async function main() {
     watchdogMs: WATCHDOG_MS,
     improvementMs: IMPROVEMENT_MS,
     standingRevenueMission: true,
+    standing247GptCoWorking: true,
+    workTogetherGptUrl: WORK_TOGETHER_GPT_URL,
     revenueTargetUsd: 1_000_000,
     milestoneVerified: REVENUE_MILESTONE_VERIFIED,
   });

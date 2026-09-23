@@ -498,6 +498,59 @@ app.get('/api/crypto-fiat-assets', (_req, res) => {
   });
 });
 
+// Unified GLORIFIER Asset Report finance-scientist council.
+// The council is analysis-only: it does not trade, transfer funds, or access private wallet credentials.
+app.post('/api/ai/finance-scientists', async (req, res) => {
+  try {
+    const assets = Array.isArray(req.body?.assets) ? req.body.assets : [];
+    const revenue = await getRevenueSummary();
+    const context = {
+      assetCoverage: ['Crypto', 'Fiat', 'NFTs', 'Game Assets', 'Business Intelligence', 'Verified Revenue'],
+      cryptoFiatAssets: assets.slice(0, 200),
+      revenueSummary: revenue,
+      dataPolicy: 'Use public/on-chain references and explicitly authorized read-only data only. Never request or infer private keys, seed phrases, passwords, 2FA codes or private bank credentials.',
+    };
+    const roles = [
+      { id: 'portfolio-scientist', name: 'Portfolio Finance Scientist', specialty: 'cross-asset exposure and concentration' },
+      { id: 'market-scientist', name: 'Market & Macro Scientist', specialty: 'crypto, fiat, FX and market regime signals' },
+      { id: 'onchain-scientist', name: 'On-Chain Asset Scientist', specialty: 'wallet, token, NFT and transaction intelligence' },
+      { id: 'revenue-scientist', name: 'Revenue Finance Scientist', specialty: 'verified revenue, cash-flow and monetization integrity' },
+      { id: 'risk-scientist', name: 'Financial Risk Scientist', specialty: 'anomalies, data gaps, counterparty and governance risk' },
+    ];
+    const base = 'You are a finance research scientist inside GLORIFIER. Analyze only the supplied evidence. Distinguish observed facts, missing data and hypotheses. Do not give personalized investment advice, do not predict prices, and do not instruct trades or transfers. Return a concise analyst note with: evidence, key risk/data gap, and monitoring action. ';
+    const messages = roles.map((role) => ({
+      role: { role: 'user', content: base + 'Your specialty is ' + role.specialty + '. Analyze this unified asset context: ' + JSON.stringify(context) }
+    })).map((x) => x.role);
+    const responses = await aiOrchestrator.collaborate([
+      { role: 'system', content: base },
+      { role: 'user', content: JSON.stringify(context) },
+    ]);
+    const scientists = roles.map((role, index) => ({
+      ...role,
+      priority: index < 2 ? 'P1' : index < 4 ? 'P2' : 'P3',
+      output: responses[index]?.text || 'No connected AI provider returned an analysis for this specialist.'
+    }));
+    return res.json({
+      generatedAt: now(),
+      report: 'Unified GLORIFIER Asset Report',
+      mode: 'analysis-only',
+      sources: context.assetCoverage,
+      revenueSummary: revenue,
+      scientists,
+      priorities: [
+        'P1 — verify live asset valuations, FX inputs and authorized wallet/exchange feeds before making exposure conclusions.',
+        'P1 — reconcile verified revenue against the authoritative PostgreSQL ledger and separate realized revenue from forecasts.',
+        'P2 — expand public on-chain and NFT provenance coverage with source timestamps and chain identifiers.',
+        'P2 — connect Business Intelligence and Game Assets evidence into the same report lineage.',
+        'P3 — run anomaly detection on refreshed data and escalate only evidence-backed exceptions for human review.'
+      ],
+      security: 'Watch-only/public blockchain intelligence and authorized read-only connectors; no private credentials collected.'
+    });
+  } catch (error) {
+    return res.status(503).json({ error: error instanceof Error ? error.message : 'Finance scientist report unavailable' });
+  }
+});
+
 // GLORIFIER Competitive Intelligence Engine (CIE)
 app.get('/api/business-intelligence/competitive', async (_req, res) => {
   const generatedAt = now();

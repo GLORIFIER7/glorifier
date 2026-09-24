@@ -182,75 +182,69 @@ app.get('/api/integrations', (_req: Request, res: Response) => {
 });
 
 
-// Lazy/safe initialization of Gemini AI
+// Gemini Interactions API integration (Google's recommended interface for new agentic applications)
 let genAIClient: GoogleGenAI | null = null;
 function getGenAI(): GoogleGenAI | null {
   if (!genAIClient && process.env.GEMINI_API_KEY) {
-    genAIClient = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
-      },
-    });
+    genAIClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
   return genAIClient;
 }
 
-// Robust Gemini execution helper with automatic retry for transient 503 / 429 errors and fallback models
-async function callGeminiSafe({
-  contents,
-  systemInstruction,
-  temperature = 0.4,
-  responseMimeType,
-  preferredModel = 'gemini-3.8-flash'
-}: {
-  contents: string;
+interface GeminiInteractionParams {
+  input: string;
   systemInstruction?: string;
   temperature?: number;
   responseMimeType?: string;
-  preferredModel?: string;
-}): Promise<{ text: string; modelUsed: string } | null> {
+  model?: string;
+  previousInteractionId?: string;
+  store?: boolean;
+}
+
+async function callGeminiSafe({
+  input,
+  systemInstruction,
+  temperature = 0.4,
+  responseMimeType,
+  model = 'gemini-3.8-flash',
+  previousInteractionId,
+  store = false
+}: GeminiInteractionParams): Promise<{ text: string; modelUsed: string; interactionId?: string } | null> {
   const gemini = getGenAI();
   if (!gemini) return null;
 
-  // Prefer current stable Gemini models. Avoid retired/preview-only fallback IDs.
-  // Gemini 3.8 Flash is the primary model; Gemini 3.5 Flash-Lite is the lightweight fallback.
-  const candidateModels = [
-    preferredModel || 'gemini-3.8-flash',
-    'gemini-3.8-flash',
-    'gemini-3.5-flash-lite'
-  ].filter((m): m is string => Boolean(m) && typeof m === 'string')
-   .filter((m, idx, arr) => arr.indexOf(m) === idx);
+  const candidateModels = [model, 'gemini-3.8-flash', 'gemini-3.5-flash-lite']
+    .filter(Boolean)
+    .filter((m, idx, arr) => arr.indexOf(m) === idx);
 
-  for (const model of candidateModels) {
+  for (const candidateModel of candidateModels) {
     try {
-      const response = await gemini.models.generateContent({
-        model,
-        contents,
-        config: {
-          systemInstruction,
+      const interaction = await gemini.interactions.create({
+        model: candidateModel,
+        input: systemInstruction ? [
+          { type: 'system_instruction', content: systemInstruction },
+          { type: 'user_input', content: input }
+        ] : input,
+        previous_interaction_id: previousInteractionId,
+        store,
+        generation_config: {
           temperature,
-          responseMimeType: responseMimeType as any
+          ...(responseMimeType ? { response_mime_type: responseMimeType } : {})
         }
-      });
-      const text = response.text || '';
+      } as any);
+
+      const text = interaction.output_text || '';
       if (text) {
-        void recordGlobalCollaboration('gemini', 'model_inference', 'gemini-runtime').catch(() => undefined);
-        return { text, modelUsed: model };
+        void recordGlobalCollaboration('gemini', 'interaction_inference', 'gemini-runtime').catch(() => undefined);
+        return { text, modelUsed: candidateModel, interactionId: interaction.id };
       }
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       const status = err?.status || err?.code || (errMsg.includes('503') ? 503 : (errMsg.includes('429') ? 429 : 0));
       const isQuota = status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED');
-      const isUnavailable = status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('overloaded');
-
-      console.warn(`[Gemini] call [model=${model}] ${isUnavailable ? '503 unavailable' : (isQuota ? '429 quota' : 'error')}:`, errMsg);
-
-      // Only fail over on transient capacity/quota errors; configuration/auth errors should not be masked.
+      const isUnavailable = status === 503 || errMsg.includes('UNAVAILABLE') || errMsg.includes('overloaded') || errMsg.includes('high demand');
+      console.warn(`[Gemini Interactions] [model=${candidateModel}] ${isUnavailable ? '503 unavailable' : isQuota ? '429 quota' : 'error'}:`, errMsg);
       if (!isUnavailable && !isQuota) break;
-      continue;
     }
   }
 

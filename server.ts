@@ -12,10 +12,11 @@ import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, r
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
 import { getLatestGeminiInteraction, initializeGeminiInteractionStore, recordGeminiInteraction } from './src/lib/gemini-interactions';
+import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 
 dotenv.config();
 
-void initializeConnectionRegistry().then(() => ensureGlobalProviderConnections()).catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
+void initializeConnectionRegistry().then(() => ensureGlobalProviderConnections()).then(() => initializeAgentRegistry()).catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -182,6 +183,57 @@ app.get('/api/integrations', (_req: Request, res: Response) => {
   });
 });
 
+
+// Global Agent Registry: protocol-aware discovery, registration and synchronization.
+app.get('/api/agents/registry', async (_req: Request, res: Response) => {
+  try {
+    const agents = await listRegisteredAgents();
+    res.json({
+      ok: true,
+      protocol: 'GLORIFIER-A2A-v1',
+      agents,
+      policy: { noCredentialReplication: true, minimumScope: true, humanApprovalForConsequentialActions: true, neonAudit: true }
+    });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Agent registry unavailable', details: error?.message });
+  }
+});
+
+app.post('/api/agents/registry', async (req: Request, res: Response) => {
+  try {
+    const name = String(req.body?.name || '').trim();
+    const provider = String(req.body?.provider || '').trim();
+    const endpoint = String(req.body?.endpoint || '').trim();
+    if (!name || !provider || !endpoint) return res.status(400).json({ ok: false, error: 'name, provider and endpoint are required' });
+    const agent = await registerExternalAgent({
+      name, provider, endpoint,
+      role: typeof req.body?.role === 'string' ? req.body.role : undefined,
+      protocol: ['GLORIFIER-A2A-v1','MCP','A2A','HTTP'].includes(req.body?.protocol) ? req.body.protocol : 'HTTP',
+      capabilities: Array.isArray(req.body?.capabilities) ? req.body.capabilities.map(String).slice(0,50) : [],
+      authType: typeof req.body?.authType === 'string' ? req.body.authType : 'oauth2',
+      risk: ['low','medium','high','critical'].includes(req.body?.risk) ? req.body.risk : 'medium',
+      scopes: Array.isArray(req.body?.scopes) ? req.body.scopes.map(String).slice(0,50) : [],
+      metadata: req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    res.status(201).json({ ok: true, agent });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to register agent', details: error?.message });
+  }
+});
+
+app.post('/api/agents/synchronize', async (req: Request, res: Response) => {
+  try {
+    const actor = String(req.body?.actor || 'human-owner');
+    const results = await synchronizeRegisteredAgents(actor);
+    res.json({
+      ok: true, synchronization: 'completed', synchronizedAt: new Date().toISOString(),
+      agentCount: results.length, agents: results,
+      policy: { noCredentialReplication: true, minimumScope: true, humanApprovalForConsequentialActions: true, neonAudit: true }
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, error: 'Agent synchronization failed', details: error?.message });
+  }
+});
 
 // Gemini Interactions API integration (Google's recommended interface for new agentic applications)
 let genAIClient: GoogleGenAI | null = null;

@@ -525,7 +525,7 @@ export const initialInternetAccounts: import('../types').InternetAccount[] = [
     id: 'acc-gcash',
     provider: 'GCash Philippines Mobile Money',
     category: 'financial',
-    accountIdentifier: '09171234567 (JOHN PAUL ARLOS)',
+    accountIdentifier: '09289723845 (JOHN PAUL ARLOS)',
     connected: true,
     status: 'authenticated',
     authMethod: 'Mobile_OTP',

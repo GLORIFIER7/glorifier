@@ -7,7 +7,7 @@ import OpenAI from 'openai';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
-import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask } from './src/lib/agent-runtime';
+import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask, routeAgentCapability, orchestrationPolicy } from './src/lib/agent-runtime';
 import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
@@ -898,6 +898,36 @@ app.get('/api/iot/devices/:id/telemetry', async (req: Request, res: Response) =>
 app.post('/api/iot/devices/:id/alerts', async (req: Request, res: Response) => {
   try { res.status(201).json({ ok:true, alert:await createIotAlert({ deviceId:req.params.id, severity:req.body?.severity||'warning', rule:String(req.body?.rule||'manual'), message:String(req.body?.message||''), metadata:req.body?.metadata||{} }) }); }
   catch (error: any) { res.status(400).json({ error:'Unable to create IoT alert', details:error?.message }); }
+});
+
+// Unified AI orchestration control plane: capability routing, resilient generation and multi-provider consensus.
+app.get('/api/orchestration/policy', (_req: Request, res: Response) => {
+  res.json({ ok:true, policy:orchestrationPolicy(), executive:aiOrchestrator.executive(), providers:aiOrchestrator.registry(), metrics:aiOrchestrator.metrics() });
+});
+app.get('/api/orchestration/route/:capability', (req: Request, res: Response) => {
+  res.json({ ok:true, route:routeAgentCapability(req.params.capability) });
+});
+app.post('/api/orchestration/generate', async (req: Request, res: Response) => {
+  try {
+    const result=await aiOrchestrator.resilientGenerate({
+      provider:req.body?.provider || 'auto',
+      messages:Array.isArray(req.body?.messages)?req.body.messages:[],
+      temperature:req.body?.temperature,
+      evaluate:req.body?.evaluate !== false
+    });
+    res.json({ ok:true, result, orchestration:{mode:'resilient-provider-fallback',humanAuthority:true} });
+  } catch(error:any) { res.status(503).json({ error:'All orchestration providers failed', details:error?.message }); }
+});
+app.post('/api/orchestration/consensus', async (req: Request, res: Response) => {
+  try {
+    const result=await aiOrchestrator.consensus({
+      provider:'auto',
+      messages:Array.isArray(req.body?.messages)?req.body.messages:[],
+      temperature:req.body?.temperature,
+      evaluate:true
+    }, Number(req.body?.maxProviders)||3);
+    res.json({ ok:true, result, note:result.consensusRequiresHumanReview?'Provider disagreement detected; reconciliation is required before consequential action.':'No provider disagreement detected.' });
+  } catch(error:any) { res.status(503).json({ error:'Consensus orchestration failed', details:error?.message }); }
 });
 
 // 1. Health check & AI Config

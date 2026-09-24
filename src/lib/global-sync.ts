@@ -148,7 +148,7 @@ export async function performGlobalGlorifierSync(deps?: {
       status: 'synchronized',
       lastHeartbeat: timestamp,
       capabilities: ['commercial-valuation', 'contract-negotiation', 'counter-offers', 'code-review'],
-      consensusContribution: 'Affirming $40/mo pretraining compensation floor and cross-vendor licensing parity.'
+      consensusContribution: 'Provides reasoning and strategy analysis when authorized; no standing commercial directive is asserted.'
     },
     {
       id: 'gemini-3.8-flash',
@@ -158,7 +158,7 @@ export async function performGlobalGlorifierSync(deps?: {
       status: 'synchronized',
       lastHeartbeat: timestamp,
       capabilities: ['cryptographic-bounds', 'laplace-perturbation', 'zero-downtime-failover', 'multimodal-audit'],
-      consensusContribution: 'Differential privacy bounds mathematically constrained under ε = 0.30 Laplacian perturbation.'
+      consensusContribution: 'Provides multimodal research and engineering analysis when authorized; numerical privacy claims require explicit evidence.'
     },
     {
       id: 'codex-fleet',
@@ -168,7 +168,7 @@ export async function performGlobalGlorifierSync(deps?: {
       status: 'synchronized',
       lastHeartbeat: timestamp,
       capabilities: ['continuous-improvement', 'self-healing', 'type-checking', 'ci-cd-safeguards'],
-      consensusContribution: 'All pipelines passing clean; zero syntax regressions, strict zero-secret exposure verified.'
+      consensusContribution: 'Performs repository QA and refactoring workflows; deployment health must be verified from live CI/deployment evidence.'
     },
     {
       id: 'patent-attorney-scientist',
@@ -178,7 +178,7 @@ export async function performGlobalGlorifierSync(deps?: {
       status: 'synchronized',
       lastHeartbeat: timestamp,
       capabilities: ['35-usc-101-defense', '35-usc-112-enablement', 'claim-prosecution', 'prior-art-differentiation'],
-      consensusContribution: 'Invention satisfies 35 U.S.C. §§ 101/112 under Enfish and Berkheimer technological improvement doctrines.'
+      consensusContribution: 'Provides patent and scientific research support; legal conclusions require qualified human review.'
     },
     {
       id: 'compliance-scientist',
@@ -188,7 +188,7 @@ export async function performGlobalGlorifierSync(deps?: {
       status: 'synchronized',
       lastHeartbeat: timestamp,
       capabilities: ['gdpr-art-17-erasure', 'ccpa-sb-362-clawbacks', 'eu-ai-act-class-1', 'hipaa-expert-determination'],
-      consensusContribution: 'Statutory 30-day deletion clawbacks bound to cryptographic SHA-256 evidence tokens.'
+      consensusContribution: 'Provides compliance and privacy research support; jurisdiction-specific conclusions require source-backed review.'
     }
   ];
 
@@ -206,7 +206,7 @@ export async function performGlobalGlorifierSync(deps?: {
   const sourceCount = intel?.sourceCount || 0;
 
   // 4. Generate multi-model synthesis verdict if model runner is provided
-  let executiveSynthesis = `Global synthesis synchronized across ${agents.length} active AI agents and ${canonicalInternetNodes.length} internet infrastructure nodes. Telemetry streams, sovereign data compensation floors ($40/mo), and differential privacy boundaries (ε=0.30) are synchronized and active across all public endpoints.`;
+  let executiveSynthesis = `GLORIFIER has a registry of ${agents.length} configured agent roles and ${canonicalInternetNodes.length} configured infrastructure references. Provider authorization, live reachability, and evidence-backed health remain separate states and are not inferred from registry presence.`;
 
   if (deps?.runSynthesisModel) {
     const prompt = `Synthesize current global status of GLORIFIER across the internet:
@@ -241,7 +241,7 @@ Return a concise 2-sentence executive summary emphasizing cross-agent consensus 
   const manifest: GlobalSyncManifest = {
     id: `sync-manifest-${Date.now()}`,
     synchronizedAt: timestamp,
-    consensusScore: 100,
+    consensusScore: 0,
     executiveSynthesis,
     operatingPrinciple: 'Agents operate. Agents collaborate. Evidence proves. AI synthesizes. Humans govern.',
     governanceAttestation: {

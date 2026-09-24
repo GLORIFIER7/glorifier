@@ -576,10 +576,11 @@ Provide your specialized perspective.`;
           keyRecommendation: 'Dispatch automated statutory clawback demands with cryptographic SHA-256 timestamp hashes to all unauthorized broker endpoints.'
         }
       ],
-      unifiedConsensus: `All four frontier artificial intelligence models, the Patent Attorney Scientist, and the Compliance AI Scientist unanimously endorse a unified sovereign stance: (1) Maintain strict differential privacy with ε = 0.30, (2) License de-identified developer & e-commerce telemetry for vetted frontier AI pretraining at an upgraded $40/mo floor, (3) Sever all tracking connections and execute statutory clawback expungements under GDPR Art. 17 / CCPA § 1798.105 against commercial ad-broker syndicates, (4) File USPTO Claims 1–20 to defend sovereign technological architecture, and (5) Maintain EU AI Act Class 1 compliance certification.`,
-      consensusScore: 100,
-      recommendedEpsilon: 0.30,
-      recommendedFloorUsd: 40,
+      unifiedConsensus: 'No automatic unified consensus is asserted. The council returns model-specific analyses; decisions, legal conclusions, pricing, and consequential actions require evidence review and human authorization.',
+      consensusScore: null,
+      consensusAttestation: 'not-computed',
+      recommendedEpsilon: null,
+      recommendedFloorUsd: null,
       actionDirectives: [
         'Calibrate Differential Privacy Epsilon to ε = 0.30',
         'Upgrade Minimum Compensation Floor to $40.00 / month',
@@ -1228,7 +1229,8 @@ ${geminiText}`;
       geminiPeerReview: geminiText,
       jointArtifact,
       coAuthors: ['OpenAI GPT-4o', 'Google Gemini 3.8 Flash'],
-      consensusScore: 100,
+      consensusScore: null,
+      consensusAttestation: 'not-computed',
       timestamp: new Date().toISOString()
     });
   } catch (err: any) {

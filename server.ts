@@ -16,6 +16,7 @@ import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, s
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
+import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent } from './src/lib/bounty-registry';
 
 dotenv.config();
 
@@ -26,6 +27,7 @@ void initializeConnectionRegistry()
   .then(() => initializeLinuxRuntimeRegistry())
   .then(() => initializeAssetRegistry())
   .then(() => ensureCoreAssetIntegrations())
+  .then(() => initializeBountyRegistry())
   .catch((error) => console.warn('[GLORIFIER] persistence initialization deferred:', error?.message));
 
 const app = express();
@@ -163,6 +165,42 @@ app.post('/api/linux/runtimes/:id/events', async (req: Request, res: Response) =
     );
     res.status(201).json({ ok: true, event });
   } catch (error: any) { res.status(400).json({ error: 'Unable to record Linux runtime event', details: error?.message }); }
+});
+
+// Governed AI security-research and bounty-hunting registry.
+// Programs are discovery/catalog records. Testing is permitted only inside explicitly authorized scope.
+// Findings remain human-review gated before submission and no automatic exploitation or fund movement is performed.
+app.get('/api/bounties/programs', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, programs: await listBountyPrograms() }); }
+  catch (error: any) { res.status(503).json({ error: 'Bounty registry unavailable', details: error?.message }); }
+});
+
+app.post('/api/bounties/programs', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok: true, program: await registerBountyProgram(req.body) }); }
+  catch (error: any) { res.status(400).json({ error: 'Unable to register bounty program', details: error?.message }); }
+});
+
+app.get('/api/bounties/findings', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, findings: await listBountyFindings(req.query.status as any) }); }
+  catch (error: any) { res.status(503).json({ error: 'Finding registry unavailable', details: error?.message }); }
+});
+
+app.post('/api/bounties/findings', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok: true, finding: await createBountyFinding(req.body) }); }
+  catch (error: any) { res.status(400).json({ error: 'Unable to create finding', details: error?.message }); }
+});
+
+app.post('/api/bounties/findings/:id/status', async (req: Request, res: Response) => {
+  try {
+    const actor = String(req.body?.actor || 'human-owner');
+    res.json({ ok: true, finding: await updateBountyFindingStatus(req.params.id, req.body.status, actor) });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to update finding status', details: error?.message }); }
+});
+
+app.post('/api/bounties/events', async (req: Request, res: Response) => {
+  try {
+    res.status(201).json({ ok: true, event: await recordBountyEvent(req.body.programId, req.body.findingId || null, req.body.eventType, req.body.actor || 'human-owner', req.body.details || {}) });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to record bounty event', details: error?.message }); }
 });
 
 // Prioritized asset/account registry: crypto, fiat, and gaming assets.

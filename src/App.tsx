@@ -84,6 +84,9 @@ export default function App() {
   // Initialize Firebase Auth listener and test Firestore connection
   useEffect(() => {
     testFirestoreConnection();
+    completeGoogleRedirectSignIn().catch((error) => {
+      console.error('Google sign-in redirect error:', error);
+    });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);

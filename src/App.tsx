@@ -741,6 +741,7 @@ export default function App() {
           onClose={() => setIsWithdrawOpen(false)}
           onWithdrawSuccess={handleWithdrawSuccess}
           onUpdatePolicy={handleUpdatePolicy}
+          userReference={currentUser?.uid || 'anonymous'}
         />
       )}
 

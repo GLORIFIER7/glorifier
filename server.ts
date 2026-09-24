@@ -16,7 +16,7 @@ import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, s
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount, recordAssetHolding, listAssetHoldings, recordAssetEvidence } from './src/lib/asset-registry';
-import { syncAlpacaAssets, getAlpacaStockQuote } from './src/lib/asset-provider-adapters';
+import { syncAlpacaAssets, getAlpacaStockQuote, getBinancePublicQuote, listAssetProviderAdapters } from './src/lib/asset-provider-adapters';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
 
@@ -405,6 +405,19 @@ app.post('/api/assets/accounts/:id/events', async (req: Request, res: Response) 
     res.status(201).json({ ok: true, event });
   } catch (error: any) {
     res.status(400).json({ error: 'Unable to record asset event', details: error?.message });
+  }
+});
+
+app.get('/api/assets/providers', async (_req: Request, res: Response) => {
+  res.json({ ok: true, providers: listAssetProviderAdapters() });
+});
+
+app.get('/api/assets/providers/binance-public/quote/:symbol', async (req: Request, res: Response) => {
+  try {
+    const result = await getBinancePublicQuote(String(req.params.symbol || ''));
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Binance quote lookup failed' });
   }
 });
 

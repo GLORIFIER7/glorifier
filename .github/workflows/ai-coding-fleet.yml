@@ -2,7 +2,7 @@ name: GLORIFIER 24x7 AI Coding Fleet
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/30 * * * *"
   workflow_dispatch:
 
 permissions:
@@ -18,7 +18,7 @@ jobs:
   coding-fleet:
     strategy:
       fail-fast: false
-      max-parallel: 3
+      max-parallel: 1
       matrix:
         include:
           - role: architect
@@ -40,6 +40,8 @@ jobs:
           persist-credentials: false
 
       - name: Run Codex
+        id: codex
+        continue-on-error: true
         if: ${{ env.OPENAI_API_KEY != '' }}
         uses: openai/codex-action@v1
         with:
@@ -53,7 +55,7 @@ jobs:
             Follow AGENTS.md. Keep the change small and reviewable. Never expose or modify secrets. Run npm run lint and npm run build when applicable. If there is no safe worthwhile change, make no code change.
 
       - name: Create PR branch
-        if: ${{ env.OPENAI_API_KEY != '' && success() }}
+        if: ${{ env.OPENAI_API_KEY != '' && steps.codex.outcome == 'success' }}
         id: branch
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,6 +78,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh pr create --base main --head "${{ steps.branch.outputs.branch }}" --title "AI Fleet: ${{ matrix.role }} maintenance" --body "Autonomous GLORIFIER maintenance task. Review CI and the diff before merge."
+
+      - name: Report Codex capacity limitation
+        if: ${{ steps.codex.outcome == 'failure' }}
+        run: echo "::warning::Codex execution failed; inspect provider quota/capacity and do not retry aggressively."
 
       - name: Missing API key notice
         if: ${{ env.OPENAI_API_KEY == '' }}

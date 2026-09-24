@@ -134,6 +134,27 @@ export class AIOrchestrator {
     return results.filter((result): result is PromiseFulfilledResult<AIResponse> => result.status === 'fulfilled').map((result) => result.value);
   }
 
+  async resilientGenerate(request: OrchestratorRequest): Promise<AIResponse> {
+    try {
+      return await this.generate(request);
+    } catch (primaryError) {
+      const fallback = getConnectedProviders().filter((provider) => request.provider === 'auto' || !request.provider || provider.id !== request.provider);
+      const results = await Promise.allSettled(selectProviders(fallback).slice(0, 3).map((provider) => this.callProvider(provider, request)));
+      const successful = results.filter((r): r is PromiseFulfilledResult<AIResponse> => r.status === 'fulfilled' && Boolean(r.value?.evaluation?.passed));
+      if (successful.length) return successful[0].value;
+      throw primaryError;
+    }
+  }
+
+  async consensus(request: OrchestratorRequest, maxProviders = 3) {
+    const providers = selectProviders(getConnectedProviders()).slice(0, Math.max(1, Math.min(5, maxProviders)));
+    const results = await Promise.allSettled(providers.map((provider) => this.callProvider(provider, request)));
+    const responses = results.filter((r): r is PromiseFulfilledResult<AIResponse> => r.status === 'fulfilled').map((r) => r.value);
+    const normalized = responses.map((r) => r.text.trim().replace(/\\s+/g, ' '));
+    const agreementRatio = normalized.length < 2 ? 1 : new Set(normalized).size === 1 ? 1 : 1 / new Set(normalized).size;
+    return { responses, agreementRatio, providerCount: providers.length, successfulCount: responses.length, consensusRequiresHumanReview: agreementRatio < 1 };
+  }
+
   registry() {
     return listProviders().map((entry) => ({ ...entry, capabilityScore: providerCapabilityScore(getProvider(entry.id)) }));
   }

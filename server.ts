@@ -1,3 +1,4 @@
+import { initializeOpenProfileIntegration, getOpenProfileIntegrationStatus, requestOpenProfileAuthorization } from './src/lib/openprofile-integration';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -1044,6 +1045,8 @@ app.post('/api/business-intelligence/watchlists',async(req:Request,res:Response)
   catch(error:any){res.status(400).json({ok:false,error:'Unable to register BI watchlist',details:error?.message});}
 });
 
+app.get('/api/integrations/openprofile',async(_req:Request,res:Response)=>{try{res.json({ok:true,...await getOpenProfileIntegrationStatus()});}catch(error:any){res.status(503).json({ok:false,error:'OpenProfile integration unavailable',details:error?.message});}});
+app.post('/api/integrations/openprofile/authorization/request',async(req:Request,res:Response)=>{try{res.status(201).json({ok:true,...await requestOpenProfileAuthorization(String(req.body?.actor||'human-owner'))});}catch(error:any){res.status(400).json({ok:false,error:'Unable to request OpenProfile authorization',details:error?.message});}});
 app.get('/api/architecture/scientist',async(_req:Request,res:Response)=>{try{res.json({ok:true,snapshot:await getEnterpriseArchitectureSnapshot()});}catch(error:any){res.status(503).json({ok:false,error:'Architecture Scientist unavailable',details:error?.message});}});
 app.get('/api/architecture/scientist/health',async(_req:Request,res:Response)=>{try{res.json({ok:true,health:await runArchitectureHealthCheck()});}catch(error:any){res.status(503).json({ok:false,error:'Architecture health unavailable',details:error?.message});}});
 app.get('/api/architecture/scientist/policy',(_req:Request,res:Response)=>res.json({ok:true,policy:getEnterpriseArchitectureScientistPolicy()}));

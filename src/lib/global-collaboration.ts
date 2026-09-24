@@ -20,6 +20,15 @@ export const globalProviders = [
     publicUrl: 'https://developers.facebook.com/'
   },
   {
+    id: 'alpaca',
+    name: 'Alpaca Brokerage',
+    category: 'market-data-broker',
+    capabilities: ['account-read', 'positions-read', 'market-data'],
+    auth: 'api_key' as const,
+    defaultRisk: 'high' as const,
+    publicUrl: 'https://alpaca.markets/'
+  },
+  {
     id: 'gemini',
     name: 'Google Gemini',
     category: 'ai-ecosystem',

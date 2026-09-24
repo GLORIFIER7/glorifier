@@ -27,7 +27,8 @@ const agents: AgentCard[] = [
   { id: 'gpt', name: 'GPT', role: 'reasoning', capabilities: ['reason', 'code-review', 'synthesis'], endpoint: '/api/agents/gpt', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'gemini', name: 'Gemini', role: 'engineering-collaborator', capabilities: ['research', 'code-analysis', 'recovery'], endpoint: '/api/agents/gemini', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'specialists', name: 'Specialist Council', role: 'domain-agents', capabilities: ['security', 'data', 'revenue-analysis', 'operations', 'research'], endpoint: '/api/agents/specialists', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
-  { id: 'uspto-ai-attorney-scientist', name: 'GLORIFIER USPTO AI Attorney/Scientist', role: 'ip-research', capabilities: ['ip-research', 'prior-art-analysis', 'invention-provenance', 'patent-preparation'], endpoint: '/api/agents/uspto-ai-attorney-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
+  { id: 'uspto-ai-attorney-scientist', name: 'GLORIFIER USPTO AI Attorney/Scientist', role: 'ip-research', capabilities: ['ip-research', 'prior-art-analysis', 'invention-provenance', 'patent-preparation'], endpoint: '/api/agents/uspto-ai-attorney-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'iso-ai-scientist', name: 'GLORIFIER ISO AI Scientist', role: 'ai-standards-research', capabilities: ['iso-alignment', 'ai-governance', 'ai-risk', 'lifecycle-assessment', 'continual-improvement'], endpoint: '/api/agents/iso-ai-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
 ];
 
 const tasks = new Map<string, AgentTask>();
@@ -40,7 +41,10 @@ const capabilityOwners: Record<string, string[]> = {
   product: ['product-scientist','ux-scientist','growth-scientist'],
   infrastructure: ['cloud-scientist','ai-infrastructure-scientist','operations-scientist'],
   assets: ['blockchain-scientist','game-technology-scientist','economics-scientist'],
-  'ip-research': ['uspto-ai-attorney-scientist']
+  'ip-research': ['uspto-ai-attorney-scientist'],
+  'iso-alignment': ['iso-ai-scientist'],
+  'ai-governance': ['iso-ai-scientist'],
+  'ai-risk': ['iso-ai-scientist']
 };
 
 export function listAgentCards() { return agents; }

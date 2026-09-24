@@ -108,6 +108,20 @@ export async function requestIsoAuthorization(actor = 'human-owner') {
   return approval;
 }
 
+export async function requestStandardizationIdentityFederationAuthorization(actor = 'human-owner') {
+  const connection = await getConnection('conn-sif') || await initializeIsoIntegration().then(() => getConnection('conn-sif'));
+  if (!connection) throw new Error('Standardization Identity Federation connection is not initialized');
+  const approval = await import('./connection-registry').then(({ requestConnectionApproval }) =>
+    requestConnectionApproval(connection.id, actor, 'standardization-identity-federation-login', ['openid'])
+  );
+  await recordConnectionEvent(connection.id, 'sif_authorization_requested', actor, {
+    approvalId: approval.id,
+    scope: ['openid'],
+    note: 'Federated login authorization does not imply ISO certification.'
+  });
+  return approval;
+}
+
 export function getStandardizationIdentityFederationStatus() {
   return {
     federation: STANDARDIZATION_IDENTITY_FEDERATION,

@@ -4,10 +4,16 @@ import path from 'path';
 import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
+  const githubPagesBuild = process.env.GITHUB_ACTIONS === 'true';
+
   return {
-    // GitHub Pages project-site URL:
-    // https://glorifier7.github.io/glorifier-artificial-intelligence/
-    base: process.env.CAPACITOR_BUILD === 'true' ? './' : '/glorifier-artificial-intelligence/',
+    // Railway serves GLORIFIER from the domain root.
+    // GitHub Pages project-site builds retain the repository subpath.
+    base: process.env.CAPACITOR_BUILD === 'true'
+      ? './'
+      : githubPagesBuild
+        ? '/glorifier-artificial-intelligence/'
+        : '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {

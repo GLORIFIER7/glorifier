@@ -10,10 +10,11 @@ import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/l
 import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask } from './src/lib/agent-runtime';
 import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
+import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
 
 dotenv.config();
 
-void initializeConnectionRegistry().catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
+void initializeConnectionRegistry().then(() => ensureGlobalProviderConnections()).catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -30,7 +31,9 @@ const integrationStatus = [
   { id: 'neon', name: 'Neon', category: 'data', status: process.env.DATABASE_URL ? 'configured' : 'needs-config', detail: process.env.DATABASE_URL ? 'PostgreSQL ledger configured' : 'DATABASE_URL required for authoritative ledger', publicUrl: 'https://neon.tech/' },
   { id: 'binance', name: 'Binance', category: 'digital-assets', status: 'public-monitoring', detail: 'Public NFT/market surface; private keys excluded', publicUrl: 'https://www.binance.com/' },
   { id: 'web', name: 'Public Web', category: 'monitoring', status: 'connected', detail: 'Public-source intelligence aggregation and evidence tracking', publicUrl: 'https://news.google.com/' },
-  { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' }
+  { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' },
+  { id: 'hugging-face', name: 'Hugging Face', category: 'ai-ecosystem', status: 'connected', detail: 'Authenticated model, dataset, paper, Space and compute collaboration surface', publicUrl: 'https://huggingface.co/' },
+  { id: 'meta', name: 'Meta / Facebook', category: 'social-ai-platform', status: 'ready', detail: 'Permission-gated Meta developer, Facebook, Instagram, Messenger and Llama collaboration surface', publicUrl: 'https://developers.facebook.com/' }
 ];
 
 // Global connection/authentication registry. Tokens and secrets are never returned by these endpoints.
@@ -87,7 +90,7 @@ app.post('/api/connections/:id/approval', async (req: Request, res: Response) =>
   } catch (error: any) { res.status(400).json({ error: 'Unable to request approval', details: error?.message }); }
 });
 
-// Brand web monitoring API. Public reads are safe; writes from scheduled scanners may require a shared secret.
+// Global Synthesis & Collaboration Fabric\napp.get('/api/collaboration/status', async (_req: Request, res: Response) => {\n  try {\n    res.json({ ok: true, providers: await getGlobalCollaborationStatus(), policy: { minimumScope: true, secretsExposed: false, humanApprovalForConsequentialActions: true, auditViaConnectionRegistry: true } });\n  } catch (error: any) {\n    res.status(503).json({ error: 'Collaboration registry unavailable', details: error?.message });\n  }\n});\n\napp.post('/api/collaboration/:provider/event', async (req: Request, res: Response) => {\n  try {\n    const provider = String(req.params.provider);\n    const action = String(req.body?.action || 'collaboration_requested');\n    const event = await recordGlobalCollaboration(provider, action, String(req.body?.actor || 'human-owner'));\n    res.status(201).json({ ok: true, event });\n  } catch (error: any) {\n    res.status(400).json({ error: 'Unable to record collaboration event', details: error?.message });\n  }\n});\n\n// Brand web monitoring API. Public reads are safe; writes from scheduled scanners may require a shared secret.
 app.get('/api/brand-monitor/terms', async (_req: Request, res: Response) => {
   try { res.json(await listBrandTerms()); }
   catch (error: any) { res.status(503).json({ error: 'Brand monitor database unavailable', details: error?.message }); }

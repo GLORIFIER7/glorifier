@@ -45,38 +45,46 @@ jobs:
         run: npx cap sync android
 
       - name: Prepare Android release signing
+        id: signing
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${ secrets.ANDROID_KEYSTORE_BASE64 ${
+          ANDROID_KEYSTORE_PASSWORD: ${ secrets.ANDROID_KEYSTORE_PASSWORD ${
+          ANDROID_KEY_ALIAS: ${ secrets.ANDROID_KEY_ALIAS ${
+          ANDROID_KEY_PASSWORD: ${ secrets.ANDROID_KEY_PASSWORD ${
         run: |
           set -euo pipefail
-          test -n "$ANDROID_KEYSTORE_BASE64"
-          test -n "$ANDROID_KEYSTORE_PASSWORD"
-          test -n "$ANDROID_KEY_ALIAS"
-          test -n "$ANDROID_KEY_PASSWORD"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/glorifier-release.jks
-          chmod 600 android/app/glorifier-release.jks
+          if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > android/app/glorifier-release.jks
+            chmod 600 android/app/glorifier-release.jks
+            echo "available=true" >> "$GITHUB_OUTPUT"
+            echo "Android signing credentials detected; release will be signed."
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "Android signing credentials are not configured; building an unsigned release AAB."
+          fi
 
-      - name: Build signed Android App Bundle
+      - name: Build Android App Bundle
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${ secrets.ANDROID_KEYSTORE_PASSWORD ${
+          ANDROID_KEY_ALIAS: ${ secrets.ANDROID_KEY_ALIAS ${
+          ANDROID_KEY_PASSWORD: ${ secrets.ANDROID_KEY_PASSWORD ${
         run: |
-          ./gradlew bundleRelease \
-            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/app/glorifier-release.jks" \
-            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
-            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
-            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
-
-      - name: Verify signed AAB exists
+          set -euo pipefail
+          if [ "${ steps.signing.outputs.available ${" = "true" ]; then
+            ./gradlew bundleRelease \
+              -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/app/glorifier-release.jks" \
+              -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+              -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+              -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
+          else
+            ./gradlew bundleRelease
+          fi
+      - name: Verify release AAB exists
         run: |
           set -euo pipefail
           test -s android/app/build/outputs/bundle/release/app-release.aab
-          echo "Signed AAB created successfully."
+          echo "Android App Bundle created successfully."
 
       - name: Upload AAB artifact
         uses: actions/upload-artifact@v4

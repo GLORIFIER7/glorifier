@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { SovereignStats, DataFootprintSource, MonetizationPolicy, CompensationTransaction } from '../types';
 import { PrivacyShieldProgressBar } from './PrivacyShieldProgressBar';
+import { LiveEconomicData } from './LiveEconomicData';
 
 interface OverviewTabProps {
   stats: SovereignStats;
@@ -92,6 +93,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
   return (
     <div className="space-y-6">
+      <LiveEconomicData />
       {/* Top Banner Alert / AI Broker Summary */}
       <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-850 p-5 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-start gap-3.5">

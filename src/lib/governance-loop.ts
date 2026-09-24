@@ -112,13 +112,13 @@ export async function runGovernanceCycle(input: {
   const evidenceId = `gev-${crypto.randomUUID()}`;
   const evidence = {
     id: evidenceId,
-    status: evidenceRefs.length ? 'recorded' as const : 'missing' as const,
-    references: [...evidenceRefs, ...(windsorEnabled && windsor?.configured ? ['windsor.ai:social-observations'] : [])]
+    status: (evidenceRefs.length || windsorEvidence) ? 'recorded' as const : 'missing' as const,
+    references: [...evidenceRefs, ...(windsorEvidence ? ['windsor.ai:social-observations'] : [])],
+    windsor: windsorEvidence
   };
-  if (windsorEnabled) (cyclePlaceholder => void cyclePlaceholder)(windsorEvidence);
 
   // 5. Governed action is a proposal only. No irreversible execution is performed here.
-  const actionStatus = trustGatePassed && evidenceRefs.length ? 'approval-required' as const : 'blocked' as const;
+  const actionStatus = trustGatePassed && evidence.references.length ? 'approval-required' as const : 'blocked' as const;
   const action = {
     status: actionStatus,
     reversible,

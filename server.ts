@@ -27,6 +27,7 @@ import { initializeMonetizationEngine, registerMonetizationOpportunity, listMone
 import { getGlorifierAiTrustStandard, getGlorifierAiTrustControls, evaluateGlorifierAiTrustConformance } from './src/lib/ai/trust-standard';
 import { initializeInventionRegistry, registerInvention, listInventions } from './src/lib/invention-registry';
 import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorization, getIso42001AlignmentTargets, getStandardizationIdentityFederationStatus, requestStandardizationIdentityFederationAuthorization } from './src/lib/iso-integration';
+import { initializeUsptoIntegration, getUsptoIntegrationStatus, requestUsptoAuthorization, getUsptoTrademarkStatus } from './src/lib/uspto-integration';
 
 dotenv.config();
 
@@ -43,7 +44,8 @@ void Promise.allSettled([
   initializeMonetizationEngine(),
   initializeModelTrustRegistry(),
   initializeInventionRegistry(),
-  initializeIsoIntegration()
+  initializeIsoIntegration(),
+  initializeUsptoIntegration()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -2061,6 +2063,30 @@ app.post('/api/iso/authorization/request', async (req: Request, res: Response) =
     const approval = await requestIsoAuthorization(actor);
     res.status(202).json({ ok: true, approval, humanApprovalRequired: true, isoCertification: false });
   } catch (error: any) { res.status(400).json({ ok: false, error: 'Unable to request ISO authorization', details: error?.message }); }
+});
+
+// USPTO account + read-only intellectual-property services
+app.get('/api/uspto/status', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, status: await getUsptoIntegrationStatus() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: 'USPTO integration status unavailable', details: error?.message }); }
+});
+
+app.post('/api/uspto/authorization/request', async (req: Request, res: Response) => {
+  try {
+    const approval = await requestUsptoAuthorization(String(req.body?.actor || 'human-owner'));
+    res.status(202).json({ ok: true, approval, humanApprovalRequired: true, filingExecutionEnabled: false });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to request USPTO authorization', details: error?.message });
+  }
+});
+
+app.get('/api/uspto/trademarks/:serialNumber/status', async (req: Request, res: Response) => {
+  try {
+    const result = await getUsptoTrademarkStatus(req.params.serialNumber);
+    res.json({ ok: true, result, policy: { readOnly: true, filingExecutionEnabled: false, paymentExecutionEnabled: false } });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'USPTO trademark status retrieval failed', details: error?.message });
+  }
 });
 
 // GLORIFIER AI Trust Standard + IP Governance

@@ -221,16 +221,14 @@ async function callGeminiSafe({
     try {
       const interaction = await gemini.interactions.create({
         model: candidateModel,
-        input: systemInstruction ? [
-          { type: 'system_instruction', content: systemInstruction },
-          { type: 'user_input', content: input }
-        ] : input,
+        input,
         previous_interaction_id: previousInteractionId,
         store,
+        ...(systemInstruction ? { system_instruction: systemInstruction } : {}),
         generation_config: {
-          temperature,
-          ...(responseMimeType ? { response_mime_type: responseMimeType } : {})
-        }
+          temperature
+        },
+        ...(responseMimeType ? { response_format: { type: 'text' } } : {})
       } as any);
 
       const text = interaction.output_text || '';

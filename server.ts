@@ -35,6 +35,7 @@ import { initializeWindsorSocialGateway, getWindsorSocialGatewayStatus, getWinds
 import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitSummary, recordCustomerRoi, getCustomerRoi, upsertOpportunityNode, linkOpportunityNodes, getOpportunityGraph, createMarketplaceOffer, listMarketplaceOffers } from './src/lib/business-model';
 import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib/gats-policy';
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
+import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
@@ -2209,6 +2210,24 @@ app.post('/api/ip/inventions', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(400).json({ ok: false, error: 'Unable to register invention disclosure', details: error?.message }); }
 });
 
+
+app.get('/api/assets-scientist/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getAssetsScientistPolicy(), collaborator: 'assets-scientist + policy-scientist + compliance-scientist' });
+});
+
+app.post('/api/assets-scientist/assess', (req: Request, res: Response) => {
+  try {
+    const assessment = buildAssetAssessment({
+      assetRef: String(req.body?.assetRef || '').trim(),
+      assetClass: String(req.body?.assetClass || 'other').trim(),
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : [],
+      estimatedValue: req.body?.estimatedValue == null ? undefined : Number(req.body.estimatedValue),
+      currency: req.body?.currency ? String(req.body.currency) : undefined
+    });
+    if (!assessment.assetRef) return res.status(400).json({ ok: false, error: 'assetRef is required' });
+    res.json({ ok: true, assessment });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'asset assessment failed' }); }
+});
 // GLORIFIER AI Trust & Rogue Model Defense
 app.get('/api/ai/trust', async (req: Request, res: Response) => {
   try {

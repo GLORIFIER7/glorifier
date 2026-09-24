@@ -43,6 +43,8 @@ export const IntegrationControl: React.FC = () => {
   const [agents, setAgents] = useState<any[]>([]);
   const [agentSyncing, setAgentSyncing] = useState(false);
   const [agentSyncMessage, setAgentSyncMessage] = useState('');
+  const [bountyPrograms, setBountyPrograms] = useState<any[]>([]);
+  const [bountyFindings, setBountyFindings] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -55,6 +57,10 @@ export const IntegrationControl: React.FC = () => {
       if (collaborationResponse.ok) setCollaboration((await collaborationResponse.json()).providers || []);
       const agentResponse = await fetch('/api/agents/registry', { cache: 'no-store' });
       if (agentResponse.ok) setAgents((await agentResponse.json()).agents || []);
+      const bountyResponse = await fetch('/api/bounties/programs', { cache: 'no-store' });
+      if (bountyResponse.ok) setBountyPrograms((await bountyResponse.json()).programs || []);
+      const findingResponse = await fetch('/api/bounties/findings', { cache: 'no-store' });
+      if (findingResponse.ok) setBountyFindings((await findingResponse.json()).findings || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load integration registry');
     } finally {
@@ -157,6 +163,37 @@ export const IntegrationControl: React.FC = () => {
                 <div className="text-[10px] text-emerald-400 mt-3">{agent.requiresHumanApproval ? 'Human approval required for consequential actions' : 'No approval gate'}</div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {bountyPrograms.length > 0 && (
+        <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-5">
+          <div className="flex items-center gap-2">
+            <Activity className="w-5 h-5 text-amber-300" />
+            <h3 className="font-semibold text-white">AI Bounty Hunter & Security Research</h3>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">Discover legitimate bounty programs, map authorized scope, assist with security research, prepare evidence, and track rewards. Testing and submission remain authorization- and human-review gated.</p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+            {bountyPrograms.map((program) => (
+              <div key={program.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold text-white">{program.platform}</span>
+                  <span className="text-[10px] rounded-full px-2 py-1 bg-slate-800 text-slate-300">{program.status}</span>
+                </div>
+                <div className="text-xs text-slate-300 mt-2">{program.name}</div>
+                <div className="text-[10px] text-slate-500 uppercase mt-2">{program.programType} · {program.rewardCurrency}</div>
+                <div className="flex flex-wrap gap-1 mt-3">{(program.capabilities || []).map((cap: string) => <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">{cap}</span>)}</div>
+                <div className="text-[10px] text-amber-300 mt-3">Authorized scope required · human review before submission</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4 rounded-lg border border-slate-800 bg-slate-950/40 p-3">
+            <div className="text-xs font-semibold text-white">Research pipeline</div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 mt-2 text-[10px]">
+              {['AI discovery','Scope verification','Evidence','Human review','Submission / reward'].map((step) => <div key={step} className="rounded bg-slate-900 px-2 py-2 text-slate-400">{step}</div>)}
+            </div>
+            <div className="text-[10px] text-slate-500 mt-2">{bountyFindings.length} tracked finding(s); no automatic exploitation or financial commitment.</div>
           </div>
         </div>
       )}

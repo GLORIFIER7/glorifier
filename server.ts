@@ -24,6 +24,8 @@ import { initializeClaimableAssetRegistry, registerClaimableAsset, listClaimable
 import { initializeSaasRegistry, registerSaasTenant, registerSaasPlan, listSaasOverview, createSaasSubscription } from './src/lib/saas-registry';
 import { initializeIotRegistry, registerIotDevice, listIotDevices, recordIotTelemetry, listIotTelemetry, createIotAlert } from './src/lib/iot-registry';
 import { initializeMonetizationEngine, registerMonetizationOpportunity, listMonetizationOpportunities, recordMonetizationEvent, buildMonetizationDashboard } from './src/lib/monetization-engine';
+import { getGlorifierAiTrustStandard, getGlorifierAiTrustControls, evaluateGlorifierAiTrustConformance } from './src/lib/ai/trust-standard';
+import { initializeInventionRegistry, registerInvention, listInventions } from './src/lib/invention-registry';
 
 dotenv.config();
 
@@ -37,7 +39,9 @@ void Promise.allSettled([
   initializeClaimableAssetRegistry(),
   initializeSaasRegistry(),
   initializeIotRegistry(),
-  initializeMonetizationEngine()
+  initializeMonetizationEngine(),
+  initializeModelTrustRegistry(),
+  initializeInventionRegistry()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -2018,6 +2022,41 @@ app.post('/api/compute/task', async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Compute task failed' });
   }
+});
+
+// GLORIFIER AI Trust Standard + IP Governance
+app.get('/api/ai/trust/standard', (_req: Request, res: Response) => {
+  res.json({ ok: true, standard: getGlorifierAiTrustStandard() });
+});
+
+app.get('/api/ai/trust/standard/controls', (_req: Request, res: Response) => {
+  res.json({ ok: true, standardId: 'GATS', version: getGlorifierAiTrustStandard().version, controls: getGlorifierAiTrustControls() });
+});
+
+app.get('/api/ai/trust/standard/conformance', (_req: Request, res: Response) => {
+  res.json({ ok: true, conformance: evaluateGlorifierAiTrustConformance() });
+});
+
+app.get('/api/ip/inventions', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, inventions: await listInventions() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: 'Invention registry unavailable', details: error?.message }); }
+});
+
+app.post('/api/ip/inventions', async (req: Request, res: Response) => {
+  try {
+    const invention = await registerInvention({
+      title: String(req.body?.title || '').trim(),
+      summary: String(req.body?.summary || '').trim(),
+      status: req.body?.status || 'candidate',
+      confidentiality: req.body?.confidentiality || 'internal',
+      humanContributors: Array.isArray(req.body?.humanContributors) ? req.body.humanContributors.map(String) : [],
+      codeRefs: Array.isArray(req.body?.codeRefs) ? req.body.codeRefs.map(String) : [],
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : [],
+      priorArtStatus: req.body?.priorArtStatus || 'not-reviewed',
+      metadata: req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    res.status(201).json({ ok: true, invention, patentFilingStatus: 'not_filed' });
+  } catch (error: any) { res.status(400).json({ ok: false, error: 'Unable to register invention disclosure', details: error?.message }); }
 });
 
 // GLORIFIER AI Trust & Rogue Model Defense

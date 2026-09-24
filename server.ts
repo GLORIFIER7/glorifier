@@ -16,6 +16,7 @@ import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, s
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount, recordAssetHolding, listAssetHoldings, recordAssetEvidence } from './src/lib/asset-registry';
+import { syncAlpacaAssets, getAlpacaStockQuote } from './src/lib/asset-provider-adapters';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
 
@@ -403,6 +404,33 @@ app.post('/api/assets/accounts/:id/events', async (req: Request, res: Response) 
     res.status(201).json({ ok: true, event });
   } catch (error: any) {
     res.status(400).json({ error: 'Unable to record asset event', details: error?.message });
+  }
+});
+
+// Live provider adapters. Read-only by design: no orders, transfers, or fund movement are exposed here.
+app.post('/api/assets/providers/alpaca/sync', async (req: Request, res: Response) => {
+  try {
+    const connectionId = String(req.body?.connectionId || '');
+    if (!connectionId) return res.status(400).json({ ok: false, error: 'connectionId is required' });
+    const result = await syncAlpacaAssets({
+      connectionId,
+      assetAccountId: req.body?.assetAccountId ? String(req.body.assetAccountId) : undefined,
+      actor: String(req.body?.actor || 'human-owner')
+    });
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    const message = error?.message || 'Alpaca synchronization failed';
+    const status = /not authorized|different connection|provider must be/i.test(message) ? 409 : /required for live Alpaca/i.test(message) ? 503 : 400;
+    res.status(status).json({ ok: false, error: message });
+  }
+});
+
+app.get('/api/assets/providers/alpaca/quote/:symbol', async (req: Request, res: Response) => {
+  try {
+    const result = await getAlpacaStockQuote(String(req.params.symbol || ''));
+    res.json({ ok: true, result, verification: { sourceRecorded: false, revenueVerified: false } });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Alpaca quote lookup failed' });
   }
 });
 

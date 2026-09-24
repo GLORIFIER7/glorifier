@@ -49,6 +49,20 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const [controlPlane, setControlPlane] = useState<any>(null);
   const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
 
+  const [governanceBusy, setGovernanceBusy] = useState(false);
+
+  const loadControlPlane = async () => {
+    try {
+      const response = await fetch('/api/revenue/control-plane');
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Control plane unavailable');
+      setControlPlane(payload.snapshot);
+      setControlPlaneError(null);
+    } catch (error: any) {
+      setControlPlaneError(error?.message || 'Control plane unavailable');
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -56,7 +70,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         const response = await fetch('/api/revenue/control-plane');
         const payload = await response.json();
         if (!response.ok || !payload.ok) throw new Error(payload.error || 'Control plane unavailable');
-        if (!cancelled) setControlPlane(payload.snapshot);
+        if (!cancelled) {
+          setControlPlane(payload.snapshot);
+          setControlPlaneError(null);
+        }
       } catch (error: any) {
         if (!cancelled) setControlPlaneError(error?.message || 'Control plane unavailable');
       }
@@ -65,6 +82,30 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     const timer = window.setInterval(load, 15000);
     return () => { cancelled = true; window.clearInterval(timer); };
   }, []);
+
+  const runGovernanceCheck = async () => {
+    setGovernanceBusy(true);
+    try {
+      const response = await fetch('/api/revenue/control-plane/govern', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          machine: 'opportunity-engine',
+          actionType: 'observe',
+          objective: 'Run a governed GLORIFIER Revenue Control Plane observation and record the evidence state.',
+          reversible: true,
+          actor: 'human-owner'
+        })
+      });
+      const payload = await response.json();
+      if (!response.ok || !payload.ok) throw new Error(payload.error || 'Governance check failed');
+      await loadControlPlane();
+    } catch (error: any) {
+      setControlPlaneError(error?.message || 'Governance check failed');
+    } finally {
+      setGovernanceBusy(false);
+    }
+  };
 
   const activeMonetizingCount = footprints.filter(f => f.isMonetized).length;
   const shieldedCount = footprints.filter(f => !f.isMonetized).length;
@@ -182,10 +223,10 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         </div>
 
         <div className="lg:col-span-5 rounded-xl bg-slate-900 border border-slate-800 p-5">
-          <div className="mb-3"><h3 className="text-sm font-bold text-white flex items-center gap-2"><Activity className="w-4 h-4 text-emerald-400" />Governed Action Feed</h3><p className="text-xs text-slate-400">Recorded control-plane decisions, not simulated earnings.</p></div>
+          <div className="mb-3 flex items-start justify-between gap-3"><div><h3 className="text-sm font-bold text-white flex items-center gap-2"><Activity className="w-4 h-4 text-emerald-400" />Governed Action Feed</h3><p className="text-xs text-slate-400">Recorded control-plane decisions, not simulated earnings.</p></div><div className="flex gap-2"><button onClick={loadControlPlane} className="text-[10px] px-2 py-1 rounded border border-slate-700 text-slate-300 hover:text-white">Refresh</button><button onClick={runGovernanceCheck} disabled={governanceBusy} className="text-[10px] px-2 py-1 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 disabled:opacity-50">{governanceBusy ? 'Running…' : 'Run Check'}</button></div></div>
           <div className="space-y-2">
             {(controlPlane?.governance?.recentEvents || []).slice(0,5).map((event:any) => <div key={event.id} className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-xs"><div className="flex justify-between gap-3"><span className="font-semibold text-slate-200">{event.machine}</span><span className={event.status === 'blocked' ? 'text-amber-300' : 'text-emerald-300'}>{event.status}</span></div><div className="text-[11px] text-slate-400 mt-1">{event.actionType} • evidence: {event.evidenceStatus}</div></div>)}
-            {!controlPlane?.governance?.recentEvents?.length && <div className="text-xs text-slate-500 py-4">No governance events recorded yet.</div>}
+            {!controlPlane?.governance?.recentEvents?.length && <div className="text-xs text-slate-500 py-4">No governance events recorded yet. Run a governance check or execute a governed action to create the first real event.</div>}
           </div>
         </div>
       </div>

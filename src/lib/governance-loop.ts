@@ -6,10 +6,11 @@ import { routeAgentCapability, createAgentTask, updateAgentTask } from './agent-
 import { getGlorifierAiTrustStandard, evaluateGlorifierAiTrustConformance } from './ai/trust-standard';
 import { getWindsorSocialGatewayStatus, getWindsorSocialData } from './windsor-social-gateway';
 import { buildComplianceAssessment } from './compliance-policy';
+import { getAssetsScientistPolicy, buildAssetAssessment } from './assets-scientist';
 
 const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);
 
-export type GovernanceStage = 'ceo' | 'specialists' | 'trust' | 'evidence' | 'governed-action' | 'completed' | 'blocked';
+export type GovernanceStage = 'ceo' | 'policy' | 'compliance' | 'assets' | 'specialists' | 'trust' | 'evidence' | 'governed-action' | 'completed' | 'blocked';
 
 export interface GovernanceCycle {
   id: string;
@@ -47,10 +48,14 @@ export async function initializeGovernanceLoop() {
       routing JSONB NOT NULL DEFAULT '{}'::jsonb,
       council JSONB NOT NULL DEFAULT '{}'::jsonb,
       trust JSONB NOT NULL DEFAULT '{}'::jsonb,
+      compliance JSONB NOT NULL DEFAULT '{}'::jsonb,
+      assets JSONB NOT NULL DEFAULT '{}'::jsonb,
       evidence JSONB NOT NULL DEFAULT '{}'::jsonb,
       action JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE glorifier_governance_cycles ADD COLUMN IF NOT EXISTS compliance JSONB NOT NULL DEFAULT '{}'::jsonb;
+    ALTER TABLE glorifier_governance_cycles ADD COLUMN IF NOT EXISTS assets JSONB NOT NULL DEFAULT '{}'::jsonb;
     CREATE INDEX IF NOT EXISTS idx_glorifier_governance_cycles_created ON glorifier_governance_cycles(created_at DESC);
   `);
   initialized = true;
@@ -85,20 +90,40 @@ export async function runGovernanceCycle(input: {
   // 1. AI CEO selects the executive/provider context.
   const executive = aiOrchestrator.executive();
 
-  // 2. Capability-first delegation to the specialist council.
-  const routing = routeAgentCapability(capability);
-  const selectedRoles = input.roles?.length ? input.roles : routing.specialists.length ? routing.specialists : undefined;
-  const council = await runSpecialistCouncil({
+  // 2. Policy Scientist establishes the policy/governance interpretation.
+  const policy = {
+    status: 'policy-reviewed',
+    source: 'GLORIFIER GATS Governance Policy + Policy Scientist',
+    humanAuthority: true,
+    irreversibleActionsApprovalGated: true
+  };
+
+  // 3. Compliance Scientist maps requirements to controls and evidence.
+  const compliance = buildComplianceAssessment({
     objective,
-    roles: selectedRoles,
-    standingMission: false
+    evidenceRefs,
+    applicableRequirements: ['GATS governance policy', 'applicable AI/data/security requirements']
   });
 
-  // 3. GATS trust gate evaluates the governance state before any action proposal.
+  // 4. Assets Scientist evaluates asset implications when the capability/objective is asset-related.
+  const assetRelated = capability === 'assets' || capability === 'asset-intelligence' || capability === 'asset-risk' ||
+    /asset|portfolio|holding|valuation|ownership|crypto|stock|bond|etf|gaming|iot/i.test(objective);
+  const assets = assetRelated
+    ? buildAssetAssessment({ assetRef: objective, assetClass: capability === 'assets' ? 'other' : capability, evidenceRefs })
+    : { status: 'not-applicable', policy: getAssetsScientistPolicy().id };
+
+  // 5. Capability-first delegation to the Specialist Council.
+  const routing = routeAgentCapability(capability);
+  const baseRoles = routing.specialists.length ? routing.specialists : [];
+  const collaborationRoles = ['policy-scientist', 'compliance-scientist', ...(assetRelated ? ['assets-scientist'] : [])];
+  const selectedRoles = input.roles?.length ? input.roles : [...new Set([...collaborationRoles, ...baseRoles])];
+  const council = await runSpecialistCouncil({ objective, roles: selectedRoles, standingMission: false });
+
+  // 6. GATS trust gate evaluates the governance state before any action proposal.
   const trust = evaluateGlorifierAiTrustConformance();
   const trustGatePassed = trust.status === 'conformant-self-attestation' && trust.controls.every((c) => c.status === 'implemented');
 
-  // 4. Compliance Scientist collaborates with Policy Scientist before evidence/action gating.\n  const compliance = buildComplianceAssessment({ objective, evidenceRefs, applicableRequirements: ['GATS governance policy', 'applicable AI/data/security requirements'] });\n\n  // 5. Evidence is explicit. References are recorded, never inferred. Windsor observations are source evidence only.
+  // 7. Evidence is explicit. References are recorded, never inferred. Windsor observations are source evidence only.
   let windsorEvidence: unknown = null;
   if (windsorEnabled && windsor?.configured) {
     try {
@@ -144,6 +169,7 @@ export async function runGovernanceCycle(input: {
       rule: 'GATS trust controls gate consequential actions.'
     },
     compliance,
+    assets,
     evidence,
     action,
     createdAt: new Date().toISOString()
@@ -151,11 +177,11 @@ export async function runGovernanceCycle(input: {
 
   await query(
     `INSERT INTO glorifier_governance_cycles
-      (id,task_id,objective,capability,stage,executive,routing,council,trust,evidence,action)
-     VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb)`,
+      (id,task_id,objective,capability,stage,executive,routing,council,trust,compliance,assets,evidence,action)
+     VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb)`,
     [cycle.id, cycle.taskId, cycle.objective, cycle.capability, cycle.stage,
       JSON.stringify(cycle.executive), JSON.stringify(cycle.routing), JSON.stringify(cycle.council),
-      JSON.stringify({ ...cycle.trust, compliance: cycle.compliance }), JSON.stringify({ ...cycle.evidence, windsor: windsorEvidence }), JSON.stringify(cycle.action)]
+      JSON.stringify(cycle.trust), JSON.stringify(cycle.compliance), JSON.stringify(cycle.assets), JSON.stringify({ ...cycle.evidence, windsor: windsorEvidence }), JSON.stringify(cycle.action)]
   );
 
   updateAgentTask(task.id, {
@@ -168,7 +194,7 @@ export async function runGovernanceCycle(input: {
 
 export async function listGovernanceCycles(limit = 50) {
   const result = await query(
-    `SELECT id,task_id AS "taskId",objective,capability,stage,executive,routing,council,trust,evidence,action,created_at AS "createdAt"
+    `SELECT id,task_id AS "taskId",objective,capability,stage,executive,routing,council,trust,compliance,assets,evidence,action,created_at AS "createdAt"
      FROM glorifier_governance_cycles ORDER BY created_at DESC LIMIT $1`,
     [Math.max(1, Math.min(100, limit))]
   );
@@ -178,7 +204,7 @@ export async function listGovernanceCycles(limit = 50) {
 export function getGovernanceLoopPolicy() {
   return {
     name: 'GLORIFIER Continuous Governance Orchestration Loop',
-    flow: ['AI CEO', 'Specialist Council', 'GATS Trust Layer', 'Evidence Layer', 'Governed Action Layer'],
+    flow: ['AI CEO', 'Policy Scientist', 'Compliance Scientist', 'Assets Scientist', 'Specialist Council', 'GATS Trust Layer', 'Evidence Layer', 'Governed Action Layer', 'Human Authority'],
     humanAuthority: true,
     evidenceRequiredBeforeVerification: true,
     missingEvidenceIsNotZero: true,

@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
-import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
+import { aiOrchestrator, runSpecialistCouncil, specialistRoles, initializeModelTrustRegistry, listModelTrust, getModelTrust, setModelTrustStatus, recordModelSecurityEvent } from './src/lib/ai';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
 import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask, routeAgentCapability, orchestrationPolicy } from './src/lib/agent-runtime';
@@ -2017,6 +2017,62 @@ app.post('/api/compute/task', async (req: Request, res: Response) => {
     res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Compute task failed' });
+  }
+});
+
+// GLORIFIER AI Trust & Rogue Model Defense
+app.get('/api/ai/trust', async (req: Request, res: Response) => {
+  try {
+    const models = await listModelTrust(req.query.status as any);
+    res.json({
+      ok: true,
+      models,
+      policy: {
+        unknownModels: 'probation',
+        quarantinedModelsBlocked: true,
+        repeatedViolationsTriggerQuarantine: true,
+        humanAuthority: true,
+        credentialsExposed: false,
+        irreversibleActionsApprovalGated: true
+      }
+    });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'AI trust registry unavailable', details: error?.message });
+  }
+});
+
+app.get('/api/ai/trust/:provider/:model', async (req: Request, res: Response) => {
+  try {
+    const model = await getModelTrust(req.params.provider, req.params.model);
+    if (!model) return res.status(404).json({ ok: false, error: 'Model has not been observed yet' });
+    res.json({ ok: true, model, canRun: model.status !== 'quarantined' });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'AI model trust lookup failed', details: error?.message });
+  }
+});
+
+app.post('/api/ai/trust/:provider/:model/status', async (req: Request, res: Response) => {
+  try {
+    const status = req.body?.status;
+    if (!['unknown','probation','trusted','degraded','quarantined'].includes(status)) {
+      return res.status(400).json({ ok: false, error: 'Invalid trust status' });
+    }
+    const actor = String(req.body?.actor || 'human-owner');
+    const model = await setModelTrustStatus(req.params.provider, req.params.model, status, actor);
+    res.json({ ok: true, model, humanAuthority: true, actor });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to change model trust status', details: error?.message });
+  }
+});
+
+app.post('/api/ai/trust/events', async (req: Request, res: Response) => {
+  try {
+    const { provider, model, eventType, severity, evidenceRef, details } = req.body || {};
+    if (!provider || !model || !eventType) return res.status(400).json({ ok: false, error: 'provider, model and eventType are required' });
+    const result = await recordModelSecurityEvent({ provider: String(provider), model: String(model), eventType, severity, evidenceRef: evidenceRef ? String(evidenceRef) : null, details: details || {} });
+    res.status(201).json({ ok: true, model: result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to record AI security event', details: error?.message });
   }
 });
 

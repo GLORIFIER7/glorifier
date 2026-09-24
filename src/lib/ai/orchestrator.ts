@@ -1,6 +1,7 @@
 import { getConnectedProviders, getProvider, listProviders } from './registry';
 import type { AIMessage, AIRequest, AIResponse, AIProviderId, AIProvider, ResponseEvaluation } from './types';
 import { averageLatencyMs, providerReliability, recordProviderFailure, recordProviderSuccess, snapshotProviderMetrics } from './metrics';
+import { registerOrObserveModel, getModelTrust, modelCanRun, recordModelSecurityEvent } from './model-trust';
 
 export interface OrchestratorRequest extends AIRequest {
   provider?: AIProviderId | 'auto';
@@ -89,6 +90,8 @@ export class AIOrchestrator {
   }
 
   private async callProvider(provider: AIProvider, request: AIRequest): Promise<AIResponse> {
+    // Rogue-model defense: every observed model is registered and quarantined models cannot execute.
+
     const started = Date.now();
     try {
       const response = await provider.generate(request);
@@ -98,6 +101,11 @@ export class AIOrchestrator {
       const latencyMs = Date.now() - started;
       response.latencyMs = latencyMs;
       response.evaluation = evaluateResponse(response);
+      const trust = await registerOrObserveModel({ provider: response.provider, model: response.model, capabilityScore: providerCapabilityScore(provider) });
+      if (!modelCanRun(trust)) throw new Error(`Model ${response.provider}:${response.model} is quarantined by the AI trust layer.`);
+      if (!response.evaluation.passed) {
+        await recordModelSecurityEvent({ provider: response.provider, model: response.model, eventType: 'unsupported_claim', severity: 'warning', details: { reasons: response.evaluation.reasons } });
+      }
       recordProviderSuccess(provider.id, latencyMs, response.usage);
       return response;
     } catch (error) {

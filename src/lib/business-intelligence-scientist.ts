@@ -154,3 +154,122 @@ export async function getBusinessIntelligenceSnapshot() {
     signalTypes:signals.rows
   };
 }
+
+export const GLOBAL_BI_SOURCE_FAMILIES = [
+  'public-web','market-and-industry','competitor','customer-and-product','sales-and-marketing',
+  'finance-and-revenue','technology-and-ai','cloud-and-infrastructure','cybersecurity',
+  'regulatory-and-policy','intellectual-property','open-source','ecosystem-and-partners',
+  'marketplace','iot-and-edge','research-and-academia'
+] as const;
+
+export const GLOBAL_BI_SOURCE_CATALOG = [
+  { family:'public-web', name:'Public Web', access:'public', evidence:'source-required' },
+  { family:'market-and-industry', name:'Market and industry sources', access:'public-or-authorized', evidence:'source-required' },
+  { family:'competitor', name:'Competitor public surfaces', access:'public', evidence:'source-required' },
+  { family:'customer-and-product', name:'First-party customer/product telemetry', access:'authorized', evidence:'source-required' },
+  { family:'sales-and-marketing', name:'Sales and marketing systems', access:'authorized', evidence:'source-required' },
+  { family:'finance-and-revenue', name:'Finance, billing and payment systems', access:'authorized', evidence:'source-required' },
+  { family:'technology-and-ai', name:'AI/model/provider ecosystems', access:'public-or-authorized', evidence:'source-required' },
+  { family:'cloud-and-infrastructure', name:'Cloud and infrastructure telemetry', access:'authorized', evidence:'source-required' },
+  { family:'cybersecurity', name:'Security and threat intelligence', access:'public-or-authorized', evidence:'source-required' },
+  { family:'regulatory-and-policy', name:'Regulatory and policy sources', access:'public', evidence:'source-required' },
+  { family:'intellectual-property', name:'Patent, trademark and IP sources', access:'public-or-authorized', evidence:'source-required' },
+  { family:'open-source', name:'Open-source ecosystems', access:'public', evidence:'source-required' },
+  { family:'ecosystem-and-partners', name:'Partner and ecosystem sources', access:'authorized-or-public', evidence:'source-required' },
+  { family:'marketplace', name:'Marketplaces and platform listings', access:'public-or-authorized', evidence:'source-required' },
+  { family:'iot-and-edge', name:'IoT, edge and device telemetry', access:'authorized', evidence:'source-required' },
+  { family:'research-and-academia', name:'Research and academic sources', access:'public', evidence:'source-required' }
+] as const;
+
+export const BI_INTELLIGENCE_PIPELINE = [
+  'Discover source','Ingest observation','Normalize data','Validate quality','Resolve entity',
+  'Apply business semantics','Calculate metric','Detect signal','Explain driver','Generate scenario',
+  'Assess opportunity','Check evidence','Govern action','Measure outcome','Feed GEAS improvement'
+] as const;
+
+export async function registerBusinessIntelligenceEntity(input:{
+  entityType:string; entityRef:string; name:string; sourceRefs?:string[];
+  status?:string; metadata?:Record<string,unknown>;
+}) {
+  await initializeBusinessIntelligenceScientist();
+  const r=await getPostgresPool().query(`
+    INSERT INTO glorifier_bi_entities(id,entity_type,entity_ref,name,source_refs,status,metadata)
+    VALUES($1,$2,$3,$4,$5,$6,$7)
+    ON CONFLICT(entity_type,entity_ref) DO UPDATE SET
+      name=EXCLUDED.name, source_refs=EXCLUDED.source_refs, status=EXCLUDED.status, metadata=EXCLUDED.metadata
+    RETURNING *
+  `,[
+    `bi-entity-${crypto.randomUUID()}`,input.entityType,input.entityRef,input.name,
+    JSON.stringify(input.sourceRefs||[]),input.status||'observed',JSON.stringify(input.metadata||{})
+  ]);
+  return r.rows[0];
+}
+
+export async function defineBusinessIntelligenceMetric(input:{
+  metricKey:string; name:string; definition:string; formula?:string; unit?:string;
+  sourceRequirements?:string[]; economicTruthLabel?:'NOT VERIFIED'|'EVIDENCE-BACKED'|'VERIFIED';
+  metadata?:Record<string,unknown>;
+}) {
+  await initializeBusinessIntelligenceScientist();
+  const r=await getPostgresPool().query(`
+    INSERT INTO glorifier_bi_metric_definitions(id,metric_key,name,definition,formula,unit,source_requirements,economic_truth_label,metadata)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+    ON CONFLICT(metric_key) DO UPDATE SET
+      name=EXCLUDED.name, definition=EXCLUDED.definition, formula=EXCLUDED.formula,
+      unit=EXCLUDED.unit, source_requirements=EXCLUDED.source_requirements,
+      economic_truth_label=EXCLUDED.economic_truth_label, metadata=EXCLUDED.metadata
+    RETURNING *
+  `,[
+    `bi-metric-${crypto.randomUUID()}`,input.metricKey,input.name,input.definition,input.formula||null,
+    input.unit||null,JSON.stringify(input.sourceRequirements||[]),input.economicTruthLabel||'NOT VERIFIED',
+    JSON.stringify(input.metadata||{})
+  ]);
+  return r.rows[0];
+}
+
+export async function getGlobalBusinessIntelligenceArchitecture() {
+  return {
+    version:GLORIFIER_BI_SCIENTIST_VERSION,
+    sourceFamilies:[...GLOBAL_BI_SOURCE_FAMILIES],
+    sourceCatalog:GLOBAL_BI_SOURCE_CATALOG,
+    pipeline:[...BI_INTELLIGENCE_PIPELINE],
+    intelligenceDomains:[...BI_DOMAINS],
+    semantics:{
+      entities:['company','customer','product','service','competitor','market','technology','provider','asset','opportunity','transaction','regulation','ip'],
+      relationships:['owns','uses','buys','sells','competes-with','depends-on','integrates-with','generates','affects','supports','risks','governs'],
+      missingEvidenceIsNotZero:true,
+      estimatesAreNotFacts:true
+    },
+    continuousOperation:{
+      enabled:true,
+      mode:'event-driven plus scheduled watchlists',
+      observationAnalysisRecommendationAutonomous:true,
+      irreversibleActionsAutonomous:false
+    },
+    governance:{
+      path:['GEAS','AI CEO','Specialist Council','GATS','Revenue Control Plane','Human Authority','Governed Action','Evidence','GEAS'],
+      humanAuthority:true,
+      consequentialActionsRequireHumanApproval:true
+    },
+    economicTruth:{
+      estimatedOpportunity:'NOT VERIFIED',
+      expectedValue:'NOT VERIFIED',
+      marketValueIsNotRevenue:true,
+      verifiedRevenueRequiresQualifyingEvidence:true
+    }
+  };
+}
+
+export async function runBusinessIntelligenceHealthCheck() {
+  const snapshot=await getBusinessIntelligenceSnapshot();
+  return {
+    status:'operational',
+    version:GLORIFIER_BI_SCIENTIST_VERSION,
+    continuous:true,
+    sourceFamilies:GLOBAL_BI_SOURCE_FAMILIES.length,
+    domains:BI_DOMAINS.length,
+    pipelineStages:BI_INTELLIGENCE_PIPELINE.length,
+    snapshot,
+    nextCycle:'continuous/event-driven plus scheduled watchlists'
+  };
+}

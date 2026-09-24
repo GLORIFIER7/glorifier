@@ -5,6 +5,7 @@ const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifie
 const SPECIALIST_COUNCIL_URL = process.env.GLORIFIER_SPECIALIST_COUNCIL_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/specialist-council');
 const WORK_TOGETHER_GPT_URL = process.env.GLORIFIER_WORK_TOGETHER_GPT_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/work-together-gpt');
 const AGENT_TASK_URL = process.env.GLORIFIER_AGENT_TASK_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/agents/tasks');
+const GLOBAL_SYNC_URL = process.env.GLORIFIER_GLOBAL_SYNC_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/sync/global');
 const WATCHDOG_MS = Math.max(30_000, Number(process.env.ORCHESTRATOR_WATCHDOG_MS || 60_000));
 const IMPROVEMENT_MS = Math.max(5 * 60_000, Number(process.env.ORCHESTRATOR_IMPROVEMENT_MS || 30 * 60_000));
 const MAX_FAILURES = Math.max(1, Number(process.env.ORCHESTRATOR_MAX_HEALTH_FAILURES || 3));
@@ -142,6 +143,27 @@ async function standingGptCoWorkingMission() {
   }
 }
 
+async function standingGlobalSyncMission() {
+  try {
+    const response = await fetch(GLOBAL_SYNC_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      signal: AbortSignal.timeout(10 * 60_000),
+    });
+    const body = await response.text();
+    if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
+    log('GLOBAL_SYNC_AND_SYNTHESIS_OK', {
+      mission: 'Synchronized all glorifier across internet and all AI agents',
+      response: body.slice(-2000),
+    });
+  } catch (error) {
+    log('GLOBAL_SYNC_AND_SYNTHESIS_FAILED', {
+      error: error instanceof Error ? error.message : String(error),
+      action: 'continue_next_cycle',
+    });
+  }
+}
+
 async function autonomousCycle() {
   if (running || stopping) return;
   running = true;
@@ -159,6 +181,7 @@ async function autonomousCycle() {
       return;
     }
 
+    await standingGlobalSyncMission();
     await standingAgentRuntimeMission();
     await standingGptCoWorkingMission();
     await standingSpecialistMission();

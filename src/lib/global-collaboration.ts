@@ -6,7 +6,7 @@ export const globalProviders = [
     name: 'Hugging Face',
     category: 'ai-ecosystem',
     capabilities: ['model-discovery', 'dataset-discovery', 'paper-search', 'space-discovery', 'jobs'],
-    auth: 'oauth2',
+    auth: 'oauth2' as const,
     defaultRisk: 'medium' as const,
     publicUrl: 'https://huggingface.co/'
   },
@@ -15,7 +15,7 @@ export const globalProviders = [
     name: 'Meta / Facebook',
     category: 'social-ai-platform',
     capabilities: ['developer-platform', 'facebook-pages', 'instagram', 'messenger', 'llama-research'],
-    auth: 'oauth2',
+    auth: 'oauth2' as const,
     defaultRisk: 'high' as const,
     publicUrl: 'https://developers.facebook.com/'
   },

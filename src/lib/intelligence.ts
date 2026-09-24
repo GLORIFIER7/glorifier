@@ -212,7 +212,7 @@ function parseJson<T>(text: string, fallback: T): T {
 }
 
 export async function generateIntelligenceReport(deps: {
-  runModel: (provider: 'openai' | 'gemini', prompt: string) => Promise<{ text: string; model: string } | null>;
+  runModel: (provider: 'openai' | 'gemini', prompt: string, options?: { jsonMode?: boolean; systemInstruction?: string }) => Promise<{ text: string; model: string } | null>;
   windowHours?: number;
 }): Promise<IntelligenceReport> {
   const windowHours = deps.windowHours ?? 24;
@@ -240,8 +240,8 @@ Evidence:
 ${JSON.stringify(evidencePacket)}`;
 
   const [gpt, gemini] = await Promise.all([
-    deps.runModel('openai', prompt),
-    deps.runModel('gemini', prompt)
+    deps.runModel('openai', prompt, { jsonMode: true }),
+    deps.runModel('gemini', prompt, { jsonMode: true })
   ]);
 
   const analyses: IntelligenceAnalysis[] = [

@@ -47,10 +47,10 @@ jobs:
       - name: Prepare Android release signing
         id: signing
         env:
-          ANDROID_KEYSTORE_BASE64: ${ secrets.ANDROID_KEYSTORE_BASE64 ${
-          ANDROID_KEYSTORE_PASSWORD: ${ secrets.ANDROID_KEYSTORE_PASSWORD ${
-          ANDROID_KEY_ALIAS: ${ secrets.ANDROID_KEY_ALIAS ${
-          ANDROID_KEY_PASSWORD: ${ secrets.ANDROID_KEY_PASSWORD ${
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           if [ -n "$ANDROID_KEYSTORE_BASE64" ] && [ -n "$ANDROID_KEYSTORE_PASSWORD" ] && [ -n "$ANDROID_KEY_ALIAS" ] && [ -n "$ANDROID_KEY_PASSWORD" ]; then
@@ -66,12 +66,12 @@ jobs:
       - name: Build Android App Bundle
         working-directory: android
         env:
-          ANDROID_KEYSTORE_PASSWORD: ${ secrets.ANDROID_KEYSTORE_PASSWORD ${
-          ANDROID_KEY_ALIAS: ${ secrets.ANDROID_KEY_ALIAS ${
-          ANDROID_KEY_PASSWORD: ${ secrets.ANDROID_KEY_PASSWORD ${
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ "${ steps.signing.outputs.available ${" = "true" ]; then
+          if [ "${{ steps.signing.outputs.available }}" = "true" ]; then
             ./gradlew bundleRelease \
               -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/android/app/glorifier-release.jks" \
               -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \

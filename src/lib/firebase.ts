@@ -3,6 +3,8 @@ import {
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -88,8 +90,34 @@ export const loginWithGoogle = async () => {
     isSigningIn = true;
     const result = await signInWithPopup(auth, googleAuthProvider);
     return { user: result.user, accessToken: cachedAccessToken };
+  } catch (error: any) {
+    // Mobile browsers and restrictive popup policies can block signInWithPopup.
+    // Fall back to Firebase's full-page OAuth redirect instead of silently failing.
+    const code = error?.code || '';
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/popup-closed-by-user' ||
+      code === 'auth/cancelled-popup-request'
+    ) {
+      await signInWithRedirect(auth, googleAuthProvider);
+      return { user: null, accessToken: null };
+    }
+    throw error;
   } finally {
     isSigningIn = false;
+  }
+};
+
+export const completeGoogleRedirectSignIn = async () => {
+  try {
+    const result = await getRedirectResult(auth);
+    if (!result) return null;
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    if (credential?.accessToken) cachedAccessToken = credential.accessToken;
+    return { user: result.user, accessToken: cachedAccessToken };
+  } catch (error) {
+    console.error('Google redirect sign-in failed:', error);
+    throw error;
   }
 };
 

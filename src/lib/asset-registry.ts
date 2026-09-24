@@ -44,6 +44,7 @@ export async function initializeAssetRegistry() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE asset_account_registry ADD COLUMN IF NOT EXISTS connection_id TEXT REFERENCES connection_registry(id) ON DELETE SET NULL;
     CREATE INDEX IF NOT EXISTS idx_asset_registry_class_priority ON asset_account_registry(asset_class, priority DESC);
     CREATE INDEX IF NOT EXISTS idx_asset_registry_provider ON asset_account_registry(provider);
     CREATE INDEX IF NOT EXISTS idx_asset_registry_connection ON asset_account_registry(connection_id);

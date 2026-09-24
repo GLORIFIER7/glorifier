@@ -9,8 +9,11 @@ import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
 import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask } from './src/lib/agent-runtime';
 import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
+import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
 
 dotenv.config();
+
+void initializeConnectionRegistry().catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -29,6 +32,60 @@ const integrationStatus = [
   { id: 'web', name: 'Public Web', category: 'monitoring', status: 'connected', detail: 'Public-source intelligence aggregation and evidence tracking', publicUrl: 'https://news.google.com/' },
   { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' }
 ];
+
+// Global connection/authentication registry. Tokens and secrets are never returned by these endpoints.
+app.get('/api/connections', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, connections: await listConnections(req.query.status as any) }); }
+  catch (error: any) { res.status(503).json({ error: 'Connection registry unavailable', details: error?.message }); }
+});
+
+app.get('/api/connections/:id', async (req: Request, res: Response) => {
+  try {
+    const connection = await getConnection(req.params.id);
+    if (!connection) return res.status(404).json({ error: 'Connection not found' });
+    res.json({ ok: true, connection });
+  } catch (error: any) { res.status(503).json({ error: 'Connection lookup failed', details: error?.message }); }
+});
+
+app.post('/api/connections', async (req: Request, res: Response) => {
+  try {
+    const connection = await registerConnection({
+      provider: String(req.body?.provider || '').trim(),
+      displayName: String(req.body?.displayName || '').trim(),
+      authType: req.body?.authType || 'oauth2',
+      status: req.body?.status || 'pending_authorization',
+      scopes: Array.isArray(req.body?.scopes) ? req.body.scopes.map(String) : [],
+      risk: req.body?.risk || 'medium',
+      accountRef: req.body?.accountRef ? String(req.body.accountRef) : null,
+      expiresAt: req.body?.expiresAt || null,
+      lastVerifiedAt: null,
+      requiresHumanApproval: req.body?.requiresHumanApproval !== false,
+      metadata: req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    await recordConnectionEvent(connection.id,'registered',String(req.body?.actor || 'human-owner'),{authType:connection.authType,scopes:connection.scopes});
+    res.status(201).json({ ok: true, connection });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to register connection', details: error?.message }); }
+});
+
+app.post('/api/connections/:id/verify', async (req: Request, res: Response) => {
+  try {
+    const connection = await verifyConnection(req.params.id, String(req.body?.actor || 'connection-manager'));
+    if (!connection) return res.status(404).json({ error: 'Connection not found' });
+    res.json({ ok: true, connection });
+  } catch (error: any) { res.status(503).json({ error: 'Connection verification failed', details: error?.message }); }
+});
+
+app.post('/api/connections/:id/approval', async (req: Request, res: Response) => {
+  try {
+    const approval = await requestConnectionApproval(
+      req.params.id,
+      String(req.body?.requestedBy || 'ai-ceo'),
+      String(req.body?.action || 'use-connection'),
+      Array.isArray(req.body?.scope) ? req.body.scope.map(String) : []
+    );
+    res.status(201).json({ ok: true, approval, humanApprovalRequired: true });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to request approval', details: error?.message }); }
+});
 
 // Brand web monitoring API. Public reads are safe; writes from scheduled scanners may require a shared secret.
 app.get('/api/brand-monitor/terms', async (_req: Request, res: Response) => {

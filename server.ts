@@ -42,7 +42,7 @@ import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAu
 import { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 import { buildFinanceScientistReport, compareCapitalScenarios } from './src/lib/finance-intelligence';
 import { initializeEnterpriseArchitectureScientist, getEnterpriseArchitectureScientistPolicy, recordArchitectureAssessment, getEnterpriseArchitectureSnapshot, runArchitectureHealthCheck, governArchitectureFinding, listArchitectureImprovementCycles } from './src/lib/enterprise-architecture-scientist';
-import { initializeBusinessIntelligenceScientist, getBusinessIntelligenceScientistPolicy, recordBusinessIntelligenceObservation, recordBusinessIntelligenceSignal, registerBusinessIntelligenceWatch, getBusinessIntelligenceSnapshot } from './src/lib/business-intelligence-scientist';
+import { initializeBusinessIntelligenceScientist, getBusinessIntelligenceScientistPolicy, recordBusinessIntelligenceObservation, recordBusinessIntelligenceSignal, registerBusinessIntelligenceWatch, getBusinessIntelligenceSnapshot, registerBusinessIntelligenceEntity, defineBusinessIntelligenceMetric, getGlobalBusinessIntelligenceArchitecture, runBusinessIntelligenceHealthCheck } from './src/lib/business-intelligence-scientist';
 import { initializeAwsIntelligence, getAwsIntelligencePolicy, recordAwsAccount, recordAwsResource, recordAwsFinding, recordAwsCostObservation, getAwsIntelligenceSnapshot } from './src/lib/aws-intelligence';
 import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
 
@@ -3141,6 +3141,49 @@ app.post('/api/valuation/comparables', async (req: Request, res: Response) => {
     });
     res.status(201).json({ ok: true, comparable });
   } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Valuation comparable recording failed' }); }
+});
+
+
+app.get('/api/business-intelligence/architecture', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, architecture:await getGlobalBusinessIntelligenceArchitecture() }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:error?.message || 'BI architecture unavailable' }); }
+});
+
+app.get('/api/business-intelligence/health', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, health:await runBusinessIntelligenceHealthCheck() }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:error?.message || 'BI health check unavailable' }); }
+});
+
+app.post('/api/business-intelligence/entities', async (req: Request, res: Response) => {
+  try {
+    if (!req.body?.entityType || !req.body?.entityRef || !req.body?.name) {
+      return res.status(400).json({ ok:false, error:'entityType, entityRef and name are required' });
+    }
+    const entity=await registerBusinessIntelligenceEntity({
+      entityType:String(req.body.entityType), entityRef:String(req.body.entityRef), name:String(req.body.name),
+      sourceRefs:Array.isArray(req.body.sourceRefs) ? req.body.sourceRefs.map(String) : [],
+      status:req.body.status ? String(req.body.status) : undefined,
+      metadata:req.body.metadata && typeof req.body.metadata==='object' ? req.body.metadata : {}
+    });
+    res.status(201).json({ ok:true, entity });
+  } catch (error:any) { res.status(400).json({ ok:false, error:error?.message || 'BI entity registration failed' }); }
+});
+
+app.post('/api/business-intelligence/metrics', async (req: Request, res: Response) => {
+  try {
+    if (!req.body?.metricKey || !req.body?.name || !req.body?.definition) {
+      return res.status(400).json({ ok:false, error:'metricKey, name and definition are required' });
+    }
+    const metric=await defineBusinessIntelligenceMetric({
+      metricKey:String(req.body.metricKey), name:String(req.body.name), definition:String(req.body.definition),
+      formula:req.body.formula ? String(req.body.formula) : undefined,
+      unit:req.body.unit ? String(req.body.unit) : undefined,
+      sourceRequirements:Array.isArray(req.body.sourceRequirements) ? req.body.sourceRequirements.map(String) : [],
+      economicTruthLabel:req.body.economicTruthLabel,
+      metadata:req.body.metadata && typeof req.body.metadata==='object' ? req.body.metadata : {}
+    });
+    res.status(201).json({ ok:true, metric });
+  } catch (error:any) { res.status(400).json({ ok:false, error:error?.message || 'BI metric definition failed' }); }
 });
 
 // Vite middleware for dev or static serving for prod

@@ -223,6 +223,28 @@ export async function listAssetHoldings(assetAccountId?: string) {
   return r.rows;
 }
 
+export async function listAssetEvidence(assetAccountId?: string, limit = 100) {
+  const db = getPool();
+  if (!db) return [];
+  const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
+  const params: unknown[] = [];
+  let where = '';
+  if (assetAccountId) {
+    params.push(assetAccountId);
+    where = `WHERE asset_account_id=$${params.length}`;
+  }
+  params.push(safeLimit);
+  const result = await db.query(
+    `SELECT id, asset_account_id, holding_id, evidence_type, source, source_ref,
+            observed_at, payload_hash, details, created_at
+       FROM asset_evidence ${where}
+      ORDER BY observed_at DESC NULLS LAST, created_at DESC
+      LIMIT $${params.length}`,
+    params
+  );
+  return result.rows;
+}
+
 export async function recordAssetEvidence(input: {
   assetAccountId?: string | null;
   holdingId?: string | null;

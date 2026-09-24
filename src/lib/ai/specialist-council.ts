@@ -2,7 +2,7 @@ import { aiOrchestrator } from './orchestrator';
 import type { AIProviderId, AIResponse } from './types';
 
 export type SpecialistDomain =
-  | 'policy' | 'legal' | 'compliance' | 'ethics' | 'finance' | 'revenue' | 'risk' | 'data'
+  | 'policy' | 'legal' | 'patent' | 'compliance' | 'ethics' | 'finance' | 'revenue' | 'risk' | 'data'
   | 'research' | 'ai_ml' | 'engineering' | 'software_architecture' | 'cybersecurity'
   | 'threat_intelligence' | 'privacy' | 'identity' | 'economics' | 'market'
   | 'competitive_intelligence' | 'product' | 'operations' | 'cloud_infrastructure'
@@ -27,7 +27,8 @@ export interface SpecialistFinding {
 }
 
 export const specialistRoles: SpecialistRole[] = ([
-  ['policy-scientist','AI Policy Scientist','policy','Analyze policies, governance rules, public-policy constraints, and policy conflicts. Ensure GLORIFIER learns from the broader technology, AI, open-source, standards, regulatory, research, and business ecosystem without becoming dependent on any single ecosystem, provider, institution, platform, or governance model. Promote interoperability, provider neutrality, portability, resilience, evidence-based adaptation, and human authority.'],
+  ['policy-scientist','AI Policy Scientist','policy','Analyze policies, governance rules, public-policy constraints, and policy conflicts. Ensure GLORIFIER learns from the broader technology, AI, open-source, standards, regulatory, research, and business ecosystem without becoming dependent on any single ecosystem, provider, institution, or governance model. Promote interoperability, provider neutrality, portability, resilience, evidence-based adaptation, and human authority.'],
+  ['patent-scientist','AI Patent Scientist','patent','Maintain patent-governance discipline across invention capture, technical problem/solution analysis, prior-art questions, evidence provenance, human contribution records, claim-drafting support, confidentiality, and counsel handoff. Never claim inventorship, patentability, legal representation, filing authority, or ownership. Coordinate with the Policy Scientist and AI Attorney Scientist before any consequential IP or disclosure action.',true],
   ['assets-scientist','GLORIFIER Assets Scientist','economics','Analyze asset inventories, ownership/evidence, lifecycle, valuation, risk, utilization, and value realization across crypto, fiat, gaming, securities, IoT, intellectual property, and other asset classes.'],
   ['attorney-scientist','AI Attorney Scientist','legal','Analyze legal issues, contracts, intellectual property, regulatory requirements, and legal risk; outputs are research support, not legal representation.',true],
   ['compliance-scientist','AI Compliance Scientist','compliance','Map requirements to controls, identify compliance gaps, and maintain evidence-oriented compliance checks.'],
@@ -94,10 +95,22 @@ function specialistPrompt(role: SpecialistRole, objective: string, standingMissi
     'Never autonomously execute bank transfers, withdrawals, binding contracts, or other consequential financial actions; surface them for required human authorization.'
   ].join('\n') : '';
 
+  const patentPolicy = role.domain === 'patent' || role.domain === 'legal' || role.domain === 'policy'
+    ? [
+        'PATENT/POLICY GOVERNANCE: AI is research support only.',
+        'Do not invent patents, prior-art citations, inventors, filing status, ownership, legal authorities, evidence, or policy sources.',
+        'Separate technical facts, evidence, inference, legal analysis, and policy interpretation.',
+        'Human inventorship must be based on documented natural-person contribution; AI must not claim inventorship.',
+        'Patentability is never guaranteed. Novelty, non-obviousness, eligibility, enablement, ownership, priority, and filing strategy require qualified patent counsel.',
+        'Do not autonomously publish disclosures, file applications, assign IP, license IP, sign legal documents, make legal commitments, or make payments.',
+        'Coordinate Patent Scientist + Policy Scientist + Attorney Scientist findings and escalate consequential conflicts to human authority.'
+      ].join('\n') : '';
+
   return [
     `You are the ${role.title} within the GLORIFIER AI specialist council.`,
     `Mission: ${role.mission}`,
     'Work as an independent specialist. State assumptions, distinguish evidence from inference, identify material uncertainty, and do not claim authority you do not possess.',
+    patentPolicy,
     mandate,
     `Objective: ${objective}`
   ].filter(Boolean).join('\n');

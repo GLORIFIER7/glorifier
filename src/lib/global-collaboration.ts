@@ -18,6 +18,15 @@ export const globalProviders = [
     auth: 'oauth2',
     defaultRisk: 'high' as const,
     publicUrl: 'https://developers.facebook.com/'
+  },
+  {
+    id: 'gemini',
+    name: 'Google Gemini',
+    category: 'ai-ecosystem',
+    capabilities: ['model-inference', 'multimodal', 'structured-output', 'agent-collaboration', 'model-discovery'],
+    auth: 'api_key',
+    defaultRisk: 'medium' as const,
+    publicUrl: 'https://ai.google.dev/gemini-api'
   }
 ];
 
@@ -55,7 +64,8 @@ export async function getGlobalCollaborationStatus() {
       authorized: connection?.status === 'authorized',
       requiresHumanApproval: connection?.requiresHumanApproval ?? true,
       connectionId: connection?.id || null,
-      scopes: connection?.scopes || []
+      scopes: connection?.scopes || [],
+      configured: provider.id === 'gemini' ? Boolean(process.env.GEMINI_API_KEY) : undefined
     };
   });
 }

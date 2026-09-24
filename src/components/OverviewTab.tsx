@@ -186,4 +186,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             {!controlPlane?.governance?.recentEvents?.length && <div className="text-xs text-slate-500 py-4">No governance events recorded yet.</div>}
           </div>
         </div>
-
+      </div>
+    </div>
+  );
+};

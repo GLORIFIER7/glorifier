@@ -32,6 +32,7 @@ import { initializeIpResearchRegistry, runIpResearch, listIpResearchRuns, getIpR
 import { initializeIsoScientistRegistry, runIsoScientistResearch, listIsoScientistRuns, getIsoScientistPolicy } from './src/lib/iso-scientist';
 import { initializeGovernanceLoop, runGovernanceCycle, listGovernanceCycles, getGovernanceLoopPolicy } from './src/lib/governance-loop';
 import { initializeWindsorSocialGateway, getWindsorSocialGatewayStatus, getWindsorSocialData } from './src/lib/windsor-social-gateway';
+import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitSummary, recordCustomerRoi, getCustomerRoi, upsertOpportunityNode, linkOpportunityNodes, getOpportunityGraph, createMarketplaceOffer, listMarketplaceOffers } from './src/lib/business-model';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
@@ -54,7 +55,8 @@ void Promise.allSettled([
   initializeIpResearchRegistry(),
   initializeIsoScientistRegistry(),
   initializeGovernanceLoop(),
-  initializeSocialIntegrations()
+  initializeSocialIntegrations(),
+  initializeBusinessModel()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -2548,6 +2550,94 @@ app.post('/api/sync/global', async (_req: Request, res: Response) => {
     console.error('[GlobalSync] execution failed:', error);
     res.status(500).json({ ok: false, error: 'Global synchronization failed', details: error?.message });
   }
+});
+
+// ============================================================================
+// GLORIFIER BUSINESS MODEL CONTROL PLANE
+// Hybrid SaaS + consumption, governed economic truth, GWU usage, ROI, graph, marketplace.
+// ============================================================================
+app.get('/api/business-model', (_req: Request, res: Response) => {
+  res.json({ ok: true, model: getBusinessModel() });
+});
+
+app.get('/api/work-units/summary', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, summary: await getWorkUnitSummary(req.query.tenantId ? String(req.query.tenantId) : undefined) }); }
+  catch (error: any) { res.status(503).json({ ok:false, error:error?.message || 'Work-unit summary failed' }); }
+});
+
+app.post('/api/work-units', async (req: Request, res: Response) => {
+  try {
+    const workUnit = await recordWorkUnit({
+      tenantId:req.body?.tenantId ? String(req.body.tenantId) : null,
+      kind:req.body?.kind || 'other', units:req.body?.units, provider:req.body?.provider || null,
+      model:req.body?.model || null, taskRef:req.body?.taskRef || null, estimatedCost:req.body?.estimatedCost,
+      currency:req.body?.currency || 'USD', metadata:req.body?.metadata || {}
+    });
+    res.status(201).json({ ok:true, workUnit });
+  } catch (error:any) { res.status(400).json({ ok:false, error:error?.message || 'Work-unit recording failed' }); }
+});
+
+app.get('/api/customers/:tenantId/roi', async (req: Request, res: Response) => {
+  try { res.json({ ok:true, roi:await getCustomerRoi(req.params.tenantId) }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:error?.message || 'ROI lookup failed' }); }
+});
+
+app.post('/api/customers/:tenantId/roi', async (req: Request, res: Response) => {
+  try {
+    const roi=await recordCustomerRoi({
+      tenantId:req.params.tenantId, metricType:String(req.body?.metricType || 'other'),
+      quantity:Number(req.body?.quantity || 0), currency:req.body?.currency || null,
+      evidenceStatus:req.body?.evidenceStatus || 'not_verified', sourceRef:req.body?.sourceRef || null,
+      notes:req.body?.notes || null, metadata:req.body?.metadata || {}
+    });
+    res.status(201).json({ ok:true, roi });
+  } catch (error:any) { res.status(400).json({ ok:false, error:error?.message || 'ROI recording failed' }); }
+});
+
+app.get('/api/opportunity-graph', async (req: Request, res: Response) => {
+  try { res.json({ ok:true, graph:await getOpportunityGraph(req.query.tenantId ? String(req.query.tenantId) : undefined) }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:error?.message || 'Opportunity graph unavailable' }); }
+});
+
+app.post('/api/opportunity-graph/nodes', async (req: Request, res: Response) => {
+  try {
+    const node=await upsertOpportunityNode({
+      tenantId:req.body?.tenantId ? String(req.body.tenantId) : null,
+      nodeType:String(req.body?.nodeType || 'opportunity'), nodeRef:String(req.body?.nodeRef || ''),
+      label:String(req.body?.label || ''), attributes:req.body?.attributes || {},
+      evidenceStatus:req.body?.evidenceStatus || 'not_verified'
+    });
+    res.status(201).json({ ok:true,node });
+  } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Opportunity node creation failed' }); }
+});
+
+app.post('/api/opportunity-graph/edges', async (req: Request, res: Response) => {
+  try {
+    const edge=await linkOpportunityNodes({
+      tenantId:req.body?.tenantId ? String(req.body.tenantId) : null,
+      fromNodeId:String(req.body?.fromNodeId || ''), toNodeId:String(req.body?.toNodeId || ''),
+      relationship:String(req.body?.relationship || ''), evidenceStatus:req.body?.evidenceStatus || 'not_verified',
+      metadata:req.body?.metadata || {}
+    });
+    res.status(201).json({ ok:true,edge });
+  } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Opportunity edge creation failed' }); }
+});
+
+app.get('/api/marketplace/offers', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, offers:await listMarketplaceOffers() }); }
+  catch (error:any) { res.status(503).json({ ok:false,error:error?.message || 'Marketplace unavailable' }); }
+});
+
+app.post('/api/marketplace/offers', async (req: Request, res: Response) => {
+  try {
+    const offer=await createMarketplaceOffer({
+      providerRef:String(req.body?.providerRef || ''), title:String(req.body?.title || ''),
+      category:String(req.body?.category || 'ai-service'), description:req.body?.description || null,
+      price:req.body?.price == null ? null : Number(req.body.price), currency:req.body?.currency || 'USD',
+      metadata:req.body?.metadata || {}
+    });
+    res.status(201).json({ ok:true,offer,humanApprovalRequired:true,economicTruth:'price is NOT VERIFIED revenue until payment evidence exists' });
+  } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Marketplace offer creation failed' }); }
 });
 
 // Vite middleware for dev or static serving for prod

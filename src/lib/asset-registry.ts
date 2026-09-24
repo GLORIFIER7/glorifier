@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { getPostgresPool } from './db/postgres';
 
-export type AssetClass = 'crypto' | 'fiat' | 'gaming';
+export type AssetClass = 'crypto' | 'fiat' | 'gaming' | 'stock' | 'bond' | 'etf' | 'other';
 export type AssetStatus = 'discovered' | 'connected' | 'authorized' | 'degraded' | 'revoked' | 'disabled';
 
 export interface AssetAccountRecord {
@@ -11,6 +11,7 @@ export interface AssetAccountRecord {
   assetClass: AssetClass;
   status: AssetStatus;
   accountRef?: string | null;
+  connectionId?: string | null;
   custody: 'self_custody' | 'custodial' | 'bank' | 'platform' | 'unknown';
   capabilities: string[];
   scopes: string[];
@@ -31,6 +32,7 @@ export async function initializeAssetRegistry() {
       asset_class TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'discovered',
       account_ref TEXT,
+      connection_id TEXT REFERENCES connection_registry(id) ON DELETE SET NULL,
       custody TEXT NOT NULL DEFAULT 'unknown',
       capabilities JSONB NOT NULL DEFAULT '[]',
       scopes JSONB NOT NULL DEFAULT '[]',
@@ -44,6 +46,41 @@ export async function initializeAssetRegistry() {
     );
     CREATE INDEX IF NOT EXISTS idx_asset_registry_class_priority ON asset_account_registry(asset_class, priority DESC);
     CREATE INDEX IF NOT EXISTS idx_asset_registry_provider ON asset_account_registry(provider);
+    CREATE INDEX IF NOT EXISTS idx_asset_registry_connection ON asset_account_registry(connection_id);
+    CREATE TABLE IF NOT EXISTS asset_holdings (
+      id TEXT PRIMARY KEY,
+      asset_account_id TEXT NOT NULL REFERENCES asset_account_registry(id) ON DELETE CASCADE,
+      symbol TEXT NOT NULL,
+      instrument_type TEXT NOT NULL,
+      name TEXT,
+      quantity NUMERIC,
+      currency TEXT,
+      cost_basis NUMERIC,
+      market_price NUMERIC,
+      market_value NUMERIC,
+      valuation_time TIMESTAMPTZ,
+      source TEXT NOT NULL,
+      evidence_ref TEXT,
+      metadata JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      UNIQUE(asset_account_id, symbol, instrument_type)
+    );
+    CREATE INDEX IF NOT EXISTS idx_asset_holdings_account ON asset_holdings(asset_account_id);
+    CREATE INDEX IF NOT EXISTS idx_asset_holdings_symbol ON asset_holdings(symbol);
+    CREATE TABLE IF NOT EXISTS asset_evidence (
+      id TEXT PRIMARY KEY,
+      asset_account_id TEXT REFERENCES asset_account_registry(id) ON DELETE CASCADE,
+      holding_id TEXT REFERENCES asset_holdings(id) ON DELETE CASCADE,
+      evidence_type TEXT NOT NULL,
+      source TEXT NOT NULL,
+      source_ref TEXT,
+      observed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      payload_hash TEXT,
+      details JSONB NOT NULL DEFAULT '{}',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_asset_evidence_account_time ON asset_evidence(asset_account_id, observed_at DESC);
     CREATE TABLE IF NOT EXISTS asset_account_events (
       id TEXT PRIMARY KEY,
       asset_account_id TEXT NOT NULL REFERENCES asset_account_registry(id) ON DELETE CASCADE,
@@ -77,16 +114,16 @@ export async function registerAssetAccount(input: Omit<AssetAccountRecord, 'id'>
   const id = input.id || `asset-account-${crypto.randomUUID()}`;
   const r = await getPostgresPool().query(
     `INSERT INTO asset_account_registry
-      (id,provider,display_name,asset_class,status,account_ref,custody,capabilities,scopes,priority,risk,requires_human_approval,last_verified_at,metadata)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+      (id,provider,display_name,asset_class,status,account_ref,connection_id,custody,capabilities,scopes,priority,risk,requires_human_approval,last_verified_at,metadata)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      ON CONFLICT(id) DO UPDATE SET
        provider=EXCLUDED.provider, display_name=EXCLUDED.display_name, asset_class=EXCLUDED.asset_class,
-       status=EXCLUDED.status, account_ref=EXCLUDED.account_ref, custody=EXCLUDED.custody,
+       status=EXCLUDED.status, account_ref=EXCLUDED.account_ref, connection_id=EXCLUDED.connection_id, custody=EXCLUDED.custody,
        capabilities=EXCLUDED.capabilities, scopes=EXCLUDED.scopes, priority=EXCLUDED.priority,
        risk=EXCLUDED.risk, requires_human_approval=EXCLUDED.requires_human_approval,
        last_verified_at=EXCLUDED.last_verified_at, metadata=EXCLUDED.metadata, updated_at=NOW()
      RETURNING *`,
-    [id,input.provider,input.displayName,input.assetClass,input.status,input.accountRef||null,input.custody,
+    [id,input.provider,input.displayName,input.assetClass,input.status,input.accountRef||null,input.connectionId||null,input.custody,
       JSON.stringify(input.capabilities),JSON.stringify(input.scopes),input.priority,input.risk,input.requiresHumanApproval,
       input.lastVerifiedAt||null,JSON.stringify(input.metadata||{})]
   );
@@ -138,4 +175,68 @@ function mapAsset(x: any): AssetAccountRecord {
     lastVerifiedAt:x.last_verified_at ? new Date(x.last_verified_at).toISOString() : null,
     metadata:x.metadata||{}
   };
+}
+
+
+export async function recordAssetHolding(input: {
+  id?: string;
+  assetAccountId: string;
+  symbol: string;
+  instrumentType: 'stock' | 'bond' | 'etf' | 'crypto' | 'other';
+  name?: string;
+  quantity?: number | null;
+  currency?: string | null;
+  costBasis?: number | null;
+  marketPrice?: number | null;
+  marketValue?: number | null;
+  valuationTime?: string | null;
+  source: string;
+  evidenceRef?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  await initializeAssetRegistry();
+  const id = input.id || `holding-${crypto.randomUUID()}`;
+  const r = await getPostgresPool().query(
+    `INSERT INTO asset_holdings
+      (id,asset_account_id,symbol,instrument_type,name,quantity,currency,cost_basis,market_price,market_value,valuation_time,source,evidence_ref,metadata)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+     ON CONFLICT(asset_account_id,symbol,instrument_type) DO UPDATE SET
+       name=EXCLUDED.name, quantity=EXCLUDED.quantity, currency=EXCLUDED.currency,
+       cost_basis=EXCLUDED.cost_basis, market_price=EXCLUDED.market_price, market_value=EXCLUDED.market_value,
+       valuation_time=EXCLUDED.valuation_time, source=EXCLUDED.source, evidence_ref=EXCLUDED.evidence_ref,
+       metadata=EXCLUDED.metadata, updated_at=NOW()
+     RETURNING *`,
+    [id,input.assetAccountId,input.symbol,input.instrumentType,input.name||null,input.quantity??null,input.currency||null,
+      input.costBasis??null,input.marketPrice??null,input.marketValue??null,input.valuationTime||null,input.source,
+      input.evidenceRef||null,JSON.stringify(input.metadata||{})]
+  );
+  return r.rows[0];
+}
+
+export async function listAssetHoldings(assetAccountId?: string) {
+  await initializeAssetRegistry();
+  const r = assetAccountId
+    ? await getPostgresPool().query('SELECT * FROM asset_holdings WHERE asset_account_id=$1 ORDER BY symbol',[assetAccountId])
+    : await getPostgresPool().query('SELECT * FROM asset_holdings ORDER BY asset_account_id, symbol');
+  return r.rows;
+}
+
+export async function recordAssetEvidence(input: {
+  assetAccountId?: string | null;
+  holdingId?: string | null;
+  evidenceType: string;
+  source: string;
+  sourceRef?: string | null;
+  observedAt?: string | null;
+  payloadHash?: string | null;
+  details?: Record<string, unknown>;
+}) {
+  await initializeAssetRegistry();
+  const id = `ae-${crypto.randomUUID()}`;
+  const r = await getPostgresPool().query(
+    'INSERT INTO asset_evidence(id,asset_account_id,holding_id,evidence_type,source,source_ref,observed_at,payload_hash,details) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
+    [id,input.assetAccountId||null,input.holdingId||null,input.evidenceType,input.source,input.sourceRef||null,
+      input.observedAt||new Date().toISOString(),input.payloadHash||null,JSON.stringify(input.details||{})]
+  );
+  return r.rows[0];
 }

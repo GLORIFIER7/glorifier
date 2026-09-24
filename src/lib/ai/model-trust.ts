@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { getPostgresPool } from './db/postgres';
+import { getPostgresPool } from '../db/postgres';
 
 export type ModelTrustStatus = 'unknown' | 'probation' | 'trusted' | 'degraded' | 'quarantined';
 export type ModelThreatType = 'unsupported_claim' | 'policy_violation' | 'authorization_bypass' | 'fabricated_evidence' | 'malicious_instruction' | 'runtime_anomaly';

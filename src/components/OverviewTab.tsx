@@ -20,7 +20,8 @@ import {
 import { SovereignStats, DataFootprintSource, MonetizationPolicy, CompensationTransaction } from '../types';
 import { PrivacyShieldProgressBar } from './PrivacyShieldProgressBar';
 import { LiveEconomicData } from './LiveEconomicData';
-import { BusinessModelPanel } from './BusinessModelPanel';\nimport { ValuationEnginePanel } from './ValuationEnginePanel';
+import { BusinessModelPanel } from './BusinessModelPanel';
+import { ValuationEnginePanel } from './ValuationEnginePanel';
 
 interface OverviewTabProps {
   stats: SovereignStats;

@@ -1,4 +1,6 @@
-import { query } from './db';
+import { getPostgresPool } from './db/postgres';
+
+const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);
 
 export type InventionStatus = 'candidate' | 'disclosure-draft' | 'counsel-review' | 'filed' | 'abandoned';
 export type ConfidentialityStatus = 'internal' | 'confidential' | 'public';

@@ -20,6 +20,7 @@ import {
 import { SovereignStats, DataFootprintSource, MonetizationPolicy, CompensationTransaction } from '../types';
 import { PrivacyShieldProgressBar } from './PrivacyShieldProgressBar';
 import { LiveEconomicData } from './LiveEconomicData';
+import { BusinessModelPanel } from './BusinessModelPanel';
 
 interface OverviewTabProps {
   stats: SovereignStats;
@@ -94,127 +95,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   return (
     <div className="space-y-6">
       <LiveEconomicData />
-      {/* Top Banner Alert / AI Broker Summary */}
-      <div className="rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-slate-850 p-5 border border-slate-800 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-start gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-            <Sparkles className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-semibold text-white">Autonomous Data Broker Status</h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                Guarding 384k Telemetry Records
-              </span>
-            </div>
-            <p className="text-xs text-slate-300 mt-1 max-w-2xl leading-relaxed">
-              Your AI Broker is currently enforcing a <strong className="text-slate-100">${policy.minimumMonthlyFloorUsd}/mo floor</strong> and differential privacy epsilon <strong className="text-emerald-400 font-mono">ε={policy.globalEpsilon}</strong>. Raw identity identifiers are stripped across all internet channels. Unconsented ad-trackers are routed to the legal clawback quarantine.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 self-end md:self-center flex-wrap">
-          <button
-            onClick={() => onNavigateToTab('ai_collaboration')}
-            id="open-ai-collaboration-btn"
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Users className="w-3.5 h-3.5 text-emerald-400" />
-            <span>All-AI Collaboration</span>
-          </button>
-          <button
-            onClick={() => onNavigateToTab('broker')}
-            id="open-ai-strategy-btn"
-            className="px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Cpu className="w-3.5 h-3.5 text-emerald-400" />
-            Adjust Broker Strategy
-          </button>
-        </div>
-      </div>
-
-      {/* Main KPI Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Total Earned */}
-        <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Total User Compensation</span>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center">
-              <DollarSign className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white tracking-tight">
-              ${stats.totalEarnedUsd.toFixed(2)}
-            </span>
-            <span className="text-xs text-emerald-400 font-medium flex items-center">
-              <TrendingUp className="w-3 h-3 mr-0.5" /> +24% vs last mo
-            </span>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">Settled to USDC / ACH</span>
-            <button 
-              onClick={onOpenWithdraw}
-              className="text-emerald-400 hover:text-emerald-300 font-medium underline underline-offset-2"
-            >
-              Instant Claim
-            </button>
-          </div>
-        </div>
-
-        {/* Card 2: Monthly Pacing */}
-        <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Est. Monthly Pacing</span>
-            <div className="w-8 h-8 rounded-lg bg-teal-500/10 text-teal-400 flex items-center justify-center">
-              <Activity className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white tracking-tight">
-              ${stats.monthlyPacingUsd.toFixed(2)}
-            </span>
-            <span className="text-xs text-slate-400">/ month</span>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">Pending settlement:</span>
-            <span className="text-slate-200 font-mono font-medium">${stats.pendingSettlementUsd.toFixed(2)}</span>
-          </div>
-        </div>
-
-        {/* Card 3: Privacy Shield Score & Animated Progress Bar */}
-        <PrivacyShieldProgressBar
-          stats={stats}
-          policy={policy}
-          onUpdatePolicy={onUpdatePolicy}
-          onNavigateToTab={onNavigateToTab}
-        />
-
-        {/* Card 4: Governed Streams */}
-        <div className="rounded-xl bg-slate-900/90 border border-slate-800 p-4 shadow-sm relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-slate-400">Governed Streams</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-400 flex items-center justify-center">
-              <Layers className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono text-white tracking-tight">
-              {activeMonetizingCount}
-            </span>
-            <span className="text-xs text-slate-400">monetizing / {footprints.length} total</span>
-          </div>
-          <div className="mt-3 pt-2.5 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-            <span className="text-slate-400">{shieldedCount} streams shielded private</span>
-            <button 
-              onClick={() => onNavigateToTab('footprints')}
-              className="text-indigo-400 hover:text-indigo-300 font-medium"
-            >
-              Configure Tiers →
-            </button>
-          </div>
-        </div>
-      </div>
+      <BusinessModelPanel />
 
       {/* Autonomous Policy Strategy Selector */}
       <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">

@@ -123,7 +123,7 @@ async function standingGptCoWorkingMission() {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        taskPrompt: '24/7 Standing Continuous Pair-Engineering & Sovereign Yield Optimization: Audit system circuit breakers, differential privacy epsilon consumption, and commercial dataset licensing floors.',
+        taskPrompt: '24/7 standing continuous engineering and value-optimization review: audit system circuit breakers, privacy budgets, commercial data licensing floors, provider health, independent compute capacity, orchestration resilience, and measurable business outcomes. Learn from available ecosystems without becoming dependent on any single provider or platform.',
         domain: 'code_engineering',
         standingMission: true
       }),
@@ -132,7 +132,7 @@ async function standingGptCoWorkingMission() {
     const body = await response.text();
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
     log('STANDING_GPT_COWORKING_OK', {
-      mission: '24/7 continuous pairing with GPT-4o & Gemini',
+      mission: '24/7 continuous provider-neutral AI collaboration; use whichever eligible intelligence providers are available.'
       response: body.slice(-2000),
     });
   } catch (error) {
@@ -153,7 +153,7 @@ async function standingGlobalSyncMission() {
     const body = await response.text();
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
     log('GLOBAL_SYNC_AND_SYNTHESIS_OK', {
-      mission: 'Synchronized all glorifier across internet and all AI agents',
+      mission: 'Synchronize authorized GLORIFIER intelligence and ecosystem signals across connected agents and providers; do not imply universal internet access.'
       response: body.slice(-2000),
     });
   } catch (error) {

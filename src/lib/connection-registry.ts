@@ -126,7 +126,8 @@ export async function verifyConnection(id: string, actor = 'connection-manager')
   const connection = await getConnection(id);
   if (!connection) return null;
   const now = new Date().toISOString();
-  const status = connection.status === 'revoked' || connection.status === 'disabled' ? connection.status : 'authorized';
+  // Verification must never grant authorization. Authorization remains an explicit human-approved state.
+  const status = connection.status;
   const r = await getPostgresPool().query(
     'UPDATE connection_registry SET status=$2,last_verified_at=$3,updated_at=NOW() WHERE id=$1 RETURNING *',
     [id,status,now]

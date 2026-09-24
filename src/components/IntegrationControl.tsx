@@ -87,7 +87,30 @@ export const IntegrationControl: React.FC = () => {
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>
       )}
 
-      {collaboration.length > 0 && (\n        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-5">\n          <div className="flex items-center gap-2">\n            <Globe2 className="w-5 h-5 text-indigo-300" />\n            <h3 className="font-semibold text-white">Global Synthesis & Collaboration</h3>\n          </div>\n          <p className="text-xs text-slate-400 mt-1">External AI and platform ecosystems use the same connection, authorization and audit model.</p>\n          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">\n            {collaboration.map((provider) => (\n              <div key={provider.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">\n                <div className="flex items-center justify-between gap-3">\n                  <span className="font-semibold text-white">{provider.name}</span>\n                  <span className="text-[10px] rounded-full px-2 py-1 bg-slate-800 text-slate-300">{provider.authorized ? 'Authorized' : 'Discovered / permission-gated'}</span>\n                </div>\n                <div className="text-[10px] text-slate-500 uppercase mt-2">{provider.category}</div>\n                <div className="flex flex-wrap gap-1 mt-3">{provider.capabilities.map((cap) => <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">{cap}</span>)}</div>\n                <div className="text-[10px] text-emerald-400 mt-3">Human approval required for consequential actions</div>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {registry && (
+      {collaboration.length > 0 && (
+        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-5">
+          <div className="flex items-center gap-2">
+            <Globe2 className="w-5 h-5 text-indigo-300" />
+            <h3 className="font-semibold text-white">Global Synthesis & Collaboration</h3>
+          </div>
+          <p className="text-xs text-slate-400 mt-1">External AI and platform ecosystems use the same connection, authorization and audit model.</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            {collaboration.map((provider) => (
+              <div key={provider.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-white">{provider.name}</span>
+                  <span className="text-[10px] rounded-full px-2 py-1 bg-slate-800 text-slate-300">{provider.authorized ? 'Authorized' : 'Discovered / permission-gated'}</span>
+                </div>
+                <div className="text-[10px] text-slate-500 uppercase mt-2">{provider.category}</div>
+                <div className="flex flex-wrap gap-1 mt-3">{provider.capabilities.map((cap) => <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">{cap}</span>)}</div>
+                <div className="text-[10px] text-emerald-400 mt-3">Human approval required for consequential actions</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {registry && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">

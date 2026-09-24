@@ -8,6 +8,8 @@ import {
 
 export type SocialProvider = 'linkedin' | 'facebook' | 'tiktok';
 
+const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);
+
 const CALLBACK_BASE = process.env.SOCIAL_OAUTH_CALLBACK_BASE_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app';
 
 export const socialIntegrations = {
@@ -59,6 +61,8 @@ function redirectUri(provider: SocialProvider) {
 }
 
 export async function initializeSocialIntegrations() {
+  await query(`CREATE TABLE IF NOT EXISTS social_oauth_states (state_hash TEXT PRIMARY KEY, provider TEXT NOT NULL, connection_id TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)`);
+  await query(`CREATE INDEX IF NOT EXISTS idx_social_oauth_states_expiry ON social_oauth_states(expires_at)`);
   for (const provider of Object.keys(socialIntegrations) as SocialProvider[]) {
     const c = cfg(provider);
     await registerConnection({
@@ -173,6 +177,8 @@ export async function buildSocialAuthorization(provider: SocialProvider, actor =
   );
 
   const state = crypto.randomBytes(24).toString('hex');
+  await query(`DELETE FROM social_oauth_states WHERE expires_at < NOW()`);
+  await query(`INSERT INTO social_oauth_states(state_hash,provider,connection_id,expires_at) VALUES($1,$2,$3,NOW()+INTERVAL '10 minutes')`, [crypto.createHash('sha256').update(state).digest('hex'), provider, connection.id]);
   await recordConnectionEvent(connection.id, 'oauth_authorization_started', actor, {
     approvalId: approval.id,
     stateHash: crypto.createHash('sha256').update(state).digest('hex'),

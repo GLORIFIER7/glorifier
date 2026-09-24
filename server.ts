@@ -40,6 +40,7 @@ import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governReve
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 import { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 import { buildFinanceScientistReport, compareCapitalScenarios } from './src/lib/finance-intelligence';
+import { initializeAwsIntelligence, getAwsIntelligencePolicy, recordAwsAccount, recordAwsResource, recordAwsFinding, recordAwsCostObservation, getAwsIntelligenceSnapshot } from './src/lib/aws-intelligence';
 import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
 
 dotenv.config();
@@ -66,6 +67,7 @@ void Promise.allSettled([
   initializeBusinessModel(),
   initializeValuationEngine(),
   initializeEconomicOperatingSystem(),
+  initializeAwsIntelligence(),
   initializeRevenueControlPlane()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
@@ -994,6 +996,29 @@ app.get('/api/economic-os/verified-revenue', async (_req: Request, res: Response
     const r=await (await import('./src/lib/db/postgres')).getPostgresPool().query('SELECT * FROM glorifier_verified_revenue ORDER BY created_at DESC LIMIT 500');
     res.json({ ok:true, revenue:r.rows.map((x:any)=>({...x,amount:Number(x.amount)})), label:'VERIFIED', rule:'Only qualifying payment evidence with external reference enters this ledger.' });
   } catch(error:any) { res.status(503).json({ ok:false, error:'Verified revenue ledger unavailable', details:error?.message }); }
+});
+
+// AWS infrastructure intelligence control plane: read/evidence-first, no destructive automation.
+app.get('/api/aws/intelligence', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, snapshot:await getAwsIntelligenceSnapshot() }); }
+  catch(error:any) { res.status(503).json({ ok:false, error:'AWS intelligence unavailable', details:error?.message }); }
+});
+app.get('/api/aws/policy', (_req: Request, res: Response) => res.json({ ok:true, policy:getAwsIntelligencePolicy() }));
+app.post('/api/aws/accounts', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, account:await recordAwsAccount({accountRef:String(req.body?.accountRef||''),name:req.body?.name,region:req.body?.region,status:req.body?.status,evidenceStatus:req.body?.evidenceStatus,sourceRef:req.body?.sourceRef,metadata:req.body?.metadata||{}}) }); }
+  catch(error:any) { res.status(400).json({ ok:false,error:'Unable to record AWS account',details:error?.message }); }
+});
+app.post('/api/aws/resources', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, resource:await recordAwsResource({accountRef:String(req.body?.accountRef||''),resourceRef:String(req.body?.resourceRef||''),resourceClass:req.body?.resourceClass,service:String(req.body?.service||''),region:req.body?.region,status:req.body?.status,estimatedMonthlyCost:req.body?.estimatedMonthlyCost==null?undefined:Number(req.body.estimatedMonthlyCost),currency:req.body?.currency,evidenceStatus:req.body?.evidenceStatus,metadata:req.body?.metadata||{}}) }); }
+  catch(error:any) { res.status(400).json({ ok:false,error:'Unable to record AWS resource',details:error?.message }); }
+});
+app.post('/api/aws/findings', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true,finding:await recordAwsFinding({accountRef:req.body?.accountRef,pillar:String(req.body?.pillar||''),category:String(req.body?.category||''),severity:req.body?.severity,title:String(req.body?.title||''),description:String(req.body?.description||''),evidenceRefs:Array.isArray(req.body?.evidenceRefs)?req.body.evidenceRefs.map(String):[],recommendedAction:req.body?.recommendedAction}) }); }
+  catch(error:any) { res.status(400).json({ ok:false,error:'Unable to record AWS finding',details:error?.message }); }
+});
+app.post('/api/aws/cost-observations', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true,cost:await recordAwsCostObservation({accountRef:req.body?.accountRef,periodStart:req.body?.periodStart,periodEnd:req.body?.periodEnd,amount:Number(req.body?.amount||0),currency:req.body?.currency,service:req.body?.service,evidenceStatus:req.body?.evidenceStatus,sourceRef:req.body?.sourceRef,metadata:req.body?.metadata||{}}),economicTruth:'AWS cost is not revenue; observed or estimated savings are not revenue.' }); }
+  catch(error:any) { res.status(400).json({ ok:false,error:'Unable to record AWS cost observation',details:error?.message }); }
 });
 
 // SaaS control plane: tenants, plans, subscriptions and usage-ready metadata.

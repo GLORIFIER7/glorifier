@@ -6,6 +6,8 @@ export interface OpenAICompatibleConfig {
   apiKeyEnv: string;
   baseUrlEnv: string;
   modelEnv: string;
+  defaultBaseUrl?: string;
+  defaultModel?: string;
 }
 
 export class OpenAICompatibleProvider implements AIProvider {
@@ -25,11 +27,11 @@ export class OpenAICompatibleProvider implements AIProvider {
   }
 
   private get baseUrl() {
-    return process.env[this.config.baseUrlEnv] || (this.config.id === 'openai' ? 'https://api.openai.com/v1' : undefined);
+    return process.env[this.config.baseUrlEnv] || this.config.defaultBaseUrl;
   }
 
   private get defaultModel() {
-    return process.env[this.config.modelEnv] || (this.config.id === 'openai' ? 'gpt-4o' : undefined);
+    return process.env[this.config.modelEnv] || this.config.defaultModel;
   }
 
   status() {

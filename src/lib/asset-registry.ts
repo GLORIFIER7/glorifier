@@ -60,6 +60,7 @@ export async function initializeAssetRegistry() {
       market_price NUMERIC,
       market_value NUMERIC,
       valuation_time TIMESTAMPTZ,
+      verification_status TEXT NOT NULL DEFAULT 'not_verified',
       source TEXT NOT NULL,
       evidence_ref TEXT,
       metadata JSONB NOT NULL DEFAULT '{}',
@@ -67,6 +68,7 @@ export async function initializeAssetRegistry() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       UNIQUE(asset_account_id, symbol, instrument_type)
     );
+    ALTER TABLE asset_holdings ADD COLUMN IF NOT EXISTS verification_status TEXT NOT NULL DEFAULT 'not_verified';
     CREATE INDEX IF NOT EXISTS idx_asset_holdings_account ON asset_holdings(asset_account_id);
     CREATE INDEX IF NOT EXISTS idx_asset_holdings_symbol ON asset_holdings(symbol);
     CREATE TABLE IF NOT EXISTS asset_evidence (
@@ -194,25 +196,28 @@ export async function recordAssetHolding(input: {
   valuationTime?: string | null;
   source: string;
   evidenceRef?: string | null;
+  verificationStatus?: 'not_verified' | 'verified';
   metadata?: Record<string, unknown>;
 }) {
   await initializeAssetRegistry();
   const id = input.id || `holding-${crypto.randomUUID()}`;
   const r = await getPostgresPool().query(
     `INSERT INTO asset_holdings
-      (id,asset_account_id,symbol,instrument_type,name,quantity,currency,cost_basis,market_price,market_value,valuation_time,source,evidence_ref,metadata)
-     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+      (id,asset_account_id,symbol,instrument_type,name,quantity,currency,cost_basis,market_price,market_value,valuation_time,verification_status,source,evidence_ref,metadata)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
      ON CONFLICT(asset_account_id,symbol,instrument_type) DO UPDATE SET
        name=EXCLUDED.name, quantity=EXCLUDED.quantity, currency=EXCLUDED.currency,
        cost_basis=EXCLUDED.cost_basis, market_price=EXCLUDED.market_price, market_value=EXCLUDED.market_value,
-       valuation_time=EXCLUDED.valuation_time, source=EXCLUDED.source, evidence_ref=EXCLUDED.evidence_ref,
+       valuation_time=EXCLUDED.valuation_time, verification_status=EXCLUDED.verification_status, source=EXCLUDED.source, evidence_ref=EXCLUDED.evidence_ref,
        metadata=EXCLUDED.metadata, updated_at=NOW()
      RETURNING *`,
     [id,input.assetAccountId,input.symbol,input.instrumentType,input.name||null,input.quantity??null,input.currency||null,
-      input.costBasis??null,input.marketPrice??null,input.marketValue??null,input.valuationTime||null,input.source,
+      input.costBasis??null,input.marketPrice??null,
+      input.marketValue ?? (input.quantity != null && input.marketPrice != null ? input.quantity * input.marketPrice : null),
+      input.valuationTime||null,input.verificationStatus || 'not_verified',input.source,
       input.evidenceRef||null,JSON.stringify(input.metadata||{})]
   );
-  return r.rows[0];
+  return { ...r.rows[0], verification_status: r.rows[0].verification_status || 'not_verified', calculated: true, verified: r.rows[0].verification_status === 'verified' };
 }
 
 export async function listAssetHoldings(assetAccountId?: string) {
@@ -220,7 +225,7 @@ export async function listAssetHoldings(assetAccountId?: string) {
   const r = assetAccountId
     ? await getPostgresPool().query('SELECT * FROM asset_holdings WHERE asset_account_id=$1 ORDER BY symbol',[assetAccountId])
     : await getPostgresPool().query('SELECT * FROM asset_holdings ORDER BY asset_account_id, symbol');
-  return r.rows;
+  return r.rows.map((row: any) => ({ ...row, verification_status: row.verification_status || 'not_verified', calculated: true, verified: row.verification_status === 'verified' }));
 }
 
 export async function listAssetEvidence(assetAccountId?: string, limit = 100) {

@@ -22,6 +22,7 @@ import { PrivacyShieldProgressBar } from './PrivacyShieldProgressBar';
 import { LiveEconomicData } from './LiveEconomicData';
 import { BusinessModelPanel } from './BusinessModelPanel';
 import { ValuationEnginePanel } from './ValuationEnginePanel';
+import { EconomicOperatingSystemPanel } from './EconomicOperatingSystemPanel';
 
 interface OverviewTabProps {
   stats: SovereignStats;
@@ -72,6 +73,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       <LiveEconomicData />
       <BusinessModelPanel />
       <ValuationEnginePanel />
+      <EconomicOperatingSystemPanel />
 
       <section className="rounded-xl bg-slate-950 border border-slate-800 p-5">
         <div className="flex items-center justify-between gap-4 mb-4">

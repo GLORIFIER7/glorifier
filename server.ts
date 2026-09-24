@@ -28,6 +28,7 @@ import { getGlorifierAiTrustStandard, getGlorifierAiTrustControls, evaluateGlori
 import { initializeInventionRegistry, registerInvention, listInventions } from './src/lib/invention-registry';
 import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorization, getIso42001AlignmentTargets, getStandardizationIdentityFederationStatus, requestStandardizationIdentityFederationAuthorization } from './src/lib/iso-integration';
 import { initializeUsptoIntegration, getUsptoIntegrationStatus, requestUsptoAuthorization, getUsptoTrademarkStatus } from './src/lib/uspto-integration';
+import { initializeIpResearchRegistry, runIpResearch, listIpResearchRuns, getIpResearchPolicy } from './src/lib/ip-research';
 
 dotenv.config();
 
@@ -45,7 +46,8 @@ void Promise.allSettled([
   initializeModelTrustRegistry(),
   initializeInventionRegistry(),
   initializeIsoIntegration(),
-  initializeUsptoIntegration()
+  initializeUsptoIntegration(),
+  initializeIpResearchRegistry()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -2086,6 +2088,36 @@ app.get('/api/uspto/trademarks/:serialNumber/status', async (req: Request, res: 
     res.json({ ok: true, result, policy: { readOnly: true, filingExecutionEnabled: false, paymentExecutionEnabled: false } });
   } catch (error: any) {
     res.status(400).json({ ok: false, error: 'USPTO trademark status retrieval failed', details: error?.message });
+  }
+});
+
+app.get('/api/ip/research/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getIpResearchPolicy() });
+});
+
+app.get('/api/ip/research', async (req: Request, res: Response) => {
+  try {
+    const inventionId = req.query.inventionId ? String(req.query.inventionId) : undefined;
+    const limit = Number(req.query.limit || 50);
+    res.json({ ok: true, runs: await listIpResearchRuns(inventionId, limit), policy: getIpResearchPolicy() });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'IP research registry unavailable', details: error?.message });
+  }
+});
+
+app.post('/api/ip/research', async (req: Request, res: Response) => {
+  try {
+    if (!req.body?.inventionId) return res.status(400).json({ ok: false, error: 'inventionId is required' });
+    const run = await runIpResearch({
+      inventionId: String(req.body.inventionId),
+      priorArt: Array.isArray(req.body?.priorArt) ? req.body.priorArt.map(String) : [],
+      technicalEvidence: Array.isArray(req.body?.technicalEvidence) ? req.body.technicalEvidence.map(String) : [],
+      humanContribution: Array.isArray(req.body?.humanContribution) ? req.body.humanContribution.map(String) : [],
+      actor: String(req.body?.actor || 'human-owner')
+    });
+    res.status(201).json({ ok: true, run, policy: getIpResearchPolicy(), filingStatus: 'not_filed' });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'IP research failed', details: error?.message });
   }
 });
 

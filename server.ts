@@ -26,7 +26,7 @@ import { initializeIotRegistry, registerIotDevice, listIotDevices, recordIotTele
 import { initializeMonetizationEngine, registerMonetizationOpportunity, listMonetizationOpportunities, recordMonetizationEvent, buildMonetizationDashboard } from './src/lib/monetization-engine';
 import { getGlorifierAiTrustStandard, getGlorifierAiTrustControls, evaluateGlorifierAiTrustConformance } from './src/lib/ai/trust-standard';
 import { initializeInventionRegistry, registerInvention, listInventions } from './src/lib/invention-registry';
-import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorization, getIso42001AlignmentTargets } from './src/lib/iso-integration';
+import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorization, getIso42001AlignmentTargets, getStandardizationIdentityFederationStatus } from './src/lib/iso-integration';
 
 dotenv.config();
 
@@ -2030,6 +2030,10 @@ app.post('/api/compute/task', async (req: Request, res: Response) => {
 app.get('/api/iso/status', async (_req: Request, res: Response) => {
   try { res.json({ ok: true, status: await getIsoIntegrationStatus() }); }
   catch (error: any) { res.status(503).json({ ok: false, error: 'ISO integration status unavailable', details: error?.message }); }
+});
+
+app.get('/api/iso/sif/status', (_req: Request, res: Response) => {
+  res.json({ ok: true, federation: getStandardizationIdentityFederationStatus() });
 });
 
 app.get('/api/iso/42001/alignment', (_req: Request, res: Response) => {

@@ -150,6 +150,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [fiatAccount, setFiatAccount] = useState<string>('Account ending in 4092');
 
   const [isProcessing, setIsProcessing] = useState(false);
+  const [payoutError, setPayoutError] = useState<string | null>(null);
   const [copiedTx, setCopiedTx] = useState(false);
   const [settledReceipt, setSettledReceipt] = useState<{
     txHash: string;
@@ -308,6 +309,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     if (!isCurrentAddressValid()) return;
 
     setIsProcessing(true);
+    setPayoutError(null);
     try {
       const method = payoutCategory === 'crypto'
         ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}`
@@ -316,10 +318,12 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
       const res = await authenticatedFetch('/api/payouts/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, method, destination })
+        body: JSON.stringify({ amount, method, destination, userReference, actor: 'human-owner' })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || `Payout request HTTP ${res.status}`);
+
+      if (data.status === 'blocked') throw new Error(data.note || 'Payout request blocked by governance.');
 
       setSettledReceipt({
         txHash: data.payoutRequestId,
@@ -332,6 +336,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
       });
       onWithdrawSuccess(amount, method, data.payoutRequestId);
     } catch (error) {
+      setPayoutError(error instanceof Error ? error.message : 'Payout request failed.');
       console.error('Payout request failed:', error);
     } finally {
       setIsProcessing(false);
@@ -385,10 +390,10 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 Disburse Sovereign Data Earnings
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  Instant Clearing
+                  Governed Request
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">Direct on-chain stablecoins or sovereign fiat payout</p>
+              <p className="text-[11px] text-slate-400">Verified earnings request • no transfer is claimed until settlement evidence exists</p>
             </div>
           </div>
           <button 
@@ -928,6 +933,13 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               </div>
             )}
 
+            {payoutError && (
+              <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{payoutError}</span>
+              </div>
+            )}
+
             {/* Action Button */}
             <button
               onClick={handleWithdraw}
@@ -937,11 +949,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               {isProcessing ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  Broadcasting On-Chain Settlement...
+                  Submitting Governed Request...
                 </>
               ) : (
                 <>
-                  Disburse ${amount.toFixed(2)} USD via {payoutCategory === 'crypto' ? `${selectedToken} (${selectedNetwork})` : 'Fiat Wire'}
+                  Request ${amount.toFixed(2)} USD via {payoutCategory === 'crypto' ? `${selectedToken} (${selectedNetwork})` : 'Fiat Wire'}
                 </>
               )}
             </button>
@@ -953,11 +965,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-base font-bold text-white">Payout Request Submitted</h4>
+              <h4 className="text-base font-bold text-white">Payout Request Recorded</h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {settledReceipt.isCrypto
-                  ? `Payout is pending provider confirmation on ${settledReceipt.network}.`
-                  : 'Fiat payout request is pending provider confirmation.'}
+                  ? `Request recorded. No provider transfer has been executed.`
+                  : 'Request recorded. No provider transfer has been executed.'}
               </p>
             </div>
 

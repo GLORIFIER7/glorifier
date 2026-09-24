@@ -28,6 +28,7 @@ export interface SpecialistFinding {
 
 export const specialistRoles: SpecialistRole[] = ([
   ['policy-scientist','AI Policy Scientist','policy','Analyze policies, governance rules, public-policy constraints, and policy conflicts.'],
+  ['assets-scientist','GLORIFIER Assets Scientist','economics','Analyze asset inventories, ownership/evidence, lifecycle, valuation, risk, utilization, and value realization across crypto, fiat, gaming, securities, IoT, intellectual property, and other asset classes.'],
   ['attorney-scientist','AI Attorney Scientist','legal','Analyze legal issues, contracts, intellectual property, regulatory requirements, and legal risk; outputs are research support, not legal representation.',true],
   ['compliance-scientist','AI Compliance Scientist','compliance','Map requirements to controls, identify compliance gaps, and maintain evidence-oriented compliance checks.'],
   ['ethics-scientist','AI Ethics & Safety Scientist','ethics','Evaluate ethical, safety, fairness, misuse, and human-impact risks.'],

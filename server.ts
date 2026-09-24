@@ -33,6 +33,7 @@ import { initializeIsoScientistRegistry, runIsoScientistResearch, listIsoScienti
 import { initializeGovernanceLoop, runGovernanceCycle, listGovernanceCycles, getGovernanceLoopPolicy } from './src/lib/governance-loop';
 import { initializeWindsorSocialGateway, getWindsorSocialGatewayStatus, getWindsorSocialData } from './src/lib/windsor-social-gateway';
 import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitSummary, recordCustomerRoi, getCustomerRoi, upsertOpportunityNode, linkOpportunityNodes, getOpportunityGraph, createMarketplaceOffer, listMarketplaceOffers } from './src/lib/business-model';
+import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib/gats-policy';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
@@ -2158,6 +2159,15 @@ app.get('/api/ai/trust/standard/controls', (_req: Request, res: Response) => {
 
 app.get('/api/ai/trust/standard/conformance', (_req: Request, res: Response) => {
   res.json({ ok: true, conformance: evaluateGlorifierAiTrustConformance() });
+});
+
+app.get('/api/ai/trust/policy-scientist', (_req: Request, res: Response) => {
+  res.json({
+    ok: true,
+    policy: getGatsGovernancePolicy(),
+    evaluation: evaluateGatsGovernancePolicy(),
+    source: 'GLORIFIER Policy Scientist governance baseline'
+  });
 });
 
 app.get('/api/ip/inventions', async (_req: Request, res: Response) => {

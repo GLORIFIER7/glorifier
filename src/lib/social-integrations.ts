@@ -1,3 +1,4 @@
+import { getPostgresPool } from './db/postgres';
 import crypto from 'node:crypto';
 import {
   registerConnection,
@@ -123,6 +124,10 @@ export async function completeSocialCallback(providerInput: string, code: string
   // Token exchange remains server-side; access tokens are never returned to clients.
   const connection = await getConnection(`conn-${provider}`);
   if (!connection) throw new Error('Social connection not initialized');
+
+  const stateHash = crypto.createHash('sha256').update(state).digest('hex');
+  const stateRow = await query(`DELETE FROM social_oauth_states WHERE state_hash=$1 AND expires_at > NOW() RETURNING provider,connection_id`, [stateHash]);
+  if (!stateRow.rowCount || stateRow.rows[0].provider !== provider) throw new Error('Invalid or expired OAuth state');
 
   const c = cfg(provider);
   const clientId = process.env[c.clientIdEnv];

@@ -36,6 +36,7 @@ import { initializeWindsorSocialGateway, getWindsorSocialGatewayStatus, getWinds
 import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitSummary, recordCustomerRoi, getCustomerRoi, upsertOpportunityNode, linkOpportunityNodes, getOpportunityGraph, createMarketplaceOffer, listMarketplaceOffers } from './src/lib/business-model';
 import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib/gats-policy';
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
+import { initializeMarketplaceTransactions, registerMarketplaceParty, listMarketplaceParties, createMarketplaceTransaction, acceptMarketplaceTransaction, governMarketplaceTransaction, recordMarketplaceContract, recordMarketplaceInvoice, recordMarketplacePaymentEvidence, getMarketplaceTransaction, listMarketplaceTransactions } from './src/lib/marketplace-transactions';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
@@ -77,6 +78,7 @@ void Promise.allSettled([
   initializeRevenueControlPlane()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
+    await initializeMarketplaceTransactions();
   if (failures.length) {
     console.warn('[GLORIFIER] some persistence initializers are deferred:', failures.map((result: any) => result.reason?.message || String(result.reason)));
     return;
@@ -3016,6 +3018,43 @@ app.post('/api/opportunity-graph/edges', async (req: Request, res: Response) => 
     });
     res.status(201).json({ ok:true,edge });
   } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Opportunity edge creation failed' }); }
+});
+
+app.get('/api/marketplace/parties', async (req: Request, res: Response) => {
+  try { res.json({ ok:true, parties:await listMarketplaceParties(req.query.type==='buyer'||req.query.type==='seller'?req.query.type:undefined) }); }
+  catch(error:any){ res.status(503).json({ok:false,error:error?.message||'Marketplace parties unavailable'}); }
+});
+app.post('/api/marketplace/parties', async (req: Request, res: Response) => {
+  try {
+    const partyType=req.body?.partyType;
+    if(partyType!=='buyer'&&partyType!=='seller') return res.status(400).json({ok:false,error:'partyType must be buyer or seller'});
+    const party=await registerMarketplaceParty({partyType,name:String(req.body?.name||''),tenantRef:req.body?.tenantRef||null,externalRef:req.body?.externalRef||null,metadata:req.body?.metadata||{}});
+    res.status(201).json({ok:true,party});
+  } catch(error:any){ res.status(400).json({ok:false,error:error?.message||'Marketplace party creation failed'}); }
+});
+app.get('/api/marketplace/transactions', async (req: Request, res: Response) => {
+  try { res.json({ok:true,transactions:await listMarketplaceTransactions(req.query.status as any)}); }
+  catch(error:any){ res.status(503).json({ok:false,error:error?.message||'Marketplace transactions unavailable'}); }
+});
+app.get('/api/marketplace/transactions/:id', async (req: Request, res: Response) => {
+  try { const transaction=await getMarketplaceTransaction(req.params.id); if(!transaction) return res.status(404).json({ok:false,error:'Transaction not found'}); res.json({ok:true,...transaction}); }
+  catch(error:any){ res.status(503).json({ok:false,error:error?.message||'Marketplace transaction lookup failed'}); }
+});
+app.post('/api/marketplace/transactions', async (req: Request, res: Response) => {
+  try {
+    const transaction=await createMarketplaceTransaction({offerId:String(req.body?.offerId||''),buyerId:String(req.body?.buyerId||''),sellerId:String(req.body?.sellerId||''),amount:req.body?.amount==null?null:Number(req.body.amount),currency:req.body?.currency||'USD'});
+    res.status(201).json({ok:true,transaction,economicTruth:'NOT VERIFIED'});
+  } catch(error:any){ res.status(400).json({ok:false,error:error?.message||'Marketplace transaction creation failed'}); }
+});
+app.post('/api/marketplace/transactions/:id/accept', async (req: Request,res: Response)=>{try{res.json({ok:true,...await acceptMarketplaceTransaction(req.params.id,String(req.body?.actor||'human-owner'))});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Marketplace acceptance failed'});}});
+app.post('/api/marketplace/transactions/:id/govern', async (req: Request,res: Response)=>{try{const r=await governMarketplaceTransaction(req.params.id,String(req.body?.actor||'human-owner'));res.status(r.governance.status==='blocked'?409:202).json({ok:true,...r});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Marketplace governance failed'});}});
+app.post('/api/marketplace/transactions/:id/contract', async (req: Request,res: Response)=>{try{res.json({ok:true,transaction:await recordMarketplaceContract(req.params.id,String(req.body?.contractRef||''),String(req.body?.actor||'human-owner'))});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Marketplace contract recording failed'});}});
+app.post('/api/marketplace/transactions/:id/invoice', async (req: Request,res: Response)=>{try{res.json({ok:true,transaction:await recordMarketplaceInvoice(req.params.id,String(req.body?.invoiceRef||''),String(req.body?.actor||'human-owner'))});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Marketplace invoice recording failed'});}});
+app.post('/api/marketplace/transactions/:id/payment-evidence', async (req: Request,res: Response)=>{
+  try {
+    const result=await recordMarketplacePaymentEvidence({transactionId:req.params.id,source:String(req.body?.source||''),externalRef:String(req.body?.externalRef||''),amount:req.body?.amount==null?null:Number(req.body.amount),currency:req.body?.currency||null,payloadHash:req.body?.payloadHash||null,details:req.body?.details||{},qualifiesForVerification:req.body?.qualifiesForVerification===true,actor:String(req.body?.actor||'human-owner')});
+    res.status(201).json({ok:true,...result,economicTruth:result.transaction.status==='verified'?'VERIFIED':'EVIDENCE-BACKED'});
+  } catch(error:any){res.status(400).json({ok:false,error:error?.message||'Marketplace payment evidence failed'});}
 });
 
 app.get('/api/marketplace/offers', async (_req: Request, res: Response) => {

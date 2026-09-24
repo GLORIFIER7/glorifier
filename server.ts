@@ -23,15 +23,26 @@ import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyReve
 
 dotenv.config();
 
-void initializeConnectionRegistry()
-  .then(() => ensureGlobalProviderConnections())
-  .then(() => initializeAgentRegistry())
-  .then(() => initializeGeminiInteractionStore())
-  .then(() => initializeLinuxRuntimeRegistry())
-  .then(() => initializeAssetRegistry())
-  .then(() => ensureCoreAssetIntegrations())
-  .then(() => initializeBountyRegistry())
-  .catch((error) => console.warn('[GLORIFIER] persistence initialization deferred:', error?.message));
+void Promise.allSettled([
+  initializeConnectionRegistry(),
+  initializeAgentRegistry(),
+  initializeGeminiInteractionStore(),
+  initializeLinuxRuntimeRegistry(),
+  initializeAssetRegistry(),
+  initializeBountyRegistry()
+]).then(async (results) => {
+  const failures = results.filter((result) => result.status === 'rejected');
+  if (failures.length) {
+    console.warn('[GLORIFIER] some persistence initializers are deferred:', failures.map((result: any) => result.reason?.message || String(result.reason)));
+    return;
+  }
+  try {
+    await ensureGlobalProviderConnections();
+    await ensureCoreAssetIntegrations();
+  } catch (error: any) {
+    console.warn('[GLORIFIER] provider seed initialization deferred:', error?.message || String(error));
+  }
+});
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;

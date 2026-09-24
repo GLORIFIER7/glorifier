@@ -77,6 +77,27 @@ The runtime coordinates AI agents through governed capabilities, specialist task
 
 The production backend is designed for Railway deployment, with the frontend able to operate as an independent observer/dashboard.
 
+## Unified AI Orchestration
+
+GLORIFIER's orchestration layer coordinates providers, specialist agents, connections, data, SaaS, IoT, asset intelligence, evidence, and governed actions through a common control plane.
+
+### Orchestration improvements
+
+- **Capability-first routing** — work is routed toward relevant specialist domains instead of treating every task as a generic AI request.
+- **Provider resilience** — quota/rate-limit failures trigger governed fallback across available providers.
+- **Multi-provider consensus** — independent provider responses can be compared; disagreement is surfaced for reconciliation rather than hidden.
+- **Specialist council** — policy, legal, compliance, cybersecurity, finance, engineering, data, cloud, IoT-adjacent infrastructure, product, research, and other domains can collaborate.
+- **Connection-aware execution** — external service access follows the connection/authentication registry.
+- **Evidence-aware intelligence** — claims remain distinguishable from observations, estimates, and verified evidence.
+- **Human authority** — irreversible financial, legal, security-sensitive, or production actions remain approval-gated.
+- **Observable runtime** — provider capability, reliability, latency, cooldowns, and orchestration state are exposed for operational monitoring.
+
+### Control flow
+
+**Objective → Capability Routing → Specialist Delegation → Multi-Provider Generation → Evaluation → Consensus/Reconciliation → Evidence → Human Approval → Governed Action → Audit**
+
+This is designed to let GLORIFIER coordinate across its SaaS, IoT, asset, economic, web, and AI infrastructure without turning uncertainty into false certainty or authorization into autonomous permission.
+
 ## SaaS Platform Layer
 
 GLORIFIER now includes a governed SaaS control plane for:

@@ -26,6 +26,7 @@ import { initializeIotRegistry, registerIotDevice, listIotDevices, recordIotTele
 import { initializeMonetizationEngine, registerMonetizationOpportunity, listMonetizationOpportunities, recordMonetizationEvent, buildMonetizationDashboard } from './src/lib/monetization-engine';
 import { getGlorifierAiTrustStandard, getGlorifierAiTrustControls, evaluateGlorifierAiTrustConformance } from './src/lib/ai/trust-standard';
 import { initializeInventionRegistry, registerInvention, listInventions } from './src/lib/invention-registry';
+import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorization, getIso42001AlignmentTargets } from './src/lib/iso-integration';
 
 dotenv.config();
 
@@ -41,7 +42,8 @@ void Promise.allSettled([
   initializeIotRegistry(),
   initializeMonetizationEngine(),
   initializeModelTrustRegistry(),
-  initializeInventionRegistry()
+  initializeInventionRegistry(),
+  initializeIsoIntegration()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -2022,6 +2024,30 @@ app.post('/api/compute/task', async (req: Request, res: Response) => {
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Compute task failed' });
   }
+});
+
+// ISO integration + GLORIFIER AI Trust / ISO 42001 alignment
+app.get('/api/iso/status', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, status: await getIsoIntegrationStatus() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: 'ISO integration status unavailable', details: error?.message }); }
+});
+
+app.get('/api/iso/42001/alignment', (_req: Request, res: Response) => {
+  res.json({
+    ok: true,
+    standard: 'ISO/IEC 42001:2023',
+    integration: 'alignment-targets',
+    targets: getIso42001AlignmentTargets(),
+    disclaimer: 'Alignment targets support GLORIFIER implementation planning; they are not an ISO certification or independent conformity assessment.'
+  });
+});
+
+app.post('/api/iso/authorization/request', async (req: Request, res: Response) => {
+  try {
+    const actor = String(req.body?.actor || 'human-owner');
+    const approval = await requestIsoAuthorization(actor);
+    res.status(202).json({ ok: true, approval, humanApprovalRequired: true, isoCertification: false });
+  } catch (error: any) { res.status(400).json({ ok: false, error: 'Unable to request ISO authorization', details: error?.message }); }
 });
 
 // GLORIFIER AI Trust Standard + IP Governance

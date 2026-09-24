@@ -18,33 +18,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      GLORIFIER_HEALTH_URL: ${{ secrets.GLORIFIER_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health' }}
+      GLORIFIER_HEALTH_URL: ${{ secrets.GLORIFIER_HEALTH_URL }}
 
     steps:
-      - name: Check configured production health endpoint
-        id: probe
-        if: ${{ env.GLORIFIER_HEALTH_URL != '' }}
+      - name: Check production health endpoint
         run: |
           set -euo pipefail
+          url="${GLORIFIER_HEALTH_URL:-https://glorifier-artificial-intelligence-production.up.railway.app/api/health}"
           body="$(mktemp)"
-          status="$(curl -sS -o "$body" -w "%{http_code}" --max-time 15 "$GLORIFIER_HEALTH_URL")"
-          echo "status=$status"
+          status="$(curl -sS -o "$body" -w "%{http_code}" --max-time 15 "$url")"
+          echo "Health endpoint HTTP status: $status"
           cat "$body"
           test "$status" = "200"
           grep -q '"status":"ok"' "$body"
 
       - name: Open recovery issue on failure
-        if: ${{ env.GLORIFIER_HEALTH_URL != '' && failure() }}
+        if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          existing="$(gh issue list --state open --label "ai-recovery" --search "Infrastructure health failure" --json number --jq 'length')"
-          if [ "$existing" -gt 0 ]; then
-            echo "An open ai-recovery issue already exists; avoiding duplicates."
-            exit 0
-          fi
-          gh issue create             --title "Infrastructure health failure"             --label "ai-recovery"             --body "The scheduled GLORIFIER health probe failed.
-
-Investigate the production /api/health endpoint, recent deployments, logs, and relevant configuration. Do not expose secrets. If a safe code/configuration fix is justified, prepare a small PR for review. Do not deploy directly.
-
-Triggered by: ${{ github.workflow }} run ${{ github.run_id }}"
+          gh label create ai-recovery --color B60205 --description "GLORIFIER infrastructure recovery" 2>/dev/null || true
+          existing="$(gh issue list --state open --label ai-recovery --search "Infrastructure health failure" --json number --jq 'length')"
+          if [ "$existing" -gt 0 ]; then echo "An open ai-recovery issue already exists; avoiding duplicates."; exit 0; fi
+          gh issue create --title "Infrastructure health failure" --label ai-recovery --body "The scheduled GLORIFIER production health probe failed. Investigate /api/health, recent deployments, logs, and relevant configuration. Do not expose secrets. Prepare a small reviewable PR if justified. Do not deploy directly. Triggered by: ${{ github.workflow }} run ${{ github.run_id }}"

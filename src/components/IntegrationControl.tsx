@@ -45,6 +45,7 @@ export const IntegrationControl: React.FC = () => {
   const [agentSyncMessage, setAgentSyncMessage] = useState('');
   const [bountyPrograms, setBountyPrograms] = useState<any[]>([]);
   const [bountyFindings, setBountyFindings] = useState<any[]>([]);
+  const [bountyRevenue, setBountyRevenue] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -61,6 +62,8 @@ export const IntegrationControl: React.FC = () => {
       if (bountyResponse.ok) setBountyPrograms((await bountyResponse.json()).programs || []);
       const findingResponse = await fetch('/api/bounties/findings', { cache: 'no-store' });
       if (findingResponse.ok) setBountyFindings((await findingResponse.json()).findings || []);
+      const revenueResponse = await fetch('/api/bounties/revenue', { cache: 'no-store' });
+      if (revenueResponse.ok) setBountyRevenue((await revenueResponse.json()).summary || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load integration registry');
     } finally {
@@ -194,6 +197,24 @@ export const IntegrationControl: React.FC = () => {
               {['AI discovery','Scope verification','Evidence','Human review','Submission / reward'].map((step) => <div key={step} className="rounded bg-slate-900 px-2 py-2 text-slate-400">{step}</div>)}
             </div>
             <div className="text-[10px] text-slate-500 mt-2">{bountyFindings.length} tracked finding(s); no automatic exploitation or financial commitment.</div>
+          </div>
+        </div>
+      )}
+
+      {bountyPrograms.length > 0 && (
+        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+          <div className="text-sm font-semibold text-white">Bounty Revenue Ledger</div>
+          <p className="text-xs text-slate-400 mt-1">Tracks verified rewards and payouts only; GLORIFIER does not invent earnings or move funds automatically.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+            {bountyRevenue.length === 0 ? (
+              <div className="text-xs text-slate-500">No confirmed bounty revenue recorded yet.</div>
+            ) : bountyRevenue.map((item: any) => (
+              <div key={item.currency} className="rounded-lg border border-slate-800 bg-slate-950/50 p-3">
+                <div className="text-[10px] uppercase text-slate-500">{item.currency}</div>
+                <div className="text-xl font-bold text-emerald-300 mt-1">{item.netConfirmed.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-500 mt-1">Confirmed net · {item.eventCount} ledger events</div>
+              </div>
+            ))}
           </div>
         </div>
       )}

@@ -225,3 +225,84 @@ export async function getAlpacaStockQuote(symbol: string) {
     quote: data
   };
 }
+
+
+export type AssetProviderCapabilities = {
+  accountRead: boolean;
+  holdingsRead: boolean;
+  marketData: boolean;
+  ordersEnabled: boolean;
+  fundMovementEnabled: boolean;
+};
+
+export type AssetProviderDescriptor = {
+  id: string;
+  displayName: string;
+  assetClasses: Array<'stock' | 'bond' | 'etf' | 'crypto' | 'other'>;
+  capabilities: AssetProviderCapabilities;
+  connectionRequired: boolean;
+};
+
+export const assetProviderRegistry: AssetProviderDescriptor[] = [
+  {
+    id: 'alpaca',
+    displayName: 'Alpaca',
+    assetClasses: ['stock', 'bond', 'etf', 'crypto', 'other'],
+    capabilities: {
+      accountRead: true,
+      holdingsRead: true,
+      marketData: true,
+      ordersEnabled: false,
+      fundMovementEnabled: false
+    },
+    connectionRequired: true
+  },
+  {
+    id: 'binance-public',
+    displayName: 'Binance Public Market Data',
+    assetClasses: ['crypto'],
+    capabilities: {
+      accountRead: false,
+      holdingsRead: false,
+      marketData: true,
+      ordersEnabled: false,
+      fundMovementEnabled: false
+    },
+    connectionRequired: false
+  }
+];
+
+export function listAssetProviderAdapters() {
+  return assetProviderRegistry.map((provider) => ({ ...provider }));
+}
+
+export function getAssetProviderAdapter(providerId: string) {
+  return assetProviderRegistry.find((provider) => provider.id === providerId) || null;
+}
+
+async function binancePublicGet<T>(path: string): Promise<T> {
+  const response = await fetch(`https://api.binance.com${path}`, { headers: { Accept: 'application/json' } });
+  const body = await response.text();
+  if (!response.ok) throw new Error(`Binance public API ${response.status}: ${body.slice(0, 500)}`);
+  return body ? JSON.parse(body) as T : {} as T;
+}
+
+export async function getBinancePublicQuote(symbol: string) {
+  const clean = symbol.trim().toUpperCase();
+  if (!/^[A-Z0-9]{5,20}$/.test(clean)) throw new Error('Invalid Binance symbol');
+  const ticker = await binancePublicGet<{ symbol: string; price: string }>(
+    `/api/v3/ticker/price?symbol=${encodeURIComponent(clean)}`
+  );
+  return {
+    provider: 'binance-public',
+    symbol: ticker.symbol,
+    price: Number(ticker.price),
+    source: 'binance-public',
+    observedAt: new Date().toISOString(),
+    evidence: {
+      status: 'source_recorded',
+      marketValueIsNotRevenue: true,
+      revenueVerified: false
+    }
+  };
+}

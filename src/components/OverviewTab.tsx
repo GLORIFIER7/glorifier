@@ -20,7 +20,7 @@ import {
 import { SovereignStats, DataFootprintSource, MonetizationPolicy, CompensationTransaction } from '../types';
 import { PrivacyShieldProgressBar } from './PrivacyShieldProgressBar';
 import { LiveEconomicData } from './LiveEconomicData';
-import { BusinessModelPanel } from './BusinessModelPanel';
+import { BusinessModelPanel } from './BusinessModelPanel';\nimport { ValuationEnginePanel } from './ValuationEnginePanel';
 
 interface OverviewTabProps {
   stats: SovereignStats;
@@ -70,6 +70,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     <div className="space-y-6">
       <LiveEconomicData />
       <BusinessModelPanel />
+      <ValuationEnginePanel />
 
       <section className="rounded-xl bg-slate-950 border border-slate-800 p-5">
         <div className="flex items-center justify-between gap-4 mb-4">

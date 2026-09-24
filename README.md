@@ -77,6 +77,28 @@ The runtime coordinates AI agents through governed capabilities, specialist task
 
 The production backend is designed for Railway deployment, with the frontend able to operate as an independent observer/dashboard.
 
+## Monetization Engine
+
+GLORIFIER includes an evidence-driven monetization engine designed to turn intelligence into a measurable revenue pipeline without pretending that pipeline value is cash.
+
+### Revenue machine flow
+
+**Discover → Qualify → Estimate → Prioritize → Propose → Negotiate → Contract → Invoice → Collect → Verify → Reinvest**
+
+The engine records opportunities, estimated value, probability-weighted expected value, customer references, next actions, and external evidence. Pipeline and expected values are explicitly **NOT VERIFIED** until qualifying payment evidence exists.
+
+The system can automate discovery, qualification, prioritization, monitoring, follow-up preparation, and evidence collection. Binding contracts, payment movement, withdrawals, and other consequential financial actions remain human-authorized.
+
+### Monetization dashboard
+
+- Pipeline value — **NOT VERIFIED**
+- Probability-weighted expected value — **NOT VERIFIED**
+- Verified paid revenue — **VERIFIED** only with qualifying evidence and an external reference
+- Opportunity lifecycle and conversion events
+- Revenue provenance and audit trail
+
+This makes GLORIFIER a revenue-generation engine in the operational sense: it continuously finds, structures, measures, and advances legitimate monetization opportunities while preserving the distinction between potential value and money actually received.
+
 ## Unified AI Orchestration
 
 GLORIFIER's orchestration layer coordinates providers, specialist agents, connections, data, SaaS, IoT, asset intelligence, evidence, and governed actions through a common control plane.

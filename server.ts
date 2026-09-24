@@ -12,10 +12,16 @@ import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, r
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
 import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/lib/global-sync';
+import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
+import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 
 dotenv.config();
 
-void initializeConnectionRegistry().then(() => ensureGlobalProviderConnections()).catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
+void initializeConnectionRegistry()
+  .then(() => ensureGlobalProviderConnections())
+  .then(() => initializeAgentRegistry())
+  .then(() => initializeGeminiInteractionStore())
+  .catch((error) => console.warn('[GLORIFIER] persistence initialization deferred:', error?.message));
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -34,7 +40,8 @@ const integrationStatus = [
   { id: 'web', name: 'Public Web', category: 'monitoring', status: 'connected', detail: 'Public-source intelligence aggregation and evidence tracking', publicUrl: 'https://news.google.com/' },
   { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' },
   { id: 'hugging-face', name: 'Hugging Face', category: 'ai-ecosystem', status: 'connected', detail: 'Authenticated model, dataset, paper, Space and compute collaboration surface', publicUrl: 'https://huggingface.co/' },
-  { id: 'meta', name: 'Meta / Facebook', category: 'social-ai-platform', status: 'ready', detail: 'Permission-gated Meta developer, Facebook, Instagram, Messenger and Llama collaboration surface', publicUrl: 'https://developers.facebook.com/' }
+  { id: 'meta', name: 'Meta / Facebook', category: 'social-ai-platform', status: 'ready', detail: 'Permission-gated Meta developer, Facebook, Instagram, Messenger and Llama collaboration surface', publicUrl: 'https://developers.facebook.com/' },
+  { id: 'gemini', name: 'Google Gemini', category: 'ai-ecosystem', status: process.env.GEMINI_API_KEY ? 'configured' : 'needs-config', detail: 'Gemini Interactions API; server-side credential only', publicUrl: 'https://ai.google.dev/gemini-api' }
 ];
 
 // Global connection/authentication registry. Tokens and secrets are never returned by these endpoints.
@@ -353,16 +360,14 @@ async function runModelExecution({
       }
     }
 
-    if (!gptPart) {
-      gptPart = `Commercial Valuation Analysis: Current telemetry holds an estimated market value of $215–$340/mo. We recommend establishing a strict $40/mo floor and asserting a 25% premium for synthetic AI training datasets.`;
-    }
-    if (!geminiPart) {
-      geminiPart = `Differential Privacy & Mathematical Bounds: Under Laplacian noise (ε=0.35), reconstruction probability is statistically constrained below 0.01%. Recommend masking granular GPS coordinates to 3-decimal-point centroids.`;
+    if (!gptPart && !geminiPart) {
+      return { text: 'No model result is available. Configure at least one authorized provider and retry.', modelUsed: 'none', provider: 'GLORIFIER runtime' };
     }
 
-    const llamaPart = `Decentralized Sovereignty & Open-Weights Audit: Unconsented data broker syndicates (Acxiom, Meta Graph, Experian) must be formally notified under statutory rights. Consent tokens should be cryptographically bound to prevent downstream resale.`;
-
-    const consensusPart = `UNIFIED COUNCIL VERDICT (100% Agreement): All models unanimously approve licensing de-identified developer & browsing cohorts for frontier AI pre-training with an updated floor of $40/mo, while indefinitely quarantining commercial ad retargeters.`;
+    const llamaPart = 'Meta/Llama is represented as an integration surface only; no Meta model inference is claimed unless an authorized Meta connector is configured.';
+    const consensusPart = gptPart && geminiPart
+      ? 'Cross-model outputs are shown side-by-side for human review. GLORIFIER does not infer unanimity or create a consensus verdict unless the returned evidence explicitly supports one.'
+      : 'No cross-model consensus is asserted because a complete multi-provider result is unavailable.';
 
     return {
       text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n` +
@@ -399,7 +404,7 @@ async function runModelExecution({
 
         if (gptText && geminiText) {
           return {
-            text: `[Dual-Consensus Verified (GPT-4o & Gemini 3.8 Flash)]:\n\n${gptText}\n\n---\n*Cross-Validation Note (Gemini Enclave)*: Cryptographic differential privacy boundaries and valuation parameters confirmed across both model checkpoints.`,
+            text: `[Two-model comparison — human review required]:\n\n${gptText}\n\n---\nGemini output:\n${geminiText}\n\nNo independent consensus or verification is asserted by GLORIFIER.`,
             modelUsed: 'consensus (gpt-4o + gemini-3.8-flash)',
             provider: 'Hybrid Sovereign Consensus'
           };
@@ -1679,6 +1684,57 @@ app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
 // ============================================================================
 app.get('/api/agents', (_req: Request, res: Response) => {
   res.json(agentManifest());
+});
+
+app.get('/api/agents/registry', async (_req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, agents: await listRegisteredAgents(), policy: { minimumScope: true, secretsExposed: false, humanApprovalForConsequentialActions: true, auditViaConnectionRegistry: true } });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Agent registry unavailable', details: error?.message });
+  }
+});
+
+app.post('/api/agents/synchronize', async (req: Request, res: Response) => {
+  try {
+    const actor = String(req.body?.actor || 'human-owner');
+    const results = await synchronizeRegisteredAgents(actor);
+    res.json({ ok: true, actor, synchronized: results, policy: { credentialsReplicated: false, minimumScope: true, humanApprovalForConsequentialActions: true } });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Agent synchronization failed', details: error?.message });
+  }
+});
+
+app.post('/api/agents/registry', async (req: Request, res: Response) => {
+  try {
+    if (!req.body?.name || !req.body?.provider || !req.body?.endpoint) return res.status(400).json({ ok: false, error: 'name, provider and endpoint are required' });
+    const agent = await registerExternalAgent({ ...req.body, name: String(req.body.name), provider: String(req.body.provider), endpoint: String(req.body.endpoint) });
+    res.status(201).json({ ok: true, agent });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to register agent', details: error?.message });
+  }
+});
+
+app.get('/api/gemini/interactions/latest', async (req: Request, res: Response) => {
+  try {
+    const sessionId = String(req.query.sessionId || 'default');
+    res.json({ ok: true, interaction: await getLatestGeminiInteraction(sessionId) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Gemini interaction store unavailable', details: error?.message });
+  }
+});
+
+app.post('/api/gemini/interactions/record', async (req: Request, res: Response) => {
+  try {
+    if (!req.body?.sessionId || !req.body?.interactionId || !req.body?.model) return res.status(400).json({ ok: false, error: 'sessionId, interactionId and model are required' });
+    const interaction = await recordGeminiInteraction({
+      sessionId: String(req.body.sessionId), interactionId: String(req.body.interactionId),
+      previousInteractionId: req.body.previousInteractionId ? String(req.body.previousInteractionId) : null,
+      model: String(req.body.model), actor: String(req.body.actor || 'gemini-runtime'), status: String(req.body.status || 'completed')
+    });
+    res.status(201).json({ ok: true, interaction });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to record Gemini interaction', details: error?.message });
+  }
 });
 
 app.get('/.well-known/glorifier-agent.json', (_req: Request, res: Response) => {

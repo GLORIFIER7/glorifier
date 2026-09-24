@@ -182,3 +182,9 @@ function mapClaimable(x:any): ClaimableAsset {
     priority:Number(x.priority || 0), requiresHumanApproval:Boolean(x.requires_human_approval), metadata:x.metadata || {}
   };
 }
+
+
+export async function governClaimableAssetAction(input: { objective: string; actionType?: string; evidenceRefs?: string[]; actor?: string }) {
+  const { governRevenueAction } = await import('./revenue-control-plane');
+  return governRevenueAction({ machine: 'claimable-assets', actionType: (input.actionType || 'claim') as any, objective: input.objective, evidenceRefs: input.evidenceRefs || [], actor: input.actor || 'human-owner' });
+}

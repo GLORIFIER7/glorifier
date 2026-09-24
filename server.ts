@@ -31,6 +31,7 @@ import { initializeUsptoIntegration, getUsptoIntegrationStatus, requestUsptoAuth
 import { initializeIpResearchRegistry, runIpResearch, listIpResearchRuns, getIpResearchPolicy } from './src/lib/ip-research';
 import { initializeIsoScientistRegistry, runIsoScientistResearch, listIsoScientistRuns, getIsoScientistPolicy } from './src/lib/iso-scientist';
 import { initializeGovernanceLoop, runGovernanceCycle, listGovernanceCycles, getGovernanceLoopPolicy } from './src/lib/governance-loop';
+import { initializeWindsorSocialGateway, getWindsorSocialGatewayStatus, getWindsorSocialData } from './src/lib/windsor-social-gateway';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
@@ -2570,4 +2571,18 @@ async function startServer() {
   });
 }
 
-startServer();
+startServer();app.get('/api/social/gateway/status', async (_req: Request, res: Response) => {
+  res.json({ ok: true, gateway: getWindsorSocialGatewayStatus() });
+});
+
+app.get('/api/social/gateway/data/:platform', async (req: Request, res: Response) => {
+  try {
+    const fields = String(req.query.fields || 'date,source').split(',').map(v => v.trim()).filter(Boolean).slice(0, 100);
+    const result = await getWindsorSocialData(String(req.params.platform), fields, String(req.query.datePreset || 'last_30d'));
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Windsor social data request failed' });
+  }
+});
+
+

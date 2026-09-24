@@ -23,6 +23,7 @@ import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyReve
 import { initializeClaimableAssetRegistry, registerClaimableAsset, listClaimableAssets, scanClaimableFocus, requestClaim, recordClaimableEvidence } from './src/lib/claimable-assets';
 import { initializeSaasRegistry, registerSaasTenant, registerSaasPlan, listSaasOverview, createSaasSubscription } from './src/lib/saas-registry';
 import { initializeIotRegistry, registerIotDevice, listIotDevices, recordIotTelemetry, listIotTelemetry, createIotAlert } from './src/lib/iot-registry';
+import { initializeMonetizationEngine, registerMonetizationOpportunity, listMonetizationOpportunities, recordMonetizationEvent, buildMonetizationDashboard } from './src/lib/monetization-engine';
 
 dotenv.config();
 
@@ -35,7 +36,8 @@ void Promise.allSettled([
   initializeBountyRegistry(),
   initializeClaimableAssetRegistry(),
   initializeSaasRegistry(),
-  initializeIotRegistry()
+  initializeIotRegistry(),
+  initializeMonetizationEngine()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -928,6 +930,24 @@ app.post('/api/orchestration/consensus', async (req: Request, res: Response) => 
     }, Number(req.body?.maxProviders)||3);
     res.json({ ok:true, result, note:result.consensusRequiresHumanReview?'Provider disagreement detected; reconciliation is required before consequential action.':'No provider disagreement detected.' });
   } catch(error:any) { res.status(503).json({ error:'Consensus orchestration failed', details:error?.message }); }
+});
+
+// Evidence-driven monetization engine: pipeline generation is autonomous; money movement and binding commitments are not.
+app.get('/api/monetization/dashboard', async (_req: Request,res: Response)=>{
+  try{res.json({ok:true,...await buildMonetizationDashboard()});}
+  catch(error:any){res.status(503).json({error:'Monetization engine unavailable',details:error?.message});}
+});
+app.get('/api/monetization/opportunities', async (req: Request,res: Response)=>{
+  try{res.json({ok:true,opportunities:await listMonetizationOpportunities(req.query.status as any)});}
+  catch(error:any){res.status(503).json({error:'Unable to read monetization opportunities',details:error?.message});}
+});
+app.post('/api/monetization/opportunities', async (req: Request,res: Response)=>{
+  try{res.status(201).json({ok:true,opportunity:await registerMonetizationOpportunity({source:String(req.body?.source||'unknown'),title:String(req.body?.title||'').trim(),description:req.body?.description||null,status:req.body?.status,estimatedValue:req.body?.estimatedValue,currency:req.body?.currency,probability:req.body?.probability,customerRef:req.body?.customerRef||null,evidenceRef:req.body?.evidenceRef||null,nextAction:req.body?.nextAction||null,metadata:req.body?.metadata||{}})});}
+  catch(error:any){res.status(400).json({error:'Unable to create monetization opportunity',details:error?.message});}
+});
+app.post('/api/monetization/opportunities/:id/events', async (req: Request,res: Response)=>{
+  try{res.status(201).json({ok:true,event:await recordMonetizationEvent(req.params.id,{eventType:String(req.body?.eventType||'observed'),amount:req.body?.amount,currency:req.body?.currency,externalRef:req.body?.externalRef||null,source:req.body?.source||null,evidenceStatus:req.body?.evidenceStatus==='verified'?'verified':'not_verified',details:req.body?.details||{}})});}
+  catch(error:any){res.status(400).json({error:'Unable to record monetization event',details:error?.message});}
 });
 
 // 1. Health check & AI Config

@@ -4,6 +4,7 @@ import { getPostgresPool } from './db/postgres';
 export type BountyProgramType = 'bug-bounty' | 'vulnerability-disclosure' | 'research-grant' | 'security-challenge';
 export type BountyProgramStatus = 'discovered' | 'verified' | 'authorized' | 'paused' | 'closed';
 export type FindingSeverity = 'informational' | 'low' | 'medium' | 'high' | 'critical';
+export type BountyGateDecision = 'allowed' | 'blocked';
 
 export interface BountyProgramRecord {
   id: string;
@@ -19,6 +20,14 @@ export interface BountyProgramRecord {
   authorizationRequired: boolean;
   requiresHumanApproval: boolean;
   metadata: Record<string, unknown>;
+}
+
+export interface BountyGateResult {
+  decision: BountyGateDecision;
+  reason: string;
+  programId: string;
+  target: string;
+  checkedAt: string;
 }
 
 export interface BountyFindingRecord {
@@ -106,6 +115,7 @@ export async function initializeBountyRegistry() {
     );
     CREATE INDEX IF NOT EXISTS idx_bounty_program_status ON bounty_program_registry(status);
     CREATE INDEX IF NOT EXISTS idx_bounty_finding_status ON bounty_finding_registry(status);
+    CREATE INDEX IF NOT EXISTS idx_bounty_events_program ON bounty_events(program_id, created_at DESC);
   `);
   for (const program of seedPrograms) {
     const id = `bounty-program-${program.platform.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
@@ -145,6 +155,36 @@ export async function registerBountyProgram(input: Omit<BountyProgramRecord, 'id
   return mapProgram(r.rows[0]);
 }
 
+export async function authorizeBountyTarget(programId: string, target: string): Promise<BountyGateResult> {
+  await initializeBountyRegistry();
+  const r = await getPostgresPool().query('SELECT * FROM bounty_program_registry WHERE id=$1',[programId]);
+  const program = r.rows[0];
+  const checkedAt = new Date().toISOString();
+  if (!program) return { decision:'blocked', reason:'Bounty program not found', programId, target, checkedAt };
+  if (!['verified','authorized'].includes(program.status)) {
+    return { decision:'blocked', reason:'Program is not verified/authorized for testing', programId, target, checkedAt };
+  }
+  const scopes = Array.isArray(program.metadata?.authorizedTargets) ? program.metadata.authorizedTargets : [];
+  if (!scopes.length) {
+    return { decision:'blocked', reason:'No explicit authorized target scope is recorded', programId, target, checkedAt };
+  }
+  let parsed: URL;
+  try { parsed = new URL(target); } catch {
+    return { decision:'blocked', reason:'Target must be a valid URL', programId, target, checkedAt };
+  }
+  const allowed = scopes.some((scope: unknown) => {
+    if (typeof scope !== 'string') return false;
+    try {
+      const s = new URL(scope);
+      return parsed.protocol === s.protocol && parsed.hostname === s.hostname &&
+        (s.port === '' || parsed.port === s.port) &&
+        (s.pathname === '/' || parsed.pathname === s.pathname || parsed.pathname.startsWith(s.pathname.endsWith('/') ? s.pathname : s.pathname + '/'));
+    } catch { return false; }
+  });
+  if (!allowed) return { decision:'blocked', reason:'Target is outside the explicitly recorded authorized scope', programId, target, checkedAt };
+  return { decision:'allowed', reason:'Target matches an explicitly recorded authorized scope', programId, target, checkedAt };
+}
+
 export async function createBountyFinding(input: Omit<BountyFindingRecord, 'id' | 'createdAt' | 'status'>) {
   await initializeBountyRegistry();
   const id = `finding-${crypto.randomUUID()}`;
@@ -168,6 +208,12 @@ export async function listBountyFindings(status?: BountyFindingRecord['status'])
 
 export async function updateBountyFindingStatus(id: string, status: BountyFindingRecord['status'], actor: string) {
   await initializeBountyRegistry();
+  if (status === 'approved-for-submission') {
+    const existing = await getPostgresPool().query('SELECT * FROM bounty_finding_registry WHERE id=$1',[id]);
+    if (!existing.rows[0]) throw new Error('Bounty finding not found');
+    const gate = await authorizeBountyTarget(existing.rows[0].program_id, existing.rows[0].target);
+    if (gate.decision !== 'allowed') throw new Error('Submission blocked: ' + gate.reason);
+  }
   const r = await getPostgresPool().query('UPDATE bounty_finding_registry SET status=$2 WHERE id=$1 RETURNING *',[id,status]);
   if (!r.rows[0]) throw new Error('Bounty finding not found');
   await recordBountyEvent(r.rows[0].program_id, id, 'finding_status_changed', actor, { status });

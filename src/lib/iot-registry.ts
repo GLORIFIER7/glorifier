@@ -58,3 +58,9 @@ export async function createIotAlert(input:{deviceId:string;severity:IoTAlertSev
 }
 function mapDevice(x:any){return {id:x.id,deviceKey:x.device_key,name:x.name,deviceType:x.device_type,status:x.status,tenantId:x.tenant_id||null,connectionId:x.connection_id||null,lastSeenAt:x.last_seen_at?new Date(x.last_seen_at).toISOString():null,firmwareVersion:x.firmware_version||null,capabilities:x.capabilities||[],metadata:x.metadata||{}};}
 function mapTelemetry(x:any){return {id:x.id,deviceId:x.device_id,observedAt:new Date(x.observed_at).toISOString(),metric:x.metric,value:x.value==null?null:Number(x.value),unit:x.unit||null,quality:x.quality,payload:x.payload||{}};}
+
+
+export async function governValueAction(input: { objective: string; actionType?: string; evidenceRefs?: string[]; actor?: string }) {
+  const { governRevenueAction } = await import('./revenue-control-plane');
+  return governRevenueAction({ machine: 'iot', actionType: (input.actionType || 'propose') as any, objective: input.objective, evidenceRefs: input.evidenceRefs || [], actor: input.actor || 'human-owner' });
+}

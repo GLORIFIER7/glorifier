@@ -17,6 +17,7 @@ import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGem
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
+import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
 
 dotenv.config();
 
@@ -170,6 +171,33 @@ app.post('/api/linux/runtimes/:id/events', async (req: Request, res: Response) =
 // Governed AI security-research and bounty-hunting registry.
 // Programs are discovery/catalog records. Testing is permitted only inside explicitly authorized scope.
 // Findings remain human-review gated before submission and no automatic exploitation or fund movement is performed.
+
+app.get('/api/bounties/revenue', async (_req: Request, res: Response) => {
+  try {
+    res.json({ summary: await getBountyRevenueSummary(), events: await listBountyRevenueEvents() });
+  } catch (error: any) {
+    res.status(500).json({ error: error?.message || 'Failed to load bounty revenue ledger' });
+  }
+});
+
+app.post('/api/bounties/revenue', async (req: Request, res: Response) => {
+  try {
+    const event = await recordBountyRevenueEvent({
+      programId: String(req.body?.programId || ''),
+      findingId: req.body?.findingId ? String(req.body.findingId) : null,
+      eventType: req.body?.eventType,
+      amount: Number(req.body?.amount),
+      currency: String(req.body?.currency || 'USD'),
+      status: req.body?.status || 'pending',
+      externalRef: req.body?.externalRef ? String(req.body.externalRef) : null,
+      actor: String(req.body?.actor || 'human-owner')
+    });
+    res.status(201).json(event);
+  } catch (error: any) {
+    res.status(400).json({ error: error?.message || 'Failed to record bounty revenue event' });
+  }
+});
+
 app.get('/api/bounties/programs', async (_req: Request, res: Response) => {
   try { res.json({ ok: true, programs: await listBountyPrograms() }); }
   catch (error: any) { res.status(503).json({ error: 'Bounty registry unavailable', details: error?.message }); }

@@ -25,7 +25,8 @@ export const OPENPROFILE_INTEGRATION = {
   }
 };
 
-export async function initializeOpenProfileIntegration() {\n  await getPostgresPool().query(`CREATE TABLE IF NOT EXISTS openprofile_oidc_states (state TEXT PRIMARY KEY, nonce TEXT NOT NULL, code_verifier TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), expires_at TIMESTAMPTZ NOT NULL, actor TEXT NOT NULL);`);
+export async function initializeOpenProfileIntegration() {
+  await getPostgresPool().query(`CREATE TABLE IF NOT EXISTS openprofile_oidc_states (state TEXT PRIMARY KEY, nonce TEXT NOT NULL, code_verifier TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), expires_at TIMESTAMPTZ NOT NULL, actor TEXT NOT NULL);`);
   const clientIdConfigured = Boolean(process.env.OPENPROFILE_CLIENT_ID);
   return registerConnection({
     id: 'conn-openprofile',
@@ -119,7 +120,7 @@ export async function completeOpenProfileCallback(code: string, state: string) {
     if(ui.ok) claims=await ui.json();
   }
   const subject=String(claims.sub||'');
-  await db.query("UPDATE connection_registry SET status='authorized',account_ref=$2,last_verified_at=NOW(),updated_at=NOW() WHERE id='conn-openprofile'",[null,subject||null]);
+  await db.query("UPDATE connection_registry SET status='authorized',account_ref=$2,last_verified_at=NOW(),updated_at=NOW() WHERE id='conn-openprofile'",[subject||null]);
   await recordConnectionEvent('conn-openprofile','authorization_completed',saved.actor,{subjectPresent:Boolean(subject),claimsReceived:Object.keys(claims),tokenStored:false});
   return {authorized:true, connection:await getConnection('conn-openprofile'), profile:{subject:subject||null,name:claims.name||null,email:claims.email||null,emailVerified:claims.email_verified===true}, tokenStored:false, humanAuthorizationCompleted:true};
 }

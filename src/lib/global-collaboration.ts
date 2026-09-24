@@ -70,10 +70,10 @@ export async function getGlobalCollaborationStatus() {
   });
 }
 
-export async function recordGlobalCollaboration(providerId: string, action: string, actor = 'global-collaboration') {
+export async function recordGlobalCollaboration(providerId: string, action: string, actor = 'global-collaboration', details: Record<string, unknown> = {}) {
   const connectionId = `provider-${providerId}`;
   const connections = await listConnections();
   const connection = connections.find((item) => item.id === connectionId);
   if (!connection) throw new Error('Global provider is not registered');
-  return recordConnectionEvent(connectionId, action, actor, { provider: providerId });
+  return recordConnectionEvent(connectionId, action, actor, { provider: providerId, ...details });
 }

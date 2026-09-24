@@ -56,6 +56,22 @@ export async function initializeAssetRegistry() {
   `);
 }
 
+export async function ensureCoreAssetIntegrations() {
+  const seeds: Array<Omit<AssetAccountRecord, 'id' | 'lastVerifiedAt' | 'accountRef'>> = [
+    { provider: 'binance', displayName: 'Binance Crypto', assetClass: 'crypto', status: 'discovered', custody: 'custodial', capabilities: ['balances','portfolio-metadata','market-data'], scopes: ['read:balances','read:portfolio'], priority: 100, risk: 'high', requiresHumanApproval: true, metadata: { integrationType: 'exchange', credentialsStoredOutsideRegistry: true } },
+    { provider: 'fiat', displayName: 'Fiat / Bank Accounts', assetClass: 'fiat', status: 'discovered', custody: 'bank', capabilities: ['account-inventory','balance-read','transaction-history'], scopes: ['read:accounts','read:balances','read:transactions'], priority: 95, risk: 'critical', requiresHumanApproval: true, metadata: { integrationType: 'banking-connector', transfersDisabledByDefault: true } },
+    { provider: 'steam', displayName: 'Steam Gaming', assetClass: 'gaming', status: 'discovered', custody: 'platform', capabilities: ['account-inventory','game-library','digital-assets'], scopes: ['read:profile','read:library','read:inventory'], priority: 85, risk: 'medium', requiresHumanApproval: true, metadata: { integrationType: 'gaming-platform' } },
+    { provider: 'epic-games', displayName: 'Epic Games', assetClass: 'gaming', status: 'discovered', custody: 'platform', capabilities: ['account-inventory','game-library'], scopes: ['read:profile','read:library'], priority: 80, risk: 'medium', requiresHumanApproval: true, metadata: { integrationType: 'gaming-platform' } },
+    { provider: 'playstation', displayName: 'PlayStation Network', assetClass: 'gaming', status: 'discovered', custody: 'platform', capabilities: ['account-inventory','game-library','digital-assets'], scopes: ['read:profile','read:library'], priority: 75, risk: 'medium', requiresHumanApproval: true, metadata: { integrationType: 'gaming-platform' } },
+    { provider: 'xbox', displayName: 'Xbox / Microsoft Gaming', assetClass: 'gaming', status: 'discovered', custody: 'platform', capabilities: ['account-inventory','game-library','digital-assets'], scopes: ['read:profile','read:library'], priority: 75, risk: 'medium', requiresHumanApproval: true, metadata: { integrationType: 'gaming-platform' } },
+    { provider: 'nintendo', displayName: 'Nintendo', assetClass: 'gaming', status: 'discovered', custody: 'platform', capabilities: ['account-inventory','game-library'], scopes: ['read:profile','read:library'], priority: 70, risk: 'medium', requiresHumanApproval: true, metadata: { integrationType: 'gaming-platform' } }
+  ];
+  for (const seed of seeds) {
+    await registerAssetAccount(seed);
+  }
+  return listAssetAccounts();
+}
+
 export async function registerAssetAccount(input: Omit<AssetAccountRecord, 'id'> & { id?: string }) {
   await initializeAssetRegistry();
   const id = input.id || `asset-account-${crypto.randomUUID()}`;

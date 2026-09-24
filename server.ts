@@ -14,6 +14,7 @@ import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGl
 import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/lib/global-sync';
 import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
+import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ void initializeConnectionRegistry()
   .then(() => ensureGlobalProviderConnections())
   .then(() => initializeAgentRegistry())
   .then(() => initializeGeminiInteractionStore())
+  .then(() => initializeLinuxRuntimeRegistry())
   .catch((error) => console.warn('[GLORIFIER] persistence initialization deferred:', error?.message));
 
 const app = express();
@@ -41,7 +43,8 @@ const integrationStatus = [
   { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' },
   { id: 'hugging-face', name: 'Hugging Face', category: 'ai-ecosystem', status: 'connected', detail: 'Authenticated model, dataset, paper, Space and compute collaboration surface', publicUrl: 'https://huggingface.co/' },
   { id: 'meta', name: 'Meta / Facebook', category: 'social-ai-platform', status: 'ready', detail: 'Permission-gated Meta developer, Facebook, Instagram, Messenger and Llama collaboration surface', publicUrl: 'https://developers.facebook.com/' },
-  { id: 'gemini', name: 'Google Gemini', category: 'ai-ecosystem', status: process.env.GEMINI_API_KEY ? 'configured' : 'needs-config', detail: 'Gemini Interactions API; server-side credential only', publicUrl: 'https://ai.google.dev/gemini-api' }
+  { id: 'gemini', name: 'Google Gemini', category: 'ai-ecosystem', status: process.env.GEMINI_API_KEY ? 'configured' : 'needs-config', detail: 'Gemini Interactions API; server-side credential only', publicUrl: 'https://ai.google.dev/gemini-api' },
+  { id: 'linux', name: 'Linux Runtime', category: 'compute-runtime', status: process.env.DATABASE_URL ? 'registry-ready' : 'needs-ledger', detail: 'Governed Linux runtime registry; execution remains approval-gated', publicUrl: 'https://www.linux.org/' }
 ];
 
 // Global connection/authentication registry. Tokens and secrets are never returned by these endpoints.
@@ -96,6 +99,67 @@ app.post('/api/connections/:id/approval', async (req: Request, res: Response) =>
     );
     res.status(201).json({ ok: true, approval, humanApprovalRequired: true });
   } catch (error: any) { res.status(400).json({ error: 'Unable to request approval', details: error?.message }); }
+});
+
+// Governed Linux runtime registry. This manages metadata and approvals; it does not execute arbitrary host commands.
+app.get('/api/linux/runtimes', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, runtimes: await listLinuxRuntimes(req.query.status as any) }); }
+  catch (error: any) { res.status(503).json({ error: 'Linux runtime registry unavailable', details: error?.message }); }
+});
+
+app.get('/api/linux/runtimes/:id', async (req: Request, res: Response) => {
+  try {
+    const runtime = await getLinuxRuntime(req.params.id);
+    if (!runtime) return res.status(404).json({ error: 'Linux runtime not found' });
+    res.json({ ok: true, runtime });
+  } catch (error: any) { res.status(503).json({ error: 'Linux runtime lookup failed', details: error?.message }); }
+});
+
+app.post('/api/linux/runtimes', async (req: Request, res: Response) => {
+  try {
+    const runtime = await registerLinuxRuntime({
+      displayName: String(req.body?.displayName || '').trim(),
+      hostRef: String(req.body?.hostRef || '').trim(),
+      status: req.body?.status || 'discovered',
+      architecture: String(req.body?.architecture || 'unknown'),
+      capabilities: Array.isArray(req.body?.capabilities) ? req.body.capabilities.map(String) : [],
+      allowedActions: Array.isArray(req.body?.allowedActions) ? req.body.allowedActions.map(String) : [],
+      risk: req.body?.risk || 'medium',
+      connectionId: req.body?.connectionId ? String(req.body.connectionId) : null,
+      lastVerifiedAt: null,
+      requiresHumanApproval: req.body?.requiresHumanApproval !== false,
+      metadata: req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    await recordLinuxRuntimeEvent(runtime.id, 'registered', String(req.body?.actor || 'human-owner'), {
+      capabilities: runtime.capabilities, allowedActions: runtime.allowedActions
+    });
+    res.status(201).json({ ok: true, runtime });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to register Linux runtime', details: error?.message }); }
+});
+
+app.post('/api/linux/runtimes/:id/execution-requests', async (req: Request, res: Response) => {
+  try {
+    const request = await requestLinuxExecution(
+      req.params.id,
+      String(req.body?.requestedBy || 'ai-ceo'),
+      String(req.body?.action || ''),
+      req.body?.risk || 'medium',
+      req.body?.commandRef ? String(req.body.commandRef) : undefined
+    );
+    res.status(201).json({ ok: true, request, humanApprovalRequired: true });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to request Linux execution', details: error?.message }); }
+});
+
+app.post('/api/linux/runtimes/:id/events', async (req: Request, res: Response) => {
+  try {
+    const event = await recordLinuxRuntimeEvent(
+      req.params.id,
+      String(req.body?.eventType || 'runtime_event'),
+      String(req.body?.actor || 'runtime-manager'),
+      req.body?.details && typeof req.body.details === 'object' ? req.body.details : {}
+    );
+    res.status(201).json({ ok: true, event });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to record Linux runtime event', details: error?.message }); }
 });
 
 // Global Synthesis & Collaboration Fabric

@@ -122,3 +122,7 @@ export const GLORIFIER_COHERENT_SYSTEM_POLICY = {
   },
   autonomousIrreversibleActions:false
 } as const;
+
+export function getGlorifierCoherentSystemPolicy() {
+  return GLORIFIER_COHERENT_SYSTEM_POLICY;
+}

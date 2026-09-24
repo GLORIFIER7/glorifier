@@ -1,4 +1,4 @@
-import { initializeOpenProfileIntegration, getOpenProfileIntegrationStatus, requestOpenProfileAuthorization } from './src/lib/openprofile-integration';
+import { initializeOpenProfileIntegration, getOpenProfileIntegrationStatus, requestOpenProfileAuthorization, completeOpenProfileCallback } from './src/lib/openprofile-integration';
 import express, { Request, Response } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -50,6 +50,7 @@ dotenv.config();
 
 void Promise.allSettled([
   initializeConnectionRegistry(),
+  initializeOpenProfileIntegration(),
   initializeAgentRegistry(),
   initializeGeminiInteractionStore(),
   initializeLinuxRuntimeRegistry(),
@@ -1047,6 +1048,7 @@ app.post('/api/business-intelligence/watchlists',async(req:Request,res:Response)
 
 app.get('/api/integrations/openprofile',async(_req:Request,res:Response)=>{try{res.json({ok:true,...await getOpenProfileIntegrationStatus()});}catch(error:any){res.status(503).json({ok:false,error:'OpenProfile integration unavailable',details:error?.message});}});
 app.post('/api/integrations/openprofile/authorization/request',async(req:Request,res:Response)=>{try{res.status(201).json({ok:true,...await requestOpenProfileAuthorization(String(req.body?.actor||'human-owner'))});}catch(error:any){res.status(400).json({ok:false,error:'Unable to request OpenProfile authorization',details:error?.message});}});
+app.get('/api/integrations/openprofile/callback',async(req:Request,res:Response)=>{try{const code=String(req.query.code||'');const state=String(req.query.state||'');if(!code||!state)return res.status(400).send('OpenProfile authorization callback is missing code or state.');const result=await completeOpenProfileCallback(code,state);res.status(200).json({ok:true,...result});}catch(error:any){res.status(400).json({ok:false,error:'OpenProfile authorization callback failed',details:error?.message});}});
 app.get('/api/architecture/scientist',async(_req:Request,res:Response)=>{try{res.json({ok:true,snapshot:await getEnterpriseArchitectureSnapshot()});}catch(error:any){res.status(503).json({ok:false,error:'Architecture Scientist unavailable',details:error?.message});}});
 app.get('/api/architecture/scientist/health',async(_req:Request,res:Response)=>{try{res.json({ok:true,health:await runArchitectureHealthCheck()});}catch(error:any){res.status(503).json({ok:false,error:'Architecture health unavailable',details:error?.message});}});
 app.get('/api/architecture/scientist/policy',(_req:Request,res:Response)=>res.json({ok:true,policy:getEnterpriseArchitectureScientistPolicy()}));

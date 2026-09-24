@@ -20,6 +20,7 @@ import { syncAlpacaAssets, getAlpacaStockQuote, getBinancePublicQuote, listAsset
 import { buildGlorifierSummaryReport } from './src/lib/economic-report';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
+import { initializeClaimableAssetRegistry, registerClaimableAsset, listClaimableAssets, scanClaimableFocus, requestClaim, recordClaimableEvidence } from './src/lib/claimable-assets';
 
 dotenv.config();
 
@@ -29,7 +30,8 @@ void Promise.allSettled([
   initializeGeminiInteractionStore(),
   initializeLinuxRuntimeRegistry(),
   initializeAssetRegistry(),
-  initializeBountyRegistry()
+  initializeBountyRegistry(),
+  initializeClaimableAssetRegistry()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -251,6 +253,34 @@ app.post('/api/bounties/events', async (req: Request, res: Response) => {
   try {
     res.status(201).json({ ok: true, event: await recordBountyEvent(req.body.programId, req.body.findingId || null, req.body.eventType, req.body.actor || 'human-owner', req.body.details || {}) });
   } catch (error: any) { res.status(400).json({ error: 'Unable to record bounty event', details: error?.message }); }
+});
+
+// Claimable Asset Focus: autonomous discovery and claim preparation for vouchers, crypto rewards and special subscriptions.
+app.get('/api/claimable-assets', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, assets: await listClaimableAssets(req.query.status as any) }); }
+  catch (error: any) { res.status(503).json({ error: 'Claimable asset registry unavailable', details: error?.message }); }
+});
+app.post('/api/claimable-assets', async (req: Request, res: Response) => {
+  try {
+    const asset = await registerClaimableAsset(req.body);
+    res.status(201).json({ ok: true, asset, verificationStatus: 'not_verified', autonomousExecution: false });
+  } catch (error: any) { res.status(400).json({ error: error?.message || 'Unable to register claimable asset' }); }
+});
+app.post('/api/claimable-assets/scan', async (_req: Request, res: Response) => {
+  try {
+    const result = await scanClaimableFocus();
+    res.json({ ok: true, ...result, autonomousExecution: false, note: 'GLORIFIER may discover and prepare claims autonomously, but actual redemption remains human-authorized.' });
+  } catch (error: any) { res.status(503).json({ error: error?.message || 'Claimable asset scan failed' }); }
+});
+app.post('/api/claimable-assets/:id/evidence', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok: true, evidence: await recordClaimableEvidence(req.params.id, req.body) }); }
+  catch (error: any) { res.status(400).json({ error: error?.message || 'Unable to record claimable evidence' }); }
+});
+app.post('/api/claimable-assets/:id/claim-request', async (req: Request, res: Response) => {
+  try {
+    const request = await requestClaim(req.params.id, String(req.body?.actor || 'ai-orchestrator'));
+    res.status(201).json({ ok: true, request, humanApprovalRequired: true, autonomousExecution: false });
+  } catch (error: any) { res.status(400).json({ error: error?.message || 'Unable to prepare claim request' }); }
 });
 
 // Unified asset integration registry: crypto, fiat, gaming, stocks, bonds, ETFs and other assets.

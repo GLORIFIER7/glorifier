@@ -49,6 +49,8 @@ import { initializeEnterpriseArchitectureScientist, getEnterpriseArchitectureSci
 import { initializeBusinessIntelligenceScientist, getBusinessIntelligenceScientistPolicy, recordBusinessIntelligenceObservation, recordBusinessIntelligenceSignal, registerBusinessIntelligenceWatch, getBusinessIntelligenceSnapshot, registerBusinessIntelligenceEntity, defineBusinessIntelligenceMetric, getGlobalBusinessIntelligenceArchitecture, runBusinessIntelligenceHealthCheck } from './src/lib/business-intelligence-scientist';
 import { initializeAwsIntelligence, getAwsIntelligencePolicy, recordAwsAccount, recordAwsResource, recordAwsFinding, recordAwsCostObservation, getAwsIntelligenceSnapshot } from './src/lib/aws-intelligence';
 import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
+import { initializePayoutRegistry, createPayoutRequest, listPayoutRequests } from './src/lib/payouts';
+import { initializeRevenueLedger } from './src/lib/revenue/engine';
 
 dotenv.config();
 
@@ -75,6 +77,8 @@ void Promise.allSettled([
   initializeBusinessModel(),
   initializeValuationEngine(),
   initializeEconomicOperatingSystem(),
+  initializeRevenueLedger(),
+  initializePayoutRegistry(),
   initializeAwsIntelligence(),
   initializeBusinessIntelligenceScientist(),
   initializeEnterpriseArchitectureScientist(),
@@ -3093,6 +3097,38 @@ app.post('/api/marketplace/offers', async (req: Request, res: Response) => {
     });
     res.status(201).json({ ok:true,offer,humanApprovalRequired:true,economicTruth:'price is NOT VERIFIED revenue until payment evidence exists' });
   } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Marketplace offer creation failed' }); }
+});
+
+// ============================================================================
+// GLORIFIER SOVEREIGN EARNINGS PAYOUTS
+// Requests are governed and recorded; external fund movement is disabled by default.
+// ============================================================================
+app.post('/api/payouts/request', async (req: Request, res: Response) => {
+  try {
+    const userReference = String(req.body?.userReference || req.headers['x-user-reference'] || 'anonymous');
+    const amount = Number(req.body?.amount);
+    const method = String(req.body?.method || '').trim();
+    const destination = String(req.body?.destination || '').trim();
+    const result = await createPayoutRequest({
+      userReference,
+      amountUsd: amount,
+      method,
+      destination,
+      actor: String(req.body?.actor || 'human-owner')
+    });
+    res.status(result.status === 'blocked' ? 409 : 202).json({ ok: true, ...result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Payout request failed' });
+  }
+});
+
+app.get('/api/payouts', async (req: Request, res: Response) => {
+  try {
+    const userReference = String(req.query.userReference || req.headers['x-user-reference'] || 'anonymous');
+    res.json({ ok: true, payouts: await listPayoutRequests(userReference) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: error?.message || 'Payout history unavailable' });
+  }
 });
 
 // ============================================================================

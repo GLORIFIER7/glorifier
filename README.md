@@ -77,6 +77,35 @@ The runtime coordinates AI agents through governed capabilities, specialist task
 
 The production backend is designed for Railway deployment, with the frontend able to operate as an independent observer/dashboard.
 
+## SaaS Platform Layer
+
+GLORIFIER now includes a governed SaaS control plane for:
+
+- Multi-tenant organization records
+- Product plans and feature/limit definitions
+- Subscription lifecycle metadata
+- External billing references
+- Revenue/economic-truth separation
+
+The SaaS layer is designed to support metering, entitlement management, usage analytics, and future billing-provider integrations without allowing the core system to invent revenue or move money. Payment execution remains outside the autonomous control plane.
+
+## IoT Platform Layer
+
+GLORIFIER now includes an IoT device intelligence layer for:
+
+- Device registration and lifecycle status
+- Tenant/device association
+- Connection association
+- Firmware and capability metadata
+- Telemetry ingestion and history
+- Governed operational alerts
+
+IoT telemetry is treated as observed source data. It can inform automation and intelligence, but it does not become a financial claim or verified revenue without qualifying economic evidence.
+
+SaaS and IoT therefore share the same GLORIFIER foundation:
+
+**Connect → Observe → Record → Analyze → Evidence → Govern → Act with authorization**
+
 ## Security Boundary
 
 GLORIFIER intentionally disables autonomous:

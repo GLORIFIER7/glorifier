@@ -37,6 +37,7 @@ import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitS
 import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib/gats-policy';
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
 import { initializeMarketplaceTransactions, registerMarketplaceParty, listMarketplaceParties, createMarketplaceTransaction, acceptMarketplaceTransaction, governMarketplaceTransaction, recordMarketplaceContract, recordMarketplaceInvoice, recordMarketplacePaymentEvidence, getMarketplaceTransaction, listMarketplaceTransactions } from './src/lib/marketplace-transactions';
+import { initializeCustomerOperatingSystem, onboardCustomer, attachCustomerSubscription, recordCustomerUsage, recordCustomerRoiAndAdvance, createCustomerOpportunity, recordCustomerBillingEvent, advanceCustomerLifecycle, getCustomerLifecycle } from './src/lib/customer-operating-system';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
@@ -79,6 +80,7 @@ void Promise.allSettled([
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
+    await initializeCustomerOperatingSystem();
   if (failures.length) {
     console.warn('[GLORIFIER] some persistence initializers are deferred:', failures.map((result: any) => result.reason?.message || String(result.reason)));
     return;
@@ -3020,6 +3022,14 @@ app.post('/api/opportunity-graph/edges', async (req: Request, res: Response) => 
   } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Opportunity edge creation failed' }); }
 });
 
+app.post('/api/customers/onboard', async (req: Request,res: Response)=>{try{const customer=await onboardCustomer({name:String(req.body?.name||''),ownerRef:req.body?.ownerRef||null,externalRef:req.body?.externalRef||null,metadata:req.body?.metadata||{}});res.status(201).json({ok:true,customer});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer onboarding failed'});}});
+app.get('/api/customers/:tenantId/lifecycle', async (req: Request,res: Response)=>{try{res.json({ok:true,customer:await getCustomerLifecycle(req.params.tenantId)});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Customer lifecycle unavailable'});}});
+app.post('/api/customers/:tenantId/subscription', async (req: Request,res: Response)=>{try{res.status(201).json({ok:true,...await attachCustomerSubscription({tenantId:req.params.tenantId,planId:String(req.body?.planId||''),status:req.body?.status,renewsAt:req.body?.renewsAt||null,externalRef:req.body?.externalRef||null})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer subscription failed'});}});
+app.post('/api/customers/:tenantId/usage', async (req: Request,res: Response)=>{try{res.status(201).json({ok:true,...await recordCustomerUsage({tenantId:req.params.tenantId,kind:req.body?.kind||'other',units:req.body?.units,provider:req.body?.provider||null,model:req.body?.model||null,taskRef:req.body?.taskRef||null,estimatedCost:req.body?.estimatedCost??null})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer usage recording failed'});}});
+app.post('/api/customers/:tenantId/roi', async (req: Request,res: Response)=>{try{res.status(201).json({ok:true,...await recordCustomerRoiAndAdvance({tenantId:req.params.tenantId,metricType:String(req.body?.metricType||'other'),quantity:Number(req.body?.quantity||0),currency:req.body?.currency||null,evidenceStatus:req.body?.evidenceStatus||'not_verified',sourceRef:req.body?.sourceRef||null,notes:req.body?.notes||null})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer ROI recording failed'});}});
+app.post('/api/customers/:tenantId/opportunities', async (req: Request,res: Response)=>{try{res.status(201).json({ok:true,...await createCustomerOpportunity({tenantId:req.params.tenantId,nodeRef:String(req.body?.nodeRef||''),label:String(req.body?.label||''),nodeType:req.body?.nodeType,attributes:req.body?.attributes||{},evidenceStatus:req.body?.evidenceStatus||'not_verified'})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer opportunity failed'});}});
+app.post('/api/customers/:tenantId/billing-events', async (req: Request,res: Response)=>{try{res.status(201).json({ok:true,billing:await recordCustomerBillingEvent({tenantId:req.params.tenantId,eventType:String(req.body?.eventType||'billing'),amount:req.body?.amount==null?null:Number(req.body.amount),currency:req.body?.currency||'USD',externalRef:req.body?.externalRef||null,evidenceStatus:req.body?.evidenceStatus||'not_verified',metadata:req.body?.metadata||{}})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer billing event failed'});}});
+app.post('/api/customers/:tenantId/lifecycle', async (req: Request,res: Response)=>{try{res.json({ok:true,customer:await advanceCustomerLifecycle({tenantId:req.params.tenantId,stage:req.body?.stage,actor:req.body?.actor||'human-owner',details:req.body?.details||{}})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer lifecycle transition failed'});}});
 app.get('/api/marketplace/parties', async (req: Request, res: Response) => {
   try { res.json({ ok:true, parties:await listMarketplaceParties(req.query.type==='buyer'||req.query.type==='seller'?req.query.type:undefined) }); }
   catch(error:any){ res.status(503).json({ok:false,error:error?.message||'Marketplace parties unavailable'}); }

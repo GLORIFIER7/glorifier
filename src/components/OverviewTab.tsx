@@ -43,51 +43,25 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   onNavigateToTab,
   transactions
 }) => {
-  const [isLiveStreaming, setIsLiveStreaming] = useState(true);
-  const [liveStreamEvents, setLiveStreamEvents] = useState<Array<{
-    id: string;
-    buyer: string;
-    category: string;
-    amount: number;
-    tier: string;
-    time: string;
-  }>>([
-    { id: 'ev-1', buyer: 'Frontier AI Research', category: 'Developer Telemetry', amount: 0.14, tier: 'ε=0.35 Diff. Privacy', time: 'Just now' },
-    { id: 'ev-2', buyer: 'BioHealth Genomic Lab', category: 'Sleep Biomarker', amount: 0.22, tier: 'Synthetic Twin', time: '14s ago' },
-    { id: 'ev-3', buyer: 'OmniConsumer Macro', category: 'E-Commerce Intent', amount: 0.08, tier: 'ZK-Attestation', time: '42s ago' },
-  ]);
+  const [controlPlane, setControlPlane] = useState<any>(null);
+  const [controlPlaneError, setControlPlaneError] = useState<string | null>(null);
 
-  // Simulate live incoming micro-monetization transactions
   useEffect(() => {
-    if (!isLiveStreaming) return;
-
-    const interval = setInterval(() => {
-      const sampleBuyers = [
-        { name: 'Frontier AI Research', cat: 'Developer Telemetry', base: 0.12, tier: 'ε=0.35 Diff. Privacy' },
-        { name: 'BioHealth Genomic Lab', cat: 'Health Biomarker', base: 0.18, tier: 'Synthetic Twin' },
-        { name: 'OmniConsumer Macro', cat: 'Commerce Basket', base: 0.09, tier: 'ZK-Attestation' },
-        { name: 'Stanford Med AI Lab', cat: 'Biometrics Aggregate', base: 0.25, tier: 'ε=0.2 Laplacian' },
-        { name: 'DeepReason AI Models', cat: 'Search & Research', base: 0.15, tier: 'Differential ε=0.45' }
-      ];
-
-      const chosen = sampleBuyers[Math.floor(Math.random() * sampleBuyers.length)];
-      const randomizedAmount = +(chosen.base + (Math.random() * 0.08 - 0.04)).toFixed(2);
-
-      setLiveStreamEvents(prev => [
-        {
-          id: `ev-${Date.now()}`,
-          buyer: chosen.name,
-          category: chosen.cat,
-          amount: Math.max(0.05, randomizedAmount),
-          tier: chosen.tier,
-          time: 'Just now'
-        },
-        ...prev.slice(0, 5)
-      ]);
-    }, 4500);
-
-    return () => clearInterval(interval);
-  }, [isLiveStreaming]);
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const response = await fetch('/api/revenue/control-plane');
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) throw new Error(payload.error || 'Control plane unavailable');
+        if (!cancelled) setControlPlane(payload.snapshot);
+      } catch (error: any) {
+        if (!cancelled) setControlPlaneError(error?.message || 'Control plane unavailable');
+      }
+    };
+    load();
+    const timer = window.setInterval(load, 15000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, []);
 
   const activeMonetizingCount = footprints.filter(f => f.isMonetized).length;
   const shieldedCount = footprints.filter(f => !f.isMonetized).length;
@@ -97,100 +71,25 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       <LiveEconomicData />
       <BusinessModelPanel />
 
-      {/* Autonomous Policy Strategy Selector */}
-      <div className="rounded-xl bg-slate-900 border border-slate-800 p-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Cpu className="w-4 h-4 text-emerald-400" />
-              Autonomous Broker Stance
-            </h3>
-            <p className="text-xs text-slate-400">
-              Select how your personal AI agent negotiates terms and filters incoming buyer requests.
-            </p>
-          </div>
-          <div className="text-xs text-slate-400">
-            Current Floor: <span className="text-emerald-400 font-mono font-semibold">${policy.minimumMonthlyFloorUsd}/mo</span>
-          </div>
+      <section className="rounded-xl bg-slate-950 border border-slate-800 p-5">
+        <div className="flex items-center justify-between gap-4 mb-4">
+          <div><h2 className="text-base font-bold text-white flex items-center gap-2"><Layers className="w-4 h-4 text-emerald-400" />GLORIFIER Revenue Control Plane</h2><p className="text-xs text-slate-400 mt-1">One governance boundary for every value-creation machine.</p></div>
+          <span className="text-[10px] font-mono px-2 py-1 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">GRCP-1.0</span>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          {/* Conservative */}
-          <div 
-            onClick={() => onUpdatePolicy({ brokerMode: 'strict-sovereign', globalEpsilon: 0.15, minimumMonthlyFloorUsd: 50 })}
-            id="policy-stance-strict"
-            className={`cursor-pointer rounded-lg p-3.5 border transition-all ${
-              policy.brokerMode === 'strict-sovereign'
-                ? 'bg-slate-800/90 border-emerald-500/80 shadow-md'
-                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold text-white">Strict Sovereign</div>
-              {policy.brokerMode === 'strict-sovereign' && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Zero-knowledge only. Academic biomedical research permitted. No commercial AI pretraining.
-            </p>
-            <div className="mt-2 text-[10px] font-mono text-slate-300 flex items-center gap-2">
-              <span>ε = 0.15</span> • <span>Floor: $50/mo</span>
-            </div>
-          </div>
-
-          {/* Balanced (Recommended) */}
-          <div 
-            onClick={() => onUpdatePolicy({ brokerMode: 'balanced-protective', globalEpsilon: 0.35, minimumMonthlyFloorUsd: 35 })}
-            id="policy-stance-balanced"
-            className={`cursor-pointer rounded-lg p-3.5 border transition-all ${
-              policy.brokerMode === 'balanced-protective'
-                ? 'bg-slate-800/90 border-emerald-500/80 shadow-md'
-                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-white">Balanced Governance</span>
-                <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 font-semibold">RECOMMENDED</span>
-              </div>
-              {policy.brokerMode === 'balanced-protective' && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              High compensation with audited differential privacy (ε=0.35). AI labs & non-profit academic. Ad-brokers quarantined.
-            </p>
-            <div className="mt-2 text-[10px] font-mono text-emerald-400 flex items-center gap-2">
-              <span>ε = 0.35</span> • <span>Floor: $35/mo</span> • <span>~$215/mo avg</span>
-            </div>
-          </div>
-
-          {/* Yield Maximizer */}
-          <div 
-            onClick={() => onUpdatePolicy({ brokerMode: 'autonomous-maximize', globalEpsilon: 0.65, minimumMonthlyFloorUsd: 20 })}
-            id="policy-stance-maximize"
-            className={`cursor-pointer rounded-lg p-3.5 border transition-all ${
-              policy.brokerMode === 'autonomous-maximize'
-                ? 'bg-slate-800/90 border-emerald-500/80 shadow-md'
-                : 'bg-slate-950/60 border-slate-800 hover:border-slate-700'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold text-white">Yield Maximizer</div>
-              {policy.brokerMode === 'autonomous-maximize' && (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              )}
-            </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Broader licensing pool using synthetic twins & coarse k-anonymity. Maximizes micro-payout volume across all verified buyers.
-            </p>
-            <div className="mt-2 text-[10px] font-mono text-amber-300 flex items-center gap-2">
-              <span>ε = 0.65</span> • <span>Floor: $20/mo</span> • <span>~$380/mo pacing</span>
-            </div>
-          </div>
+        {controlPlaneError && <div className="text-xs text-amber-300 mb-3">Control plane: {controlPlaneError}</div>}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+          {[
+            ['Verified Revenue', controlPlane ? '$' + Number(controlPlane.economicTruth?.verifiedRevenue || 0).toFixed(2) : '—', 'VERIFIED'],
+            ['Pending Approvals', controlPlane?.governance?.pendingApprovals ?? '—', 'HUMAN'],
+            ['Blocked Actions', controlPlane?.governance?.blockedActions ?? '—', 'GOVERNED'],
+            ['Connections', controlPlane?.machines?.connections?.total ?? '—', 'REGISTERED']
+          ].map(([label,value,badge]) => <div key={String(label)} className="rounded-lg bg-slate-900 border border-slate-800 p-3"><div className="text-[10px] uppercase font-bold text-slate-500">{label}</div><div className="text-lg font-bold text-white mt-1">{value}</div><div className="text-[9px] font-mono text-emerald-400 mt-1">{badge}</div></div>)}
         </div>
-      </div>
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          {Object.keys(controlPlane?.policy?.machines || {}).map(key => <div key={key} className="rounded-md bg-slate-900/80 border border-slate-800 px-3 py-2 text-[10px] text-slate-300"><span className="text-emerald-400 mr-1">●</span>{key}</div>)}
+        </div>
+        <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/60 p-3 text-[10px] text-slate-400">Economic truth: estimates and expected value are <span className="text-amber-300 font-semibold">NOT VERIFIED</span>. Market value is not revenue. Missing evidence is not zero. Consequential actions remain human-authorized.</div>
+      </section>
 
       {/* Two Column Layout: Quick Stream Switchboard & Real-time Compensation Feed */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -276,73 +175,11 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
         </div>
 
-        {/* Right 5 cols: Live Micro-Compensation Stream */}
-        <div className="lg:col-span-5 rounded-xl bg-slate-900 border border-slate-800 p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-emerald-400" />
-                  Live Compensation Clearing
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Micro-royalties streamed as models query your protected data vault.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsLiveStreaming(!isLiveStreaming)}
-                id="toggle-livestream-btn"
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition-colors"
-                title={isLiveStreaming ? 'Pause live simulator' : 'Resume live simulator'}
-              >
-                {isLiveStreaming ? <Pause className="w-3.5 h-3.5 text-amber-400" /> : <Play className="w-3.5 h-3.5 text-emerald-400" />}
-              </button>
-            </div>
-
-            <div className="space-y-2.5">
-              {liveStreamEvents.map((ev) => (
-                <div
-                  key={ev.id}
-                  className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 flex items-center justify-between text-xs"
-                >
-                  <div>
-                    <div className="font-semibold text-slate-200">{ev.buyer}</div>
-                    <div className="text-[11px] text-slate-400 flex items-center gap-1.5 mt-0.5">
-                      <span>{ev.category}</span>
-                      <span>•</span>
-                      <span className="font-mono text-emerald-400/80">{ev.tier}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono font-bold text-emerald-400">
-                      +${ev.amount.toFixed(2)}
-                    </div>
-                    <div className="text-[10px] text-slate-500">{ev.time}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 pt-3 border-t border-slate-800">
-            <div className="rounded-lg bg-slate-950 p-3 flex items-center justify-between">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-400">Settled Royalty Payout</div>
-                <div className="text-sm font-bold font-mono text-white mt-0.5">
-                  ${stats.totalEarnedUsd.toFixed(2)} USDC
-                </div>
-              </div>
-              <button
-                onClick={onOpenWithdraw}
-                id="overview-claim-payout-btn"
-                className="px-3 py-1.5 text-xs font-semibold rounded-md bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors"
-              >
-                Withdraw Funds
-              </button>
-            </div>
+        <div className="lg:col-span-5 rounded-xl bg-slate-900 border border-slate-800 p-5">
+          <div className="mb-3"><h3 className="text-sm font-bold text-white flex items-center gap-2"><Activity className="w-4 h-4 text-emerald-400" />Governed Action Feed</h3><p className="text-xs text-slate-400">Recorded control-plane decisions, not simulated earnings.</p></div>
+          <div className="space-y-2">
+            {(controlPlane?.governance?.recentEvents || []).slice(0,5).map((event:any) => <div key={event.id} className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 text-xs"><div className="flex justify-between gap-3"><span className="font-semibold text-slate-200">{event.machine}</span><span className={event.status === 'blocked' ? 'text-amber-300' : 'text-emerald-300'}>{event.status}</span></div><div className="text-[11px] text-slate-400 mt-1">{event.actionType} • evidence: {event.evidenceStatus}</div></div>)}
+            {!controlPlane?.governance?.recentEvents?.length && <div className="text-xs text-slate-500 py-4">No governance events recorded yet.</div>}
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
+

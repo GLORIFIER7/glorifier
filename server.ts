@@ -8,6 +8,7 @@ import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
 import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask } from './src/lib/agent-runtime';
+import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 
 dotenv.config();
 
@@ -28,6 +29,63 @@ const integrationStatus = [
   { id: 'web', name: 'Public Web', category: 'monitoring', status: 'connected', detail: 'Public-source intelligence aggregation and evidence tracking', publicUrl: 'https://news.google.com/' },
   { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' }
 ];
+
+// Brand web monitoring API. Public reads are safe; writes from scheduled scanners may require a shared secret.
+app.get('/api/brand-monitor/terms', async (_req: Request, res: Response) => {
+  try { res.json(await listBrandTerms()); }
+  catch (error: any) { res.status(503).json({ error: 'Brand monitor database unavailable', details: error?.message }); }
+});
+
+app.post('/api/brand-monitor/terms', async (req: Request, res: Response) => {
+  try {
+    const term = String(req.body?.term || '').trim();
+    if (!term) return res.status(400).json({ error: 'term is required' });
+    const created = await addBrandTerm(req.body);
+    res.status(201).json(created);
+  } catch (error: any) {
+    res.status(500).json({ error: 'Unable to add brand term', details: error?.message });
+  }
+});
+
+app.get('/api/brand-monitor/observations', async (_req: Request, res: Response) => {
+  try { res.json(await listBrandObservations()); }
+  catch (error: any) { res.status(503).json({ error: 'Brand monitor database unavailable', details: error?.message }); }
+});
+
+app.get('/api/brand-monitor/alerts', async (_req: Request, res: Response) => {
+  try { res.json(await listBrandAlerts()); }
+  catch (error: any) { res.status(503).json({ error: 'Brand monitor database unavailable', details: error?.message }); }
+});
+
+app.post('/api/brand-monitor/scan', async (req: Request, res: Response) => {
+  try {
+    const expected = process.env.BRAND_MONITOR_WEBHOOK_SECRET;
+    if (expected && req.get('x-brand-monitor-secret') !== expected) {
+      return res.status(401).json({ error: 'Invalid brand monitor secret' });
+    }
+    const observations = Array.isArray(req.body?.observations) ? req.body.observations : [];
+    let recorded = 0;
+    for (const input of observations.slice(0, 500)) {
+      if (!input?.termId || !input?.sourceUrl || !input?.matchedText) continue;
+      const classification = input.classification || classifyBrandMatch(String(input.matchedText), String(input.matchedText), String(input.sourceUrl));
+      await recordBrandObservation({
+        termId: String(input.termId),
+        sourceType: String(input.sourceType || 'public_web'),
+        sourceUrl: String(input.sourceUrl),
+        sourceName: String(input.sourceName || 'Public Web'),
+        observedAt: String(input.observedAt || new Date().toISOString()),
+        matchedText: String(input.matchedText),
+        context: String(input.context || ''),
+        classification,
+        confidence: Number(input.confidence ?? 0.5)
+      });
+      recorded += 1;
+    }
+    res.json({ ok: true, source: req.body?.source || 'unknown', received: observations.length, recorded, timestamp: new Date().toISOString() });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Brand monitor scan failed', details: error?.message });
+  }
+});
 
 app.get('/api/integrations', (_req: Request, res: Response) => {
   res.json({

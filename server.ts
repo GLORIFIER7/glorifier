@@ -198,59 +198,73 @@ function getGenAI(): GoogleGenAI | null {
   return genAIClient;
 }
 
-// Robust Gemini execution helper with automatic retry for transient 503 / 429 errors and fallback models
+// Gemini Interactions API runtime.
+// Google recommends Interactions API for new Gemini applications; generateContent is no longer used here.
 async function callGeminiSafe({
   contents,
   systemInstruction,
   temperature = 0.4,
   responseMimeType,
-  preferredModel = 'gemini-3.8-flash'
+  preferredModel = 'gemini-3.8-flash',
+  previousInteractionId,
+  store = true
 }: {
   contents: string;
   systemInstruction?: string;
   temperature?: number;
   responseMimeType?: string;
   preferredModel?: string;
-}): Promise<{ text: string; modelUsed: string } | null> {
+  previousInteractionId?: string;
+  store?: boolean;
+}): Promise<{ text: string; modelUsed: string; interactionId?: string } | null> {
   const gemini = getGenAI();
   if (!gemini) return null;
 
-  // Use fast, high-availability, free-tier supported models:
-  // 1. gemini-3.8-flash (primary recommended)
-  // 2. gemini-3.1-flash-lite (high rate-limit headroom)
-  // 3. gemini-flash-latest (general alias)
   const candidateModels = [
-    preferredModel || 'gemini-3.8-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-latest'
-  ].filter((m): m is string => Boolean(m) && typeof m === 'string')
+    preferredModel,
+    'gemini-3.8-flash',
+    'gemini-3.7-flash',
+    'gemini-3.6-flash',
+    'gemini-3.5-flash'
+  ].filter((m): m is string => Boolean(m))
    .filter((m, idx, arr) => arr.indexOf(m) === idx);
 
   for (const model of candidateModels) {
     try {
-      const response = await gemini.models.generateContent({
+      const interaction = await gemini.interactions.create({
         model,
-        contents,
-        config: {
-          systemInstruction,
-          temperature,
-          responseMimeType: responseMimeType as any
-        }
-      });
-      const text = response.text || '';
+        input: contents,
+        ...(systemInstruction ? { system_instruction: systemInstruction } : {}),
+        ...(store ? { store: true } : { store: false }),
+        ...(store && previousInteractionId ? { previous_interaction_id: previousInteractionId } : {}),
+        generation_config: { temperature },
+        ...(responseMimeType ? {
+          response_format: {
+            type: 'text',
+            mime_type: responseMimeType
+          }
+        } : {})
+      } as any);
+
+      const text = interaction.output_text || '';
       if (text) {
-        return { text, modelUsed: model };
+        const interactionId = (interaction as any).id;
+        await recordGlobalCollaboration('gemini', 'interaction_inference', 'gemini-runtime', {
+          model,
+          interactionId: interactionId || null,
+          stateful: Boolean(store && previousInteractionId),
+          stored: Boolean(store)
+        });
+        return { text, modelUsed: model, interactionId };
       }
     } catch (err: any) {
       const errMsg = err?.message || String(err);
       const status = err?.status || err?.code || (errMsg.includes('503') ? 503 : (errMsg.includes('429') ? 429 : 0));
       const isQuota = status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED');
       const isUnavailable = status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('overloaded');
-
-      console.warn(`[Sentinel-AI] Gemini call [model=${model}] ${isUnavailable ? '503 high-demand spike' : (isQuota ? '429 quota' : 'error')}:`, errMsg);
-
-      // On 503 or 429, immediately switch to the next lighter model in candidateModels
-      continue;
+      console.warn(`[GLORIFIER-Gemini] Interactions API [model=${model}] ${isUnavailable ? '503 unavailable' : (isQuota ? '429 quota' : 'error')}: ${errMsg}`);
+      // Fail over only for transient availability/quota conditions; surface configuration/auth failures.
+      if (!isQuota && !isUnavailable) break;
     }
   }
 

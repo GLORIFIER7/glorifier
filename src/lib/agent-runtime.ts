@@ -30,6 +30,7 @@ const agents: AgentCard[] = [
   { id: 'uspto-ai-attorney-scientist', name: 'GLORIFIER USPTO AI Attorney/Scientist', role: 'ip-research', capabilities: ['ip-research', 'prior-art-analysis', 'invention-provenance', 'patent-preparation'], endpoint: '/api/agents/uspto-ai-attorney-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'iso-ai-scientist', name: 'GLORIFIER ISO AI Scientist', role: 'ai-standards-research', capabilities: ['iso-alignment', 'ai-governance', 'ai-risk', 'lifecycle-assessment', 'continual-improvement'], endpoint: '/api/agents/iso-ai-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'assets-scientist', name: 'GLORIFIER Assets Scientist', role: 'asset-intelligence', capabilities: ['asset-intelligence', 'asset-lifecycle', 'asset-valuation', 'asset-risk', 'asset-evidence'], endpoint: '/api/agents/assets-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'business-intelligence-scientist', name: 'GLORIFIER Business Intelligence Scientist', role: 'continuous-business-intelligence', capabilities: ['market-intelligence','competitive-intelligence','customer-intelligence','product-intelligence','sales-intelligence','marketing-intelligence','operations-intelligence','pricing-intelligence','technology-intelligence','data-intelligence','regulatory-intelligence','opportunity-intelligence','early-warning','decision-intelligence'], endpoint: '/api/agents/business-intelligence-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'finance-scientist', name: 'GLORIFIER Finance Scientist', role: 'institutional-finance-intelligence', capabilities: ['portfolio-intelligence', 'multi-asset-risk', 'scenario-analysis', 'stress-testing', 'capital-allocation', 'valuation', 'financial-forensics', 'liquidity-analysis'], endpoint: '/api/agents/finance-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
 ];
 
@@ -53,7 +54,14 @@ const capabilityOwners: Record<string, string[]> = {
   'ip-research': ['uspto-ai-attorney-scientist'],
   'iso-alignment': ['iso-ai-scientist'],
   'ai-governance': ['iso-ai-scientist'],
-  'ai-risk': ['iso-ai-scientist']
+  'ai-risk': ['iso-ai-scientist'],
+  'business-intelligence': ['business-intelligence-scientist','data-scientist','market-scientist','competitive-intelligence-scientist'],
+  'market-intelligence': ['business-intelligence-scientist','market-scientist','competitive-intelligence-scientist'],
+  'competitive-intelligence': ['business-intelligence-scientist','competitive-intelligence-scientist','market-scientist'],
+  'customer-intelligence': ['business-intelligence-scientist','product-scientist','growth-scientist'],
+  'opportunity-intelligence': ['business-intelligence-scientist','revenue-scientist','market-scientist'],
+  'decision-intelligence': ['business-intelligence-scientist','finance-scientist','risk-scientist'],
+  'early-warning': ['business-intelligence-scientist','risk-scientist','threat-intelligence-scientist']
 };
 
 export function listAgentCards() { return agents; }

@@ -76,3 +76,9 @@ export async function createSaasSubscription(input:{tenantId:string;planId:strin
 function mapTenant(x:any){return {id:x.id,name:x.name,externalRef:x.external_ref||null,status:x.status,metadata:x.metadata||{}};}
 function mapPlan(x:any){return {id:x.id,name:x.name,description:x.description||null,status:x.status,amount:x.amount==null?null:Number(x.amount),currency:x.currency||'USD',billingInterval:x.billing_interval,features:x.features||[],limits:x.limits||{}};}
 function mapSubscription(x:any){return {id:x.id,tenantId:x.tenant_id,tenantName:x.tenant_name||null,planId:x.plan_id,planName:x.plan_name||null,status:x.status,startedAt:x.started_at?new Date(x.started_at).toISOString():null,renewsAt:x.renews_at?new Date(x.renews_at).toISOString():null,externalRef:x.external_ref||null,metadata:x.metadata||{}};}
+
+
+export async function governSaasAction(input: { objective: string; actionType?: string; evidenceRefs?: string[]; actor?: string }) {
+  const { governRevenueAction } = await import('./revenue-control-plane');
+  return governRevenueAction({ machine: 'saas', actionType: (input.actionType || 'propose') as any, objective: input.objective, evidenceRefs: input.evidenceRefs || [], actor: input.actor || 'human-owner' });
+}

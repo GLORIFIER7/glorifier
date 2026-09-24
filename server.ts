@@ -21,6 +21,8 @@ import { buildGlorifierSummaryReport } from './src/lib/economic-report';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
 import { initializeClaimableAssetRegistry, registerClaimableAsset, listClaimableAssets, scanClaimableFocus, requestClaim, recordClaimableEvidence } from './src/lib/claimable-assets';
+import { initializeSaasRegistry, registerSaasTenant, registerSaasPlan, listSaasOverview, createSaasSubscription } from './src/lib/saas-registry';
+import { initializeIotRegistry, registerIotDevice, listIotDevices, recordIotTelemetry, listIotTelemetry, createIotAlert } from './src/lib/iot-registry';
 
 dotenv.config();
 
@@ -31,7 +33,9 @@ void Promise.allSettled([
   initializeLinuxRuntimeRegistry(),
   initializeAssetRegistry(),
   initializeBountyRegistry(),
-  initializeClaimableAssetRegistry()
+  initializeClaimableAssetRegistry(),
+  initializeSaasRegistry(),
+  initializeIotRegistry()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -853,6 +857,48 @@ async function runModelExecution({
     provider: isGpt ? 'OpenAI GPT-4o Enclave' : 'Sovereign Core'
   };
 }
+
+// SaaS control plane: tenants, plans, subscriptions and usage-ready metadata.
+// Payment movement remains disabled; external billing evidence must be recorded separately.
+app.get('/api/saas/overview', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, ...await listSaasOverview() }); }
+  catch (error: any) { res.status(503).json({ error: 'SaaS registry unavailable', details: error?.message }); }
+});
+app.post('/api/saas/tenants', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok: true, tenant: await registerSaasTenant({ name:String(req.body?.name||'').trim(), externalRef:req.body?.externalRef||null, metadata:req.body?.metadata||{} }) }); }
+  catch (error: any) { res.status(400).json({ error: 'Unable to register SaaS tenant', details:error?.message }); }
+});
+app.post('/api/saas/plans', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok: true, plan: await registerSaasPlan({ name:String(req.body?.name||'').trim(), description:req.body?.description||null, amount:req.body?.amount==null?null:Number(req.body.amount), currency:req.body?.currency, billingInterval:req.body?.billingInterval, features:Array.isArray(req.body?.features)?req.body.features:[], limits:req.body?.limits||{} }) }); }
+  catch (error: any) { res.status(400).json({ error: 'Unable to register SaaS plan', details:error?.message }); }
+});
+app.post('/api/saas/subscriptions', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok: true, subscription: await createSaasSubscription({ tenantId:String(req.body?.tenantId||''), planId:String(req.body?.planId||''), status:req.body?.status, renewsAt:req.body?.renewsAt||null, externalRef:req.body?.externalRef||null }) }); }
+  catch (error: any) { res.status(400).json({ error: 'Unable to create SaaS subscription', details:error?.message }); }
+});
+
+// IoT control plane: device registry, telemetry and governed alerts.
+// Device keys are identifiers only; secrets and credentials are never returned by these APIs.
+app.get('/api/iot/devices', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, devices:await listIotDevices() }); }
+  catch (error: any) { res.status(503).json({ error:'IoT registry unavailable', details:error?.message }); }
+});
+app.post('/api/iot/devices', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, device:await registerIotDevice({ name:String(req.body?.name||'').trim(), deviceType:req.body?.deviceType, tenantId:req.body?.tenantId||null, connectionId:req.body?.connectionId||null, capabilities:Array.isArray(req.body?.capabilities)?req.body.capabilities.map(String):[], firmwareVersion:req.body?.firmwareVersion||null, metadata:req.body?.metadata||{} }) }); }
+  catch (error: any) { res.status(400).json({ error:'Unable to register IoT device', details:error?.message }); }
+});
+app.post('/api/iot/devices/:id/telemetry', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, telemetry:await recordIotTelemetry(req.params.id,{ metric:String(req.body?.metric||'').trim(), value:req.body?.value==null?null:Number(req.body.value), unit:req.body?.unit||null, observedAt:req.body?.observedAt, quality:req.body?.quality, payload:req.body?.payload||{} }) }); }
+  catch (error: any) { res.status(400).json({ error:'Unable to record IoT telemetry', details:error?.message }); }
+});
+app.get('/api/iot/devices/:id/telemetry', async (req: Request, res: Response) => {
+  try { res.json({ ok:true, telemetry:await listIotTelemetry(req.params.id,Number(req.query.limit)||100) }); }
+  catch (error: any) { res.status(503).json({ error:'Unable to read IoT telemetry', details:error?.message }); }
+});
+app.post('/api/iot/devices/:id/alerts', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, alert:await createIotAlert({ deviceId:req.params.id, severity:req.body?.severity||'warning', rule:String(req.body?.rule||'manual'), message:String(req.body?.message||''), metadata:req.body?.metadata||{} }) }); }
+  catch (error: any) { res.status(400).json({ error:'Unable to create IoT alert', details:error?.message }); }
+});
 
 // 1. Health check & AI Config
 app.get('/api/health', (req: Request, res: Response) => {

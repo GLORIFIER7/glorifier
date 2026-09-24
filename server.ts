@@ -40,6 +40,7 @@ import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governReve
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 import { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 import { buildFinanceScientistReport, compareCapitalScenarios } from './src/lib/finance-intelligence';
+import { initializeBusinessIntelligenceScientist, getBusinessIntelligenceScientistPolicy, recordBusinessIntelligenceObservation, recordBusinessIntelligenceSignal, registerBusinessIntelligenceWatch, getBusinessIntelligenceSnapshot } from './src/lib/business-intelligence-scientist';
 import { initializeAwsIntelligence, getAwsIntelligencePolicy, recordAwsAccount, recordAwsResource, recordAwsFinding, recordAwsCostObservation, getAwsIntelligenceSnapshot } from './src/lib/aws-intelligence';
 import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
 
@@ -68,6 +69,7 @@ void Promise.allSettled([
   initializeValuationEngine(),
   initializeEconomicOperatingSystem(),
   initializeAwsIntelligence(),
+  initializeBusinessIntelligenceScientist(),
   initializeRevenueControlPlane()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
@@ -1019,6 +1021,25 @@ app.post('/api/aws/findings', async (req: Request, res: Response) => {
 app.post('/api/aws/cost-observations', async (req: Request, res: Response) => {
   try { res.status(201).json({ ok:true,cost:await recordAwsCostObservation({accountRef:req.body?.accountRef,periodStart:req.body?.periodStart,periodEnd:req.body?.periodEnd,amount:Number(req.body?.amount||0),currency:req.body?.currency,service:req.body?.service,evidenceStatus:req.body?.evidenceStatus,sourceRef:req.body?.sourceRef,metadata:req.body?.metadata||{}}),economicTruth:'AWS cost is not revenue; observed or estimated savings are not revenue.' }); }
   catch(error:any) { res.status(400).json({ ok:false,error:'Unable to record AWS cost observation',details:error?.message }); }
+});
+
+// GBIS-2.0 Business Intelligence Scientist control plane.
+app.get('/api/business-intelligence/scientist', async (_req: Request,res: Response)=>{
+  try{res.json({ok:true,snapshot:await getBusinessIntelligenceSnapshot()});}
+  catch(error:any){res.status(503).json({ok:false,error:'Business Intelligence Scientist unavailable',details:error?.message});}
+});
+app.get('/api/business-intelligence/scientist/policy',(_req:Request,res:Response)=>res.json({ok:true,policy:getBusinessIntelligenceScientistPolicy()}));
+app.post('/api/business-intelligence/observations',async(req:Request,res:Response)=>{
+  try{res.status(201).json({ok:true,observation:await recordBusinessIntelligenceObservation({domain:String(req.body?.domain||''),source:String(req.body?.source||''),sourceRef:req.body?.sourceRef,subject:String(req.body?.subject||''),metric:req.body?.metric,value:req.body?.value==null?null:Number(req.body.value),unit:req.body?.unit,observedAt:req.body?.observedAt,evidenceStatus:req.body?.evidenceStatus,confidence:req.body?.confidence==null?null:Number(req.body.confidence),metadata:req.body?.metadata||{}})});}
+  catch(error:any){res.status(400).json({ok:false,error:'Unable to record BI observation',details:error?.message});}
+});
+app.post('/api/business-intelligence/signals',async(req:Request,res:Response)=>{
+  try{res.status(201).json({ok:true,signal:await recordBusinessIntelligenceSignal({domain:String(req.body?.domain||''),signalType:String(req.body?.signalType||''),title:String(req.body?.title||''),description:String(req.body?.description||''),evidenceRefs:Array.isArray(req.body?.evidenceRefs)?req.body.evidenceRefs.map(String):[],confidence:req.body?.confidence==null?null:Number(req.body.confidence),impactEstimate:req.body?.impactEstimate==null?null:Number(req.body.impactEstimate),metadata:req.body?.metadata||{}})});}
+  catch(error:any){res.status(400).json({ok:false,error:'Unable to record BI signal',details:error?.message});}
+});
+app.post('/api/business-intelligence/watchlists',async(req:Request,res:Response)=>{
+  try{res.status(201).json({ok:true,watch:await registerBusinessIntelligenceWatch({domain:String(req.body?.domain||''),subject:String(req.body?.subject||''),watchType:String(req.body?.watchType||''),cadenceMinutes:req.body?.cadenceMinutes==null?60:Number(req.body.cadenceMinutes),metadata:req.body?.metadata||{}})});}
+  catch(error:any){res.status(400).json({ok:false,error:'Unable to register BI watchlist',details:error?.message});}
 });
 
 // SaaS control plane: tenants, plans, subscriptions and usage-ready metadata.

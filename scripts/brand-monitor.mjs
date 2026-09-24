@@ -1,4 +1,4 @@
-const base = process.env.BRAND_MONITOR_BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000';
+const base = process.env.BRAND_MONITOR_BASE_URL || process.env.RAILWAY_PUBLIC_DOMAIN || 'https://glorifier-artificial-intelligence-production.up.railway.app';
 const secret = process.env.BRAND_MONITOR_WEBHOOK_SECRET;
 const githubToken = process.env.GITHUB_TOKEN;
 
@@ -12,7 +12,10 @@ async function api(url, options={}) {
 
 async function main(){
   const root=base.replace(/\/$/,'');
-  const terms=await (await fetch(root+'/api/brand-monitor/terms')).json();
+  const termsResponse=await fetch(root+'/api/brand-monitor/terms');
+  if (!termsResponse.ok) throw new Error(`Unable to load brand terms: HTTP ${termsResponse.status}`);
+  const terms=await termsResponse.json();
+  if (!Array.isArray(terms)) throw new Error('Brand terms response is not an array');
   const observations=[];
   for (const term of terms.slice(0,50)) {
     const q=encodeURIComponent(`"${term.term}"`);

@@ -78,7 +78,8 @@ export const gatsGovernancePolicy = {
 export function getGatsGovernancePolicy() {
   return {
     ...gatsGovernancePolicy,
-    trustStandard: getGlorifierAiTrustStandard().version
+    trustStandard: getGlorifierAiTrustStandard().version,
+    coherentSystem: GLORIFIER_COHERENT_SYSTEM_POLICY
   };
 }
 

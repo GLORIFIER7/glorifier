@@ -36,6 +36,7 @@ import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitS
 import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib/gats-policy';
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
+import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
@@ -2757,6 +2758,53 @@ app.post('/api/marketplace/offers', async (req: Request, res: Response) => {
     });
     res.status(201).json({ ok:true,offer,humanApprovalRequired:true,economicTruth:'price is NOT VERIFIED revenue until payment evidence exists' });
   } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Marketplace offer creation failed' }); }
+});
+
+// ============================================================================
+// GLORIFIER REVENUE CONTROL PLANE
+// Common governance boundary across every value-creation and monetization machine.
+// ============================================================================
+app.get('/api/revenue/control-plane', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, snapshot: await buildRevenueControlPlaneSnapshot() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Revenue control plane unavailable' }); }
+});
+
+app.get('/api/revenue/control-plane/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getRevenueControlPlanePolicy() });
+});
+
+app.get('/api/revenue/control-plane/events', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit || 100)));
+    res.json({ ok: true, events: await listRevenueGovernanceEvents(limit) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: error?.message || 'Revenue governance events unavailable' });
+  }
+});
+
+app.post('/api/revenue/control-plane/govern', async (req: Request, res: Response) => {
+  try {
+    const machine = String(req.body?.machine || '').trim();
+    const actionType = String(req.body?.actionType || '').trim();
+    const objective = String(req.body?.objective || '').trim();
+    if (!machine || !actionType || !objective) {
+      return res.status(400).json({ ok: false, error: 'machine, actionType and objective are required' });
+    }
+    const result = await governRevenueAction({
+      machine: machine as any,
+      actionType: actionType as any,
+      objective,
+      capability: req.body?.capability ? String(req.body.capability) : undefined,
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : [],
+      reversible: req.body?.reversible === true,
+      amount: req.body?.amount == null ? null : Number(req.body.amount),
+      currency: req.body?.currency ? String(req.body.currency) : null,
+      actor: String(req.body?.actor || 'human-owner')
+    });
+    res.status(result.status === 'blocked' ? 409 : 202).json({ ok: true, ...result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Revenue governance failed' });
+  }
 });
 
 // Vite middleware for dev or static serving for prod

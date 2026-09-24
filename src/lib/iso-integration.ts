@@ -73,6 +73,17 @@ export async function requestIsoAuthorization(actor = 'human-owner') {
   return approval;
 }
 
+export function getStandardizationIdentityFederationStatus() {
+  return {
+    federation: STANDARDIZATION_IDENTITY_FEDERATION,
+    connectionId: 'conn-sif',
+    status: 'integration-ready',
+    humanAuthorizationRequired: true,
+    upstreamIdentitySources: ['ISO Global Directory', 'CEN Global Directory', 'CENELEC Expert Management System'],
+    note: 'GLORIFIER does not impersonate the federation or store federation passwords. Access is granted by the participating identity provider.'
+  };
+}
+
 export function getIso42001AlignmentTargets() {
   return [
     {

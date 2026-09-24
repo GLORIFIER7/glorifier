@@ -971,6 +971,33 @@ app.post('/api/orchestration/consensus', async (req: Request, res: Response) => 
   } catch(error:any) { res.status(503).json({ error:'Consensus orchestration failed', details:error?.message }); }
 });
 
+// Unified governance control plane: every revenue machine can use the same CEO -> policy -> compliance -> assets -> council -> trust -> evidence -> action gate.
+app.get('/api/governance/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getGovernanceLoopPolicy() });
+});
+app.get('/api/governance/cycles', async (req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, cycles: await listGovernanceCycles(Number(req.query.limit || 50)) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Governance cycle registry unavailable', details: error?.message });
+  }
+});
+app.post('/api/governance/cycles', async (req: Request, res: Response) => {
+  try {
+    const cycle = await runGovernanceCycle({
+      objective: String(req.body?.objective || '').trim(),
+      capability: req.body?.capability ? String(req.body.capability) : undefined,
+      roles: Array.isArray(req.body?.roles) ? req.body.roles.map(String) : undefined,
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : [],
+      reversible: req.body?.reversible === true,
+      requester: String(req.body?.requester || 'human-owner')
+    });
+    res.status(201).json({ ok: true, cycle });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Governance cycle failed', details: error?.message });
+  }
+});
+
 // Evidence-driven monetization engine: pipeline generation is autonomous; money movement and binding commitments are not.
 app.get('/api/monetization/dashboard', async (_req: Request,res: Response)=>{
   try{res.json({ok:true,...await buildMonetizationDashboard()});}
@@ -984,6 +1011,35 @@ app.post('/api/monetization/opportunities', async (req: Request,res: Response)=>
   try{res.status(201).json({ok:true,opportunity:await registerMonetizationOpportunity({source:String(req.body?.source||'unknown'),title:String(req.body?.title||'').trim(),description:req.body?.description||null,status:req.body?.status,estimatedValue:req.body?.estimatedValue,currency:req.body?.currency,probability:req.body?.probability,customerRef:req.body?.customerRef||null,evidenceRef:req.body?.evidenceRef||null,nextAction:req.body?.nextAction||null,metadata:req.body?.metadata||{}})});}
   catch(error:any){res.status(400).json({error:'Unable to create monetization opportunity',details:error?.message});}
 });
+app.post('/api/monetization/opportunities/:id/govern', async (req: Request,res: Response)=>{
+  try {
+    const opportunities = await listMonetizationOpportunities();
+    const opportunity = opportunities.find((item) => item.id === req.params.id);
+    if (!opportunity) return res.status(404).json({ ok: false, error: 'Monetization opportunity not found' });
+    const cycle = await runGovernanceCycle({
+      objective: `Revenue opportunity governance: ${opportunity.title}`,
+      capability: 'opportunity-analysis',
+      evidenceRefs: opportunity.evidenceRef ? [opportunity.evidenceRef] : [],
+      reversible: true,
+      requester: String(req.body?.requester || 'human-owner')
+    });
+    res.json({
+      ok: true,
+      opportunity,
+      governance: cycle,
+      revenueTruth: {
+        estimatedValue: opportunity.estimatedValue,
+        estimatedValueLabel: 'NOT VERIFIED',
+        expectedValue: opportunity.expectedValue,
+        expectedValueLabel: 'NOT VERIFIED',
+        verifiedRevenue: false
+      }
+    });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Revenue opportunity governance failed', details: error?.message });
+  }
+});
+
 app.post('/api/monetization/opportunities/:id/events', async (req: Request,res: Response)=>{
   try{res.status(201).json({ok:true,event:await recordMonetizationEvent(req.params.id,{eventType:String(req.body?.eventType||'observed'),amount:req.body?.amount,currency:req.body?.currency,externalRef:req.body?.externalRef||null,source:req.body?.source||null,evidenceStatus:req.body?.evidenceStatus==='verified'?'verified':'not_verified',details:req.body?.details||{}})});}
   catch(error:any){res.status(400).json({error:'Unable to record monetization event',details:error?.message});}

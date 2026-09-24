@@ -105,6 +105,58 @@ export function getSocialIntegrationStatus(provider: SocialProvider) {
   };
 }
 
+function providerFromPath(value: string): SocialProvider {
+  const provider = value.toLowerCase() as SocialProvider;
+  if (!['linkedin', 'facebook', 'tiktok'].includes(provider)) throw new Error('Unsupported social provider');
+  return provider;
+}
+
+export async function completeSocialCallback(providerInput: string, code: string, state: string) {
+  const provider = providerFromPath(providerInput);
+  if (!code || !state) throw new Error('OAuth code and state are required');
+
+  // The authorization state is intentionally never treated as authorization by itself.
+  // Token exchange remains server-side; access tokens are never returned to clients.
+  const connection = await getConnection(`conn-${provider}`);
+  if (!connection) throw new Error('Social connection not initialized');
+
+  const c = cfg(provider);
+  const clientId = process.env[c.clientIdEnv];
+  const clientSecret = process.env[c.clientSecretEnv];
+  if (!clientId || !clientSecret) throw new Error(`${provider} client credentials are not configured`);
+
+  const response = await fetch(c.tokenUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirectUri(provider),
+      client_id: clientId,
+      client_secret: clientSecret
+    })
+  });
+  const payload = await response.text();
+  if (!response.ok) throw new Error(`${provider} token exchange failed: HTTP ${response.status}`);
+
+  // Token persistence is deliberately not implemented here until a dedicated
+  // encrypted server-side credential vault is connected.
+  await recordConnectionEvent(connection.id, 'oauth_code_exchanged', 'oauth-callback', {
+    provider,
+    statePresent: Boolean(state),
+    tokenExchangeSucceeded: true,
+    tokenPayloadLength: payload.length,
+    credentialsPersisted: false
+  });
+
+  return {
+    provider,
+    connected: false,
+    requiresCredentialVault: true,
+    message: 'OAuth token exchange succeeded, but GLORIFIER has not persisted the credential because the encrypted credential vault is not enabled.'
+  };
+}
+
 export async function buildSocialAuthorization(provider: SocialProvider, actor = 'human-owner') {
   const c = cfg(provider);
   const clientId = process.env[c.clientIdEnv];

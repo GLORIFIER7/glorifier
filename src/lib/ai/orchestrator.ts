@@ -23,10 +23,13 @@ function evaluateResponse(response: AIResponse): ResponseEvaluation {
 function modelCapabilityScore(model: string): number {
   const value = model.toLowerCase();
   let score = 50;
-  if (/gpt-5/.test(value)) score = 100;
+  if (/gpt-6.*astra|gpt-6.*sol/.test(value)) score = 100;
+  else if (/gpt-5/.test(value)) score = 99;
   else if (/o[3-9]/.test(value)) score = 98;
   else if (/claude.*opus/.test(value)) score = 97;
   else if (/gemini.*pro|gemini.*ultra/.test(value)) score = 96;
+  else if (/grok.*[4-9]/.test(value)) score = 96;
+  else if (/deepseek.*reasoner/.test(value)) score = 95;
   else if (/llama.*405b|405b/.test(value)) score = 95;
   else if (/gpt-4\.1/.test(value)) score = 92;
   else if (/gemini.*flash/.test(value)) score = 82;

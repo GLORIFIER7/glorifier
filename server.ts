@@ -39,6 +39,7 @@ import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildCompliance
 import { initializeMarketplaceTransactions, registerMarketplaceParty, listMarketplaceParties, createMarketplaceTransaction, acceptMarketplaceTransaction, governMarketplaceTransaction, recordMarketplaceContract, recordMarketplaceInvoice, recordMarketplacePaymentEvidence, getMarketplaceTransaction, listMarketplaceTransactions } from './src/lib/marketplace-transactions';
 import { initializeCustomerOperatingSystem, onboardCustomer, attachCustomerSubscription, recordCustomerUsage, recordCustomerRoiAndAdvance, createCustomerOpportunity, recordCustomerBillingEvent, advanceCustomerLifecycle, getCustomerLifecycle } from './src/lib/customer-operating-system';
 import { initializeVerifiedOutcomes, recordVerifiedOutcome, verifyOutcome, disputeOutcome, getVerifiedOutcome, listVerifiedOutcomes } from './src/lib/verified-outcomes';
+import { initializeSalesforceArchitecture, getSalesforceRefinedArchitecture, runSalesforceArchitectureHealthCheck } from './src/lib/salesforce-architecture';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
@@ -83,6 +84,7 @@ void Promise.allSettled([
     await initializeMarketplaceTransactions();
     await initializeCustomerOperatingSystem();
     await initializeVerifiedOutcomes();
+    await initializeSalesforceArchitecture();
   if (failures.length) {
     console.warn('[GLORIFIER] some persistence initializers are deferred:', failures.map((result: any) => result.reason?.message || String(result.reason)));
     return;
@@ -3024,6 +3026,8 @@ app.post('/api/opportunity-graph/edges', async (req: Request, res: Response) => 
   } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Opportunity edge creation failed' }); }
 });
 
+app.get('/api/architecture/salesforce', async (_req: Request,res: Response)=>{try{res.json({ok:true,architecture:getSalesforceRefinedArchitecture()});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Salesforce architecture unavailable'});}});
+app.get('/api/architecture/salesforce/health', async (_req: Request,res: Response)=>{try{res.json({ok:true,health:await runSalesforceArchitectureHealthCheck()});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Salesforce architecture health unavailable'});}});
 app.get('/api/outcomes', async (req: Request,res: Response)=>{try{res.json({ok:true,version:'GVO-1.0',outcomes:await listVerifiedOutcomes(Number(req.query.limit||100))});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Outcome ledger unavailable'});}});
 app.get('/api/outcomes/:id', async (req: Request,res: Response)=>{try{const outcome=await getVerifiedOutcome(req.params.id);if(!outcome)return res.status(404).json({ok:false,error:'Outcome not found'});res.json({ok:true,outcome});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Outcome lookup failed'});}});
 app.post('/api/outcomes', async (req: Request,res: Response)=>{try{const outcome=await recordVerifiedOutcome({opportunityRef:String(req.body?.opportunityRef||''),governanceEventId:req.body?.governanceEventId||null,observedWhat:req.body?.observedWhat||{},opportunityWhat:req.body?.opportunityWhat||{},actionWhat:req.body?.actionWhat||{},authorizedBy:req.body?.authorizedBy||null,authorizationAt:req.body?.authorizationAt||null,evidence:req.body?.evidence||[],economicOutcome:req.body?.economicOutcome||{},actor:req.body?.actor||'human-owner'});res.status(201).json({ok:true,outcome});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Outcome recording failed'});}});

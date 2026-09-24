@@ -302,6 +302,43 @@ app.get('/api/gemini/interactions/:sessionId', async (req: Request, res: Respons
   }
 });
 
+// Global Synchronization Fabric: synchronizes registered provider state and audit metadata.
+// It does not claim access to services that have not been authorized/configured.
+app.post('/api/collaboration/synchronize', async (req: Request, res: Response) => {
+  try {
+    const actor = String(req.body?.actor || 'human-owner');
+    const providers = await getGlobalCollaborationStatus();
+    const synchronized = [];
+    for (const provider of providers) {
+      const event = await recordGlobalCollaboration(provider.id, 'synchronization_snapshot', actor, {
+        status: provider.status,
+        authorized: provider.authorized,
+        configured: provider.configured ?? null,
+        scopes: provider.scopes,
+        capabilities: provider.capabilities,
+        synchronizedAt: new Date().toISOString()
+      });
+      synchronized.push({ provider: provider.id, eventId: event.id, status: provider.status, authorized: provider.authorized, configured: provider.configured ?? null });
+    }
+    res.json({
+      ok: true,
+      synchronization: 'completed',
+      synchronizedAt: new Date().toISOString(),
+      providerCount: synchronized.length,
+      providers: synchronized,
+      policy: {
+        noCredentialReplication: true,
+        minimumScope: true,
+        humanApprovalForConsequentialActions: true,
+        neonAudit: true,
+        unavailableProvidersRemainUnconnected: true
+      }
+    });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, error: 'Global synchronization failed', details: error?.message || String(error) });
+  }
+});
+
 // Lazy/safe initialization of OpenAI (GPT models)
 let openAIClient: OpenAI | null = null;
 function getOpenAI(): OpenAI | null {
@@ -391,18 +428,15 @@ async function runModelExecution({
       geminiPart = 'Gemini contribution unavailable; no verified result was returned.';
     }
 
-    const llamaPart = `Decentralized Sovereignty & Open-Weights Audit: Unconsented data broker syndicates (Acxiom, Meta Graph, Experian) must be formally notified under statutory rights. Consent tokens should be cryptographically bound to prevent downstream resale.`;
-
     const consensusPart = 'No automatic consensus directive is issued. GLORIFIER records each model contribution separately; a human or an explicit synthesis step must determine any consequential decision.';
 
     return {
       text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n` +
-            `🟢 **OpenAI GPT-4o (Valuation & Strategy)**:\n${gptPart}\n\n` +
-            `🔵 **Google Gemini 3.8 Flash (Differential Privacy & Telemetry)**:\n${geminiPart}\n\n` +
-            `🟣 **Meta LLaMA 3.3 (Decentralized Sovereignty & Anti-Silo)**:\n${llamaPart}\n\n` +
-            `⚖️ **COUNCIL CONSENSUS DIRECTIVE**:\n${consensusPart}`,
-      modelUsed: `all-models (gpt-4o + ${geminiPart ? 'gemini' : 'unavailable'} + llama)`,
-      provider: 'All-AI Sovereign Collaboration Council'
+            `🟢 **OpenAI GPT-4o (live contribution when configured)**:\n${gptPart}\n\n` +
+            `🔵 **Google Gemini (live contribution when configured)**:\n${geminiPart}\n\n` +
+            `⚖️ **SYNTHESIS STATUS**:\n${consensusPart}`,
+      modelUsed: `all-models (gpt-4o + ${geminiPart ? 'gemini' : 'unavailable'})`,
+      provider: 'GLORIFIER AI Collaboration Council'
     };
   }
 

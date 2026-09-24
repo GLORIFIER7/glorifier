@@ -7,6 +7,7 @@ import { getGlorifierAiTrustStandard, evaluateGlorifierAiTrustConformance } from
 import { getWindsorSocialGatewayStatus, getWindsorSocialData } from './windsor-social-gateway';
 import { buildComplianceAssessment } from './compliance-policy';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './assets-scientist';
+import { getGlorifierCoherentSystemPolicy } from './gats-policy';
 
 const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);
 
@@ -95,11 +96,13 @@ export async function runGovernanceCycle(input: {
   const executive = aiOrchestrator.executive();
 
   // 2. Policy Scientist establishes the policy/governance interpretation.
+  const coherentPolicy = getGlorifierCoherentSystemPolicy();
   const policy = {
     status: 'policy-reviewed',
     source: 'GLORIFIER GATS Governance Policy + Policy Scientist',
     humanAuthority: true,
-    irreversibleActionsApprovalGated: true
+    irreversibleActionsApprovalGated: true,
+    coherentSystem: coherentPolicy
   };
 
   // 3. Compliance Scientist maps requirements to controls and evidence.
@@ -216,6 +219,8 @@ export function getGovernanceLoopPolicy() {
     consequentialActionsRequireHumanApproval: true,
     autonomousIrreversibleExecution: false,
     executionEnabled: false,
-    trustStandard: getGlorifierAiTrustStandard().version
+    trustStandard: getGlorifierAiTrustStandard().version,
+    coherentSystem: getGlorifierCoherentSystemPolicy(),
+    architecturePrinciple: 'All GLORIFIER capabilities share one governance, evidence, authorization and improvement lifecycle.'
   };
 }

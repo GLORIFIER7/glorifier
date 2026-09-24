@@ -239,9 +239,80 @@ app.post('/api/bounties/events', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(400).json({ error: 'Unable to record bounty event', details: error?.message }); }
 });
 
-// Unified asset integration registry: crypto, fiat, gaming, stocks, bonds and ETFs.
-// Prioritized asset/account registry: crypto, fiat, gaming, stocks, bonds, ETFs and other assets.
-// This is an inventory/governance layer; it does not expose private keys or move funds.
+// Unified asset integration registry: crypto, fiat, gaming, stocks, bonds, ETFs and other assets.
+// Inventory/governance only: private keys are never stored and fund movement is disabled by default.
+
+app.get('/api/assets/accounts', async (req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, accounts: await listAssetAccounts(req.query.assetClass as any) });
+  } catch (error: any) {
+    res.status(503).json({ error: 'Asset registry unavailable', details: error?.message });
+  }
+});
+
+app.get('/api/assets/accounts/:id', async (req: Request, res: Response) => {
+  try {
+    const account = await getAssetAccount(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Asset account not found' });
+    const connection = account.connectionId ? await getConnection(account.connectionId) : null;
+    res.json({ ok: true, account, linkedConnection: connection ? {
+      id: connection.id, provider: connection.provider, status: connection.status,
+      scopes: connection.scopes, lastVerifiedAt: connection.lastVerifiedAt
+    } : null });
+  } catch (error: any) {
+    res.status(503).json({ error: 'Asset account lookup failed', details: error?.message });
+  }
+});
+
+app.post('/api/assets/accounts', async (req: Request, res: Response) => {
+  try {
+    const { provider, displayName, assetClass, connectionId } = req.body || {};
+    if (!provider || !displayName || !assetClass) {
+      return res.status(400).json({ error: 'provider, displayName and assetClass are required' });
+    }
+    if (!['crypto','fiat','gaming','stock','bond','etf','other'].includes(assetClass)) {
+      return res.status(400).json({ error: 'Unsupported assetClass' });
+    }
+    if (connectionId) {
+      const connection = await getConnection(String(connectionId));
+      if (!connection) return res.status(404).json({ error: 'Linked connection not found' });
+      if (connection.status !== 'authorized') {
+        return res.status(409).json({ error: 'Linked connection is not authorized', connection });
+      }
+    }
+    const account = await registerAssetAccount({
+      provider: String(provider),
+      displayName: String(displayName),
+      assetClass,
+      status: req.body.status || 'discovered',
+      accountRef: req.body.accountRef ? String(req.body.accountRef) : null,
+      connectionId: connectionId ? String(connectionId) : null,
+      custody: req.body.custody || 'unknown',
+      capabilities: Array.isArray(req.body.capabilities) ? req.body.capabilities.map(String) : [],
+      scopes: Array.isArray(req.body.scopes) ? req.body.scopes.map(String) : [],
+      priority: typeof req.body.priority === 'number' ? req.body.priority : 50,
+      risk: req.body.risk || 'medium',
+      requiresHumanApproval: req.body.requiresHumanApproval !== false,
+      lastVerifiedAt: null,
+      metadata: req.body.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    if (connectionId) {
+      await recordConnectionEvent(String(connectionId), 'asset_account_linked', String(req.body.actor || 'asset-registry'), {
+        assetAccountId: account.id, assetClass: account.assetClass, provider: account.provider
+      });
+    }
+    await recordAssetAccountEvent(account.id, 'registered', String(req.body.actor || 'human-owner'), {
+      assetClass: account.assetClass, priority: account.priority, scopes: account.scopes, connectionId: account.connectionId || null
+    });
+    res.status(201).json({
+      ok: true, account,
+      policy: { credentialsStoredInRegistry: false, privateKeysStored: false, fundMovementEnabled: false, humanApprovalForConsequentialActions: true }
+    });
+  } catch (error: any) {
+    res.status(400).json({ error: 'Unable to register asset account', details: error?.message });
+  }
+});
+
 app.get('/api/assets/holdings', async (req: Request, res: Response) => {
   try {
     res.json({ ok: true, holdings: await listAssetHoldings(typeof req.query.assetAccountId === 'string' ? req.query.assetAccountId : undefined) });
@@ -264,11 +335,21 @@ app.post('/api/assets/holdings', async (req: Request, res: Response) => {
         return res.status(409).json({ ok: false, error: 'Linked connection is not authorized', connectionId: account.connectionId });
       }
     }
-    const holding = await recordAssetHolding({ ...req.body, assetAccountId: String(assetAccountId), symbol: String(symbol), instrumentType, source: String(source) });
-    await recordAssetAccountEvent(String(assetAccountId), 'holding_recorded', String(req.body.actor || 'asset-runtime'), {
-      holdingId: holding.id, symbol: holding.symbol, instrumentType: holding.instrument_type, source: holding.source, evidenceRef: holding.evidence_ref || null
+    const holding = await recordAssetHolding({
+      ...req.body,
+      assetAccountId: String(assetAccountId),
+      symbol: String(symbol),
+      instrumentType,
+      source: String(source)
     });
-    res.status(201).json({ ok: true, holding, verification: { status: 'source_recorded', revenueVerified: false } });
+    await recordAssetAccountEvent(String(assetAccountId), 'holding_recorded', String(req.body.actor || 'asset-runtime'), {
+      holdingId: holding.id, symbol: holding.symbol, instrumentType: holding.instrument_type, source: holding.source,
+      evidenceRef: holding.evidence_ref || null
+    });
+    res.status(201).json({
+      ok: true, holding,
+      verification: { status: 'source_recorded', evidenceRequiredForVerification: true, revenueVerified: false }
+    });
   } catch (error: any) {
     res.status(400).json({ ok: false, error: 'Unable to record asset holding', details: error?.message });
   }
@@ -277,7 +358,9 @@ app.post('/api/assets/holdings', async (req: Request, res: Response) => {
 app.post('/api/assets/evidence', async (req: Request, res: Response) => {
   try {
     const { assetAccountId, holdingId, evidenceType, source } = req.body || {};
-    if (!evidenceType || !source) return res.status(400).json({ ok: false, error: 'evidenceType and source are required' });
+    if (!evidenceType || !source) {
+      return res.status(400).json({ ok: false, error: 'evidenceType and source are required' });
+    }
     const evidence = await recordAssetEvidence({
       assetAccountId: assetAccountId ? String(assetAccountId) : null,
       holdingId: holdingId ? String(holdingId) : null,
@@ -288,83 +371,15 @@ app.post('/api/assets/evidence', async (req: Request, res: Response) => {
       payloadHash: req.body.payloadHash ? String(req.body.payloadHash) : null,
       details: req.body.details && typeof req.body.details === 'object' ? req.body.details : {}
     });
-    if (assetAccountId) await recordAssetAccountEvent(String(assetAccountId), 'evidence_recorded', String(req.body.actor || 'asset-runtime'), { evidenceId: evidence.id, evidenceType, source });
+    if (assetAccountId) {
+      await recordAssetAccountEvent(String(assetAccountId), 'evidence_recorded', String(req.body.actor || 'asset-runtime'), {
+        evidenceId: evidence.id, evidenceType, source
+      });
+    }
     res.status(201).json({ ok: true, evidence });
   } catch (error: any) {
     res.status(400).json({ ok: false, error: 'Unable to record asset evidence', details: error?.message });
   }
-});
-
-app.post('/api/assets/accounts', async (req: Request, res: Response) => {
-  try {
-    const { provider, displayName, assetClass, status = 'discovered', custody = 'unknown', capabilities = [], scopes = [], priority = 50, risk = 'medium', requiresHumanApproval = true, connectionId } = req.body || {};
-    if (!provider || !displayName || !assetClass) return res.status(400).json({ ok: false, error: 'provider, displayName and assetClass are required' });
-    if (!['crypto','fiat','gaming','stock','bond','etf','other'].includes(assetClass)) return res.status(400).json({ ok: false, error: 'Unsupported assetClass' });
-    if (connectionId) {
-      const connection = await getConnection(String(connectionId));
-      if (!connection) return res.status(404).json({ ok: false, error: 'Linked connection not found' });
-      if (connection.status !== 'authorized') return res.status(409).json({ ok: false, error: 'Linked connection is not authorized', connection });
-    }
-    const account = await registerAssetAccount({
-      ...req.body,
-      provider: String(provider),
-      displayName: String(displayName),
-      assetClass,
-      status,
-      custody,
-      capabilities: Array.isArray(capabilities) ? capabilities : [],
-      scopes: Array.isArray(scopes) ? scopes : [],
-      priority: Number(priority),
-      risk,
-      requiresHumanApproval: Boolean(requiresHumanApproval),
-      connectionId: connectionId ? String(connectionId) : null
-    });
-    if (connectionId) await recordConnectionEvent(String(connectionId), 'asset_account_linked', String(req.body.actor || 'asset-registry'), { assetAccountId: account.id, assetClass, provider });
-    await recordAssetAccountEvent(account.id, 'registered', String(req.body.actor || 'asset-registry'), { connectionId: account.connectionId || null });
-    res.status(201).json({ ok: true, account });
-  } catch (error: any) {
-    res.status(400).json({ ok: false, error: 'Unable to register asset account', details: error?.message });
-  }
-});
-
-app.get('/api/assets/accounts', async (req: Request, res: Response) => {
-  try { res.json({ ok: true, accounts: await listAssetAccounts(req.query.assetClass as any) }); }
-  catch (error: any) { res.status(503).json({ error: 'Asset registry unavailable', details: error?.message }); }
-});
-
-app.get('/api/assets/accounts/:id', async (req: Request, res: Response) => {
-  try {
-    const account = await getAssetAccount(req.params.id);
-    if (!account) return res.status(404).json({ error: 'Asset account not found' });
-    res.json({ ok: true, account });
-  } catch (error: any) { res.status(503).json({ error: 'Asset account lookup failed', details: error?.message }); }
-});
-
-app.post('/api/assets/accounts', async (req: Request, res: Response) => {
-  try {
-    if (!req.body?.provider || !req.body?.displayName || !req.body?.assetClass) {
-      return res.status(400).json({ error: 'provider, displayName and assetClass are required' });
-    }
-    const account = await registerAssetAccount({
-      provider: String(req.body.provider),
-      displayName: String(req.body.displayName),
-      assetClass: req.body.assetClass,
-      status: req.body.status || 'discovered',
-      accountRef: req.body.accountRef ? String(req.body.accountRef) : null,
-      custody: req.body.custody || 'unknown',
-      capabilities: Array.isArray(req.body.capabilities) ? req.body.capabilities.map(String) : [],
-      scopes: Array.isArray(req.body.scopes) ? req.body.scopes.map(String) : [],
-      priority: typeof req.body.priority === 'number' ? req.body.priority : 50,
-      risk: req.body.risk || 'medium',
-      requiresHumanApproval: req.body.requiresHumanApproval !== false,
-      lastVerifiedAt: null,
-      metadata: req.body.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
-    });
-    await recordAssetAccountEvent(account.id, 'registered', String(req.body.actor || 'human-owner'), {
-      assetClass: account.assetClass, priority: account.priority, scopes: account.scopes
-    });
-    res.status(201).json({ ok: true, account, policy: { privateKeysStored: false, fundMovementEnabled: false, humanApprovalForConsequentialActions: true } });
-  } catch (error: any) { res.status(400).json({ error: 'Unable to register asset account', details: error?.message }); }
 });
 
 app.post('/api/assets/accounts/:id/priority', async (req: Request, res: Response) => {
@@ -372,7 +387,9 @@ app.post('/api/assets/accounts/:id/priority', async (req: Request, res: Response
     const account = await prioritizeAssetAccount(req.params.id, Number(req.body?.priority), String(req.body?.actor || 'human-owner'));
     if (!account) return res.status(404).json({ error: 'Asset account not found' });
     res.json({ ok: true, account });
-  } catch (error: any) { res.status(400).json({ error: 'Unable to prioritize asset account', details: error?.message }); }
+  } catch (error: any) {
+    res.status(400).json({ error: 'Unable to prioritize asset account', details: error?.message });
+  }
 });
 
 app.post('/api/assets/accounts/:id/events', async (req: Request, res: Response) => {
@@ -384,7 +401,9 @@ app.post('/api/assets/accounts/:id/events', async (req: Request, res: Response) 
       req.body?.details && typeof req.body.details === 'object' ? req.body.details : {}
     );
     res.status(201).json({ ok: true, event });
-  } catch (error: any) { res.status(400).json({ error: 'Unable to record asset event', details: error?.message }); }
+  } catch (error: any) {
+    res.status(400).json({ error: 'Unable to record asset event', details: error?.message });
+  }
 });
 
 // Global Synthesis & Collaboration Fabric

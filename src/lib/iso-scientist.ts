@@ -1,6 +1,6 @@
 import { getPostgresPool } from './db/postgres';
 import { aiOrchestrator } from './ai/orchestrator';
-import { getGlorifierAiTrustStandard, getGlorifierAiTrustControls } from './ai/trust-standard';
+import { getGlorifierAiTrustControls } from './ai/trust-standard';
 import { getIso42001AlignmentTargets } from './iso-integration';
 
 const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);

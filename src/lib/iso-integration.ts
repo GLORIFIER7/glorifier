@@ -2,6 +2,17 @@ import { getConnection, registerConnection, recordConnectionEvent } from './conn
 
 export const ISO_API_BASE_URL = process.env.ISO_API_BASE_URL || 'https://api-portal.iso.org';
 
+export const STANDARDIZATION_IDENTITY_FEDERATION = {
+  id: 'sif',
+  name: 'Standardization Identity Federation',
+  ecosystem: 'ISO/CEN/CENELEC',
+  authType: 'oidc' as const,
+  purpose: 'Federated identity and SSO for participating standardization applications',
+  authorizationRequired: true,
+  credentialsStoredInRegistry: false,
+  secretReturnedToClients: false
+} as const;
+
 export const isoIntegration = {
   id: 'iso',
   name: 'ISO',
@@ -18,7 +29,7 @@ export const isoIntegration = {
 } as const;
 
 export async function initializeIsoIntegration() {
-  return registerConnection({
+  const isoConnection = await registerConnection({
     id: 'conn-iso',
     provider: 'iso',
     displayName: 'ISO Standards / API Portal',
@@ -40,6 +51,30 @@ export async function initializeIsoIntegration() {
       isoCertificationClaimAllowed: false
     }
   });
+
+  await registerConnection({
+    id: 'conn-sif',
+    provider: 'standardization-identity-federation',
+    displayName: 'Standardization Identity Federation (ISO/CEN/CENELEC)',
+    authType: 'oidc',
+    status: process.env.SIF_CLIENT_ID ? 'pending_authorization' : 'discovered',
+    scopes: ['openid'],
+    risk: 'high',
+    accountRef: process.env.SIF_ACCOUNT_REF || null,
+    expiresAt: null,
+    lastVerifiedAt: null,
+    requiresHumanApproval: true,
+    metadata: {
+      federation: STANDARDIZATION_IDENTITY_FEDERATION,
+      issuer: process.env.SIF_ISSUER_URL || null,
+      clientIdConfigured: Boolean(process.env.SIF_CLIENT_ID),
+      redirectUri: process.env.SIF_REDIRECT_URI || null,
+      identitySources: ['ISO Global Directory', 'CEN Global Directory', 'CENELEC Expert Management System'],
+      credentialsStoredInRegistry: false
+    }
+  });
+
+  return isoConnection;
 }
 
 export async function getIsoIntegrationStatus() {
@@ -77,8 +112,13 @@ export function getStandardizationIdentityFederationStatus() {
   return {
     federation: STANDARDIZATION_IDENTITY_FEDERATION,
     connectionId: 'conn-sif',
-    status: 'integration-ready',
+    status: process.env.SIF_CLIENT_ID ? 'configured-awaiting-human-authorization' : 'integration-ready-awaiting-provider-configuration',
     humanAuthorizationRequired: true,
+    providerConfiguration: {
+      issuerConfigured: Boolean(process.env.SIF_ISSUER_URL),
+      clientIdConfigured: Boolean(process.env.SIF_CLIENT_ID),
+      redirectUriConfigured: Boolean(process.env.SIF_REDIRECT_URI)
+    },
     upstreamIdentitySources: ['ISO Global Directory', 'CEN Global Directory', 'CENELEC Expert Management System'],
     note: 'GLORIFIER does not impersonate the federation or store federation passwords. Access is granted by the participating identity provider.'
   };

@@ -30,8 +30,34 @@ const agents: AgentCard[] = [
 ];
 
 const tasks = new Map<string, AgentTask>();
+const capabilityOwners: Record<string, string[]> = {
+  research: ['research-scientist','market-scientist'],
+  engineering: ['engineering-scientist','software-architect','api-scientist'],
+  security: ['cybersecurity-scientist','threat-intelligence-scientist','privacy-scientist'],
+  finance: ['finance-scientist','revenue-scientist','risk-scientist'],
+  data: ['data-scientist','database-scientist'],
+  product: ['product-scientist','ux-scientist','growth-scientist'],
+  infrastructure: ['cloud-scientist','ai-infrastructure-scientist','operations-scientist'],
+  assets: ['blockchain-scientist','game-technology-scientist','economics-scientist']
+};
 
 export function listAgentCards() { return agents; }
+
+export function routeAgentCapability(capability: string) {
+  const normalized = capability.trim().toLowerCase();
+  return { capability: normalized, specialists: capabilityOwners[normalized] || [], fallback: 'ai-ceo', humanApprovalDefault: true };
+}
+
+export function orchestrationPolicy() {
+  return {
+    routing: 'capability-first',
+    resilience: 'provider-fallback',
+    disagreement: 'surface-for-reconciliation',
+    evidence: 'required-for-verification',
+    humanAuthority: true,
+    irreversibleActions: 'approval-gated'
+  };
+}
 
 export function createAgentTask(input: Pick<AgentTask, 'capability'|'objective'|'input'|'requester'|'connectionId'|'approvalRequired'>) {
   const task: AgentTask = {

@@ -87,3 +87,9 @@ export async function buildMonetizationDashboard(){
 function mapOpportunity(x:any):MonetizationOpportunity{
   return {id:x.id,source:x.source,title:x.title,description:x.description||null,status:x.status,estimatedValue:x.estimated_value==null?null:Number(x.estimated_value),currency:x.currency||null,probability:x.probability==null?null:Number(x.probability),expectedValue:x.expected_value==null?null:Number(x.expected_value),customerRef:x.customer_ref||null,evidenceRef:x.evidence_ref||null,nextAction:x.next_action||null,requiresHumanApproval:Boolean(x.requires_human_approval),metadata:x.metadata||{}};
 }
+
+
+export async function governValueAction(input: { objective: string; actionType?: string; evidenceRefs?: string[]; actor?: string }) {
+  const { governRevenueAction } = await import('./revenue-control-plane');
+  return governRevenueAction({ machine: 'opportunity-engine', actionType: (input.actionType || 'propose') as any, objective: input.objective, evidenceRefs: input.evidenceRefs || [], actor: input.actor || 'human-owner' });
+}

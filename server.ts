@@ -29,6 +29,7 @@ import { initializeInventionRegistry, registerInvention, listInventions } from '
 import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorization, getIso42001AlignmentTargets, getStandardizationIdentityFederationStatus, requestStandardizationIdentityFederationAuthorization } from './src/lib/iso-integration';
 import { initializeUsptoIntegration, getUsptoIntegrationStatus, requestUsptoAuthorization, getUsptoTrademarkStatus } from './src/lib/uspto-integration';
 import { initializeIpResearchRegistry, runIpResearch, listIpResearchRuns, getIpResearchPolicy } from './src/lib/ip-research';
+import { initializeIsoScientistRegistry, runIsoScientistResearch, listIsoScientistRuns, getIsoScientistPolicy } from './src/lib/iso-scientist';
 
 dotenv.config();
 
@@ -47,7 +48,8 @@ void Promise.allSettled([
   initializeInventionRegistry(),
   initializeIsoIntegration(),
   initializeUsptoIntegration(),
-  initializeIpResearchRegistry()
+  initializeIpResearchRegistry(),
+  initializeIsoScientistRegistry()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {

@@ -224,9 +224,8 @@ export async function listAssetHoldings(assetAccountId?: string) {
 }
 
 export async function listAssetEvidence(assetAccountId?: string, limit = 100) {
-  const db = getPool();
-  if (!db) return [];
   await initializeAssetRegistry();
+  const db = getPostgresPool();
   const safeLimit = Math.max(1, Math.min(500, Number(limit) || 100));
   const params: unknown[] = [];
   let where = '';

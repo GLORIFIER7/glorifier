@@ -34,6 +34,7 @@ import { initializeGovernanceLoop, runGovernanceCycle, listGovernanceCycles, get
 import { initializeWindsorSocialGateway, getWindsorSocialGatewayStatus, getWindsorSocialData } from './src/lib/windsor-social-gateway';
 import { initializeBusinessModel, getBusinessModel, recordWorkUnit, getWorkUnitSummary, recordCustomerRoi, getCustomerRoi, upsertOpportunityNode, linkOpportunityNodes, getOpportunityGraph, createMarketplaceOffer, listMarketplaceOffers } from './src/lib/business-model';
 import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib/gats-policy';
+import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
@@ -2168,6 +2169,22 @@ app.get('/api/ai/trust/policy-scientist', (_req: Request, res: Response) => {
     evaluation: evaluateGatsGovernancePolicy(),
     source: 'GLORIFIER Policy Scientist governance baseline'
   });
+});
+
+app.get('/api/compliance-scientist/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getGlorifierCompliancePolicy(), evaluation: evaluateCompliancePolicy(), collaborator: 'policy-scientist + compliance-scientist' });
+});
+
+app.post('/api/compliance-scientist/assess', (req: Request, res: Response) => {
+  try {
+    const assessment = buildComplianceAssessment({
+      objective: String(req.body?.objective || '').trim(),
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : [],
+      applicableRequirements: Array.isArray(req.body?.applicableRequirements) ? req.body.applicableRequirements.map(String) : []
+    });
+    if (!assessment.objective) return res.status(400).json({ ok: false, error: 'objective is required' });
+    res.json({ ok: true, assessment });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'compliance assessment failed' }); }
 });
 
 app.get('/api/ip/inventions', async (_req: Request, res: Response) => {

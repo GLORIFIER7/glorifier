@@ -14,6 +14,8 @@ export type AgentTask = {
   objective: string;
   input?: unknown;
   requester: string;
+  connectionId?: string;
+  approvalRequired?: boolean;
   createdAt: string;
   status: 'queued' | 'running' | 'completed' | 'failed';
   result?: unknown;
@@ -31,7 +33,7 @@ const tasks = new Map<string, AgentTask>();
 
 export function listAgentCards() { return agents; }
 
-export function createAgentTask(input: Pick<AgentTask, 'capability'|'objective'|'input'|'requester'>) {
+export function createAgentTask(input: Pick<AgentTask, 'capability'|'objective'|'input'|'requester'|'connectionId'|'approvalRequired'>) {
   const task: AgentTask = {
     id: `task-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
     ...input,

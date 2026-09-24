@@ -37,8 +37,10 @@ import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
-import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';\nimport { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
+import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
+import { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 import { buildFinanceScientistReport, compareCapitalScenarios } from './src/lib/finance-intelligence';
+import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
 
 dotenv.config();
 
@@ -61,7 +63,10 @@ void Promise.allSettled([
   initializeIsoScientistRegistry(),
   initializeGovernanceLoop(),
   initializeSocialIntegrations(),
-  initializeBusinessModel(),\n  initializeValuationEngine()
+  initializeBusinessModel(),
+  initializeValuationEngine(),
+  initializeEconomicOperatingSystem(),
+  initializeRevenueControlPlane()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -780,7 +785,8 @@ async function runModelExecution({
         const comp = await openAI.chat.completions.create({
           model: 'gpt-4o',
           messages: [
-            { role: 'system', content: `${systemPrompt}\nFocus on commercial data valuation, buyer counter-negotiation, and yield strategy.` },
+            { role: 'system', content: `${systemPrompt}
+Focus on commercial data valuation, buyer counter-negotiation, and yield strategy.` },
             { role: 'user', content: userPrompt }
           ],
           temperature
@@ -793,7 +799,10 @@ async function runModelExecution({
     
     if (gemini) {
       const comp = await callGeminiSafe({
-        contents: `${systemPrompt}\nFocus on zero-knowledge differential privacy (epsilon bounds), quasi-identifier scrubbing, and telemetry integrity.\n\nUser: ${userPrompt}`,
+        contents: `${systemPrompt}
+Focus on zero-knowledge differential privacy (epsilon bounds), quasi-identifier scrubbing, and telemetry integrity.
+
+User: ${userPrompt}`,
         temperature
       });
       if (comp?.text) {
@@ -811,11 +820,23 @@ async function runModelExecution({
       : 'No cross-model consensus is asserted because a complete multi-provider result is unavailable.';
 
     return {
-      text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n` +
-            `🟢 **OpenAI GPT-4o (Valuation & Strategy)**:\n${gptPart}\n\n` +
-            `🔵 **Google Gemini 3.8 Flash (Differential Privacy & Telemetry)**:\n${geminiPart}\n\n` +
-            `🟣 **Meta LLaMA 3.3 (Decentralized Sovereignty & Anti-Silo)**:\n${llamaPart}\n\n` +
-            `⚖️ **COUNCIL CONSENSUS DIRECTIVE**:\n${consensusPart}`,
+      text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**
+
+` +
+            `🟢 **OpenAI GPT-4o (Valuation & Strategy)**:
+${gptPart}
+
+` +
+            `🔵 **Google Gemini 3.8 Flash (Differential Privacy & Telemetry)**:
+${geminiPart}
+
+` +
+            `🟣 **Meta LLaMA 3.3 (Decentralized Sovereignty & Anti-Silo)**:
+${llamaPart}
+
+` +
+            `⚖️ **COUNCIL CONSENSUS DIRECTIVE**:
+${consensusPart}`,
       modelUsed: 'all-models (gpt-4o + gemini-3.8-flash + llama-3.3)',
       provider: 'All-AI Sovereign Collaboration Council'
     };
@@ -835,7 +856,9 @@ async function runModelExecution({
             temperature
           }),
           callGeminiSafe({
-            contents: `${systemPrompt}\n\nUser: ${userPrompt}`,
+            contents: `${systemPrompt}
+
+User: ${userPrompt}`,
             temperature
           })
         ]);
@@ -845,7 +868,15 @@ async function runModelExecution({
 
         if (gptText && geminiText) {
           return {
-            text: `[Two-model comparison — human review required]:\n\n${gptText}\n\n---\nGemini output:\n${geminiText}\n\nNo independent consensus or verification is asserted by GLORIFIER.`,
+            text: `[Two-model comparison — human review required]:
+
+${gptText}
+
+---
+Gemini output:
+${geminiText}
+
+No independent consensus or verification is asserted by GLORIFIER.`,
             modelUsed: 'consensus (gpt-4o + gemini-3.8-flash)',
             provider: 'Hybrid Sovereign Consensus'
           };
@@ -883,6 +914,87 @@ async function runModelExecution({
     provider: isGpt ? 'OpenAI GPT-4o Enclave' : 'Sovereign Core'
   };
 }
+
+// GBM-2.0 Economic Operating System: one commercial/economic schema for pricing, usage, customers, products, contracts, invoices and verified revenue.
+app.get('/api/economic-os', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, snapshot:await listEconomicOperatingSnapshot() }); }
+  catch(error:any) { res.status(503).json({ ok:false, error:'Economic operating system unavailable', details:error?.message }); }
+});
+app.get('/api/economic-os/policy', (_req: Request, res: Response) => {
+  res.json({ ok:true, policy:getEconomicOperatingSystemPolicy() });
+});
+app.get('/api/economic-os/pricing', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, pricing:await listEconomicPricing() }); }
+  catch(error:any) { res.status(503).json({ ok:false, error:'Pricing catalog unavailable', details:error?.message }); }
+});
+app.post('/api/economic-os/pricing', async (req: Request, res: Response) => {
+  try {
+    const item=await recordEconomicPricing({
+      productRef:String(req.body?.productRef||'').trim(),
+      name:String(req.body?.name||'').trim(),
+      pricingModel:String(req.body?.pricingModel||'').trim(),
+      unit:req.body?.unit||null, amount:req.body?.amount==null?null:Number(req.body.amount),
+      currency:req.body?.currency, includedUnits:req.body?.includedUnits==null?null:Number(req.body.includedUnits),
+      overageAmount:req.body?.overageAmount==null?null:Number(req.body.overageAmount),
+      tiers:Array.isArray(req.body?.tiers)?req.body.tiers:[], evidenceStatus:req.body?.evidenceStatus,
+      effectiveFrom:req.body?.effectiveFrom||null, effectiveTo:req.body?.effectiveTo||null, metadata:req.body?.metadata||{}
+    });
+    res.status(201).json({ ok:true, pricing:item, economicTruth:'Price is not revenue.' });
+  } catch(error:any) { res.status(400).json({ ok:false, error:'Unable to record pricing', details:error?.message }); }
+});
+app.post('/api/economic-os/meter', async (req: Request, res: Response) => {
+  try {
+    const meter=await meterEconomicWork({
+      tenantId:req.body?.tenantId||null, productRef:req.body?.productRef||null, workUnitId:req.body?.workUnitId||null,
+      dimension:req.body?.dimension||'work-unit', quantity:Number(req.body?.quantity||0), unit:req.body?.unit||'GWU',
+      provider:req.body?.provider||null, model:req.body?.model||null, estimatedCost:req.body?.estimatedCost==null?null:Number(req.body.estimatedCost),
+      currency:req.body?.currency, evidenceStatus:req.body?.evidenceStatus, sourceRef:req.body?.sourceRef||null, metadata:req.body?.metadata||{}
+    });
+    res.status(201).json({ ok:true, meter, economicTruth:'Usage is not revenue.' });
+  } catch(error:any) { res.status(400).json({ ok:false, error:'Unable to meter economic usage', details:error?.message }); }
+});
+app.post('/api/economic-os/customers/lifecycle', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, customer:await recordCustomerLifecycle({tenantId:String(req.body?.tenantId||''),stage:String(req.body?.stage||'lead'),externalRef:req.body?.externalRef||null,evidenceStatus:req.body?.evidenceStatus,sourceRef:req.body?.sourceRef||null,metadata:req.body?.metadata||{}}) }); }
+  catch(error:any) { res.status(400).json({ ok:false, error:'Unable to record customer lifecycle', details:error?.message }); }
+});
+app.post('/api/economic-os/roi', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, roi:await recordCustomerRoiEvidence({tenantId:String(req.body?.tenantId||''),metricType:String(req.body?.metricType||''),quantity:Number(req.body?.quantity||0),currency:req.body?.currency||null,evidenceStatus:req.body?.evidenceStatus,sourceRef:req.body?.sourceRef||null,notes:req.body?.notes||null}), economicTruth:'ROI is evidence of customer value, not automatically revenue.' }); }
+  catch(error:any) { res.status(400).json({ ok:false, error:'Unable to record customer ROI', details:error?.message }); }
+});
+app.post('/api/economic-os/data-products', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, product:await recordDataProduct({tenantId:req.body?.tenantId||null,name:String(req.body?.name||'').trim(),productType:req.body?.productType,description:req.body?.description||null,version:req.body?.version||null,price:req.body?.price==null?null:Number(req.body.price),currency:req.body?.currency,provenance:req.body?.provenance||{},license:req.body?.license||null,accessPolicy:req.body?.accessPolicy||{},evidenceStatus:req.body?.evidenceStatus,metadata:req.body?.metadata||{}}) }); }
+  catch(error:any) { res.status(400).json({ ok:false, error:'Unable to register data product', details:error?.message }); }
+});
+app.post('/api/economic-os/agent-services', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, product:await recordAgentProduct({tenantId:req.body?.tenantId||null,name:String(req.body?.name||'').trim(),productType:req.body?.productType,capability:String(req.body?.capability||'').trim(),version:req.body?.version||null,pricingRef:req.body?.pricingRef||null,providerDependencies:Array.isArray(req.body?.providerDependencies)?req.body.providerDependencies.map(String):[],evidenceStatus:req.body?.evidenceStatus,metadata:req.body?.metadata||{}}) }); }
+  catch(error:any) { res.status(400).json({ ok:false, error:'Unable to register agent service', details:error?.message }); }
+});
+app.post('/api/economic-os/contracts', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, ...await createCommercialContract({tenantId:req.body?.tenantId||null,customerRef:req.body?.customerRef||null,offerRef:req.body?.offerRef||null,amount:req.body?.amount==null?null:Number(req.body.amount),currency:req.body?.currency,evidenceRefs:Array.isArray(req.body?.evidenceRefs)?req.body.evidenceRefs.map(String):[],externalRef:req.body?.externalRef||null,startsAt:req.body?.startsAt||null,endsAt:req.body?.endsAt||null,actor:String(req.body?.actor||'human-owner')}) }); }
+  catch(error:any) { res.status(400).json({ ok:false, error:'Unable to prepare commercial contract', details:error?.message }); }
+});
+app.post('/api/economic-os/invoices', async (req: Request, res: Response) => {
+  try { res.status(201).json({ ok:true, ...await createCommercialInvoice({tenantId:req.body?.tenantId||null,contractId:req.body?.contractId||null,customerRef:req.body?.customerRef||null,amount:req.body?.amount==null?null:Number(req.body.amount),currency:req.body?.currency,externalRef:req.body?.externalRef||null,dueAt:req.body?.dueAt||null,actor:String(req.body?.actor||'human-owner')}) }); }
+  catch(error:any) { res.status(400).json({ ok:false, error:'Unable to prepare commercial invoice', details:error?.message }); }
+});
+app.post('/api/economic-os/payments/evidence', async (req: Request, res: Response) => {
+  try {
+    const result=await recordPaymentEvidence({
+      invoiceId:req.body?.invoiceId||null,contractId:req.body?.contractId||null,customerRef:req.body?.customerRef||null,
+      amount:Number(req.body?.amount||0),currency:req.body?.currency||'USD',externalRef:String(req.body?.externalRef||'').trim(),
+      source:String(req.body?.source||'').trim(),evidenceRef:req.body?.evidenceRef||null,payloadHash:req.body?.payloadHash||null,
+      details:req.body?.details||{},actor:String(req.body?.actor||'human-owner')
+    });
+    res.status(result.verified?201:409).json({ ok:result.verified, ...result });
+  } catch(error:any) { res.status(400).json({ ok:false, error:'Unable to record payment evidence', details:error?.message }); }
+});
+app.get('/api/economic-os/verified-revenue', async (_req: Request, res: Response) => {
+  try {
+    await initializeEconomicOperatingSystem();
+    const r=await (await import('./src/lib/db/postgres')).getPostgresPool().query('SELECT * FROM glorifier_verified_revenue ORDER BY created_at DESC LIMIT 500');
+    res.json({ ok:true, revenue:r.rows.map((x:any)=>({...x,amount:Number(x.amount)})), label:'VERIFIED', rule:'Only qualifying payment evidence with external reference enters this ledger.' });
+  } catch(error:any) { res.status(503).json({ ok:false, error:'Verified revenue ledger unavailable', details:error?.message }); }
+});
 
 // SaaS control plane: tenants, plans, subscriptions and usage-ready metadata.
 // Payment movement remains disabled; external billing evidence must be recorded separately.
@@ -1262,28 +1374,40 @@ Your core statutory and technical responsibilities:
 - Formal USPTO Responses: Capable of generating complete 37 CFR § 1.111 Office Action responses with remarks arguing patentability over cited prior art references.`;
 
     if (specialtyMode === 'alice_101_defense') {
-      systemInstruction += `\n\n[Active Specialty Mode: Alice 35 U.S.C. § 101 Technological Character Defense]
+      systemInstruction += `
+
+[Active Specialty Mode: Alice 35 U.S.C. § 101 Technological Character Defense]
 Structure the brief with:
 1. Technical Problem in the Prior Art (cascading failure in LLM APM, vulnerable data re-identification).
 2. Alice Step 2A Prong 2: Integration into a Practical Technological Application.
 3. Alice Step 2B: Inventive Concept / Significantly More (citing Enfish and Berkheimer).
 4. Conclusion of statutory subject-matter eligibility.`;
     } else if (specialtyMode === 'scientific_enablement') {
-      systemInstruction += `\n\n[Active Specialty Mode: 35 U.S.C. § 112 Enablement & Mathematical Proofs]
+      systemInstruction += `
+
+[Active Specialty Mode: 35 U.S.C. § 112 Enablement & Mathematical Proofs]
 Provide explicit mathematical formulations, differential privacy theorems, sensitivity analysis Δf, Laplace perturbation scale b = Δf / ε, zk-SNARK verification parameters, and state transition logic.`;
     } else if (specialtyMode === 'claim_prosecution') {
-      systemInstruction += `\n\n[Active Specialty Mode: USPTO Claim Prosecution & Language Engineering]
+      systemInstruction += `
+
+[Active Specialty Mode: USPTO Claim Prosecution & Language Engineering]
 Audit or draft claims with strict legal rigor: check every definite article ("the", "said") for proper antecedent basis, ensure transition phrases ("comprising"), and organize claims into independent and dependent trees.`;
     } else if (specialtyMode === 'prior_art_differentiation') {
-      systemInstruction += `\n\n[Active Specialty Mode: Prior Art & Novelty Differentiation Matrix]
+      systemInstruction += `
+
+[Active Specialty Mode: Prior Art & Novelty Differentiation Matrix]
 Construct technical differentiation tables highlighting structural, algorithmic, and functional distinctions over conventional data brokers and application performance monitoring tools.`;
     } else if (specialtyMode === 'office_action_response') {
-      systemInstruction += `\n\n[Active Specialty Mode: Formal 37 CFR § 1.111 Office Action Response Drafter]
+      systemInstruction += `
+
+[Active Specialty Mode: Formal 37 CFR § 1.111 Office Action Response Drafter]
 Format response with formal USPTO caption, status of claims, amendments (if any), and detailed remarks traversing rejections under §§ 101, 102, 103, and 112.`;
     }
 
     if (figureNumber) {
-      systemInstruction += `\n\n[Drawing Cross-Reference: FIG. ${figureNumber} is currently under inspection by the user.]`;
+      systemInstruction += `
+
+[Drawing Cross-Reference: FIG. ${figureNumber} is currently under inspection by the user.]`;
     }
 
     const execution = await runModelExecution({
@@ -1362,27 +1486,40 @@ Statutory Authority & Frameworks:
 Your goal is to provide uncompromising regulatory and scientific legal advice, draft formal statutory deletion notices, conduct rigorous DPIAs, verify mathematical privacy bounds, and format production-grade regulatory audit memos. Format your answers clearly with markdown, citing exact articles, statutes, and mathematical equations.`;
 
     if (specialtyMode === 'gdpr_erasure_dpia') {
-      systemInstruction += `\n\nSPECIALTY FOCUS: GDPR Articles 17 & 25, DPIA (Article 35), and cross-border transfer assessments. Evaluate lawful basis, legitimate interest balancing tests, and draft binding erasure demands.`;
+      systemInstruction += `
+
+SPECIALTY FOCUS: GDPR Articles 17 & 25, DPIA (Article 35), and cross-border transfer assessments. Evaluate lawful basis, legitimate interest balancing tests, and draft binding erasure demands.`;
     } else if (specialtyMode === 'ccpa_cpra_clawbacks') {
-      systemInstruction += `\n\nSPECIALTY FOCUS: CCPA/CPRA § 1798.105 deletion demands, § 1798.120 opt-out of sale/share, and California SB 362 Delete Act execution. Include statutory 30-day cure deadlines and statutory civil penalty citations ($2,500 to $7,500 per intentional violation under Cal. Civ. Code § 1798.155).`;
+      systemInstruction += `
+
+SPECIALTY FOCUS: CCPA/CPRA § 1798.105 deletion demands, § 1798.120 opt-out of sale/share, and California SB 362 Delete Act execution. Include statutory 30-day cure deadlines and statutory civil penalty citations ($2,500 to $7,500 per intentional violation under Cal. Civ. Code § 1798.155).`;
     } else if (specialtyMode === 'eu_ai_act_governance') {
-      systemInstruction += `\n\nSPECIALTY FOCUS: EU AI Act (Regulation (EU) 2024/1689) classification and conformity. Analyze high-risk classification criteria (Annex III), GPAI systemic risk rules, transparency mandates (Article 50), and human oversight invariants.`;
+      systemInstruction += `
+
+SPECIALTY FOCUS: EU AI Act (Regulation (EU) 2024/1689) classification and conformity. Analyze high-risk classification criteria (Annex III), GPAI systemic risk rules, transparency mandates (Article 50), and human oversight invariants.`;
     } else if (specialtyMode === 'statistical_privacy_audit') {
-      systemInstruction += `\n\nSPECIALTY FOCUS: Statistical privacy science, HIPAA Expert Determination (§ 164.514(b)(1)), k-anonymity (k ≥ 50), and differential privacy epsilon bounds (Y ~ Lap(Δf / ε)). Provide mathematical proofs and re-identification probability bounds.`;
+      systemInstruction += `
+
+SPECIALTY FOCUS: Statistical privacy science, HIPAA Expert Determination (§ 164.514(b)(1)), k-anonymity (k ≥ 50), and differential privacy epsilon bounds (Y ~ Lap(Δf / ε)). Provide mathematical proofs and re-identification probability bounds.`;
     } else if (specialtyMode === 'regulatory_audit_memo') {
-      systemInstruction += `\n\nSPECIALTY FOCUS: Formal Regulatory Audit Memorandum ready for submission to Data Protection Authorities (DPAs), the California Privacy Protection Agency (CPPA), or the FTC. Use formal administrative legal structure.`;
+      systemInstruction += `
+
+SPECIALTY FOCUS: Formal Regulatory Audit Memorandum ready for submission to Data Protection Authorities (DPAs), the California Privacy Protection Agency (CPPA), or the FTC. Use formal administrative legal structure.`;
     }
 
     const userQuery = prompt || 'Conduct comprehensive regulatory compliance and statistical privacy audit across active data streams.';
     let contextualUserPrompt = userQuery;
     if (regulatoryFramework) {
-      contextualUserPrompt += `\nTarget Framework: ${regulatoryFramework}`;
+      contextualUserPrompt += `
+Target Framework: ${regulatoryFramework}`;
     }
     if (exposureContext) {
-      contextualUserPrompt += `\nExposure Context: ${exposureContext}`;
+      contextualUserPrompt += `
+Exposure Context: ${exposureContext}`;
     }
     if (dataCategory) {
-      contextualUserPrompt += `\nData Category: ${dataCategory}`;
+      contextualUserPrompt += `
+Data Category: ${dataCategory}`;
     }
 
     const execution = await runModelExecution({
@@ -1661,7 +1798,15 @@ Return JSON with { documentTitle: string, legalNotice: string }`;
 
     res.json({
       documentTitle: `STATUTORY NOTICE OF DATA ERASURE & ACCOUNTING OF PROFITS`,
-      legalNotice: `DEMAND FOR IMMEDIATE EXPUNGEMENT AND STATUTORY ACCOUNTING\n\nTo: Compliance Officer, ${brokerName}\n\nPursuant to ${complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, and the California Delete Act'}:\n\n1. You are hereby formally notified to immediately purge, delete, and cease commercial syndication of all consumer profiles, device telemetry, and identity graphs associated with the undersigned (estimated ${recordCount || 350} records held).\n2. Provide a cryptographic Certificate of Deletion within thirty (30) calendar days.\n3. Disclose all third-party downstream licensees who received telemetry for financial gain.`,
+      legalNotice: `DEMAND FOR IMMEDIATE EXPUNGEMENT AND STATUTORY ACCOUNTING
+
+To: Compliance Officer, ${brokerName}
+
+Pursuant to ${complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, and the California Delete Act'}:
+
+1. You are hereby formally notified to immediately purge, delete, and cease commercial syndication of all consumer profiles, device telemetry, and identity graphs associated with the undersigned (estimated ${recordCount || 350} records held).
+2. Provide a cryptographic Certificate of Deletion within thirty (30) calendar days.
+3. Disclose all third-party downstream licensees who received telemetry for financial gain.`,
       modelUsed: chosenModel,
       provider: 'GPT Legal Synthesis'
     });
@@ -1715,11 +1860,14 @@ ${codeSnippet || '// No code snippet provided'}`;
 
     const gptText = gptRes.status === 'fulfilled' && gptRes.value.text
       ? gptRes.value.text
-      : `[OpenAI GPT-4o Code Fix Analysis]:\nRoot Cause: High-demand 503 or transient rate-limit exhaustion encountered in the provider pipeline.\nFix: Implement fast-switching multi-model circuit breaker to instantly switch over to gemini-3.1-flash-lite or GPT-4o without holding connection pools open.`;
+      : `[OpenAI GPT-4o Code Fix Analysis]:
+Root Cause: High-demand 503 or transient rate-limit exhaustion encountered in the provider pipeline.
+Fix: Implement fast-switching multi-model circuit breaker to instantly switch over to gemini-3.1-flash-lite or GPT-4o without holding connection pools open.`;
 
     const geminiText = geminiRes.status === 'fulfilled' && geminiRes.value.text
       ? geminiRes.value.text
-      : `[Google Gemini 3.8 Flash Peer Review]:\nConcur with GPT-4o. Rate-limit backoff on 503 is inefficient. Immediate failover ensures zero client-side latency stalls and preserves differential privacy state.`;
+      : `[Google Gemini 3.8 Flash Peer Review]:
+Concur with GPT-4o. Rate-limit backoff on 503 is inefficient. Immediate failover ensures zero client-side latency stalls and preserves differential privacy state.`;
 
     const unifiedPatch = `// Collaborative Patch synthesized by OpenAI GPT-4o & Google Gemini 3.8 Flash
 // File: ${errorSource || 'server.ts'}
@@ -1784,25 +1932,41 @@ Your responsibility:
 3. Affirm or refine the consensus recommendation.`;
 
     if (chosenDomain === 'code_engineering') {
-      gptSystem += `\nFocus on robust TypeScript/React/Node code, error handling, circuit breakers, and zero regression.`;
-      geminiSystem += `\nFocus on asynchronous concurrency, memory safety, API failover, and zero-knowledge privacy bounds.`;
+      gptSystem += `
+Focus on robust TypeScript/React/Node code, error handling, circuit breakers, and zero regression.`;
+      geminiSystem += `
+Focus on asynchronous concurrency, memory safety, API failover, and zero-knowledge privacy bounds.`;
     } else if (chosenDomain === 'monetization_strategy') {
-      gptSystem += `\nFocus on valuation formulas, commercial pricing floors, counter-offers, and dataset licensing tiers.`;
-      geminiSystem += `\nFocus on differential privacy budget exhaustion, query metering, and data minimization invariants.`;
+      gptSystem += `
+Focus on valuation formulas, commercial pricing floors, counter-offers, and dataset licensing tiers.`;
+      geminiSystem += `
+Focus on differential privacy budget exhaustion, query metering, and data minimization invariants.`;
     } else if (chosenDomain === 'patent_ip') {
-      gptSystem += `\nFocus on patent claim language (35 U.S.C. § 101/112), technological enablement, and Alice/Mayo eligibility.`;
-      geminiSystem += `\nFocus on mathematical proofs, non-abstract algorithmic architecture, and prior art differentiation.`;
+      gptSystem += `
+Focus on patent claim language (35 U.S.C. § 101/112), technological enablement, and Alice/Mayo eligibility.`;
+      geminiSystem += `
+Focus on mathematical proofs, non-abstract algorithmic architecture, and prior art differentiation.`;
     } else if (chosenDomain === 'compliance_clawbacks') {
-      gptSystem += `\nFocus on statutory deletion demands under CCPA § 1798.105, GDPR Art. 17, and California SB 362 (Delete Act).`;
-      geminiSystem += `\nFocus on cryptographic SHA-256 evidence tokens, statutory penalty citations, and 30-day cure deadlines.`;
+      gptSystem += `
+Focus on statutory deletion demands under CCPA § 1798.105, GDPR Art. 17, and California SB 362 (Delete Act).`;
+      geminiSystem += `
+Focus on cryptographic SHA-256 evidence tokens, statutory penalty citations, and 30-day cure deadlines.`;
     } else if (chosenDomain === 'differential_privacy') {
-      gptSystem += `\nFocus on Laplace mechanism implementation, sensitivity Δf calculation, and composition theorems.`;
-      geminiSystem += `\nFocus on re-identification risk bounds (P ≤ 0.0004), HIPAA Expert Determination, and k-anonymity (k ≥ 50).`;
+      gptSystem += `
+Focus on Laplace mechanism implementation, sensitivity Δf calculation, and composition theorems.`;
+      geminiSystem += `
+Focus on re-identification risk bounds (P ≤ 0.0004), HIPAA Expert Determination, and k-anonymity (k ≥ 50).`;
     }
 
     const contextualUserPrompt = `Collaborative User Goal: ${userGoal}
-${codeOrContext ? `\nCode / System Context:\n\`\`\`\n${codeOrContext}\n\`\`\`` : ''}
-${conversationHistory.length > 0 ? `\nPrior Session Notes:\n${JSON.stringify(conversationHistory.slice(-3))}` : ''}`;
+${codeOrContext ? `
+Code / System Context:
+\`\`\`
+${codeOrContext}
+\`\`\`` : ''}
+${conversationHistory.length > 0 ? `
+Prior Session Notes:
+${JSON.stringify(conversationHistory.slice(-3))}` : ''}`;
 
     const [gptRes, geminiRes] = await Promise.allSettled([
       runModelExecution({
@@ -1821,11 +1985,34 @@ ${conversationHistory.length > 0 ? `\nPrior Session Notes:\n${JSON.stringify(con
 
     const gptText = gptRes.status === 'fulfilled' && gptRes.value.text
       ? gptRes.value.text
-      : `### OpenAI GPT-4o Proposal & Implementation\n\nI have analyzed your task: "${userGoal}".\n\n\`\`\`typescript\n// Collaborative Implementation by GPT-4o\nexport function sovereignConsensusCircuitBreaker() {\n  return {\n    status: 'OPTIMAL',\n    failoverReady: true,\n    epsilonBudget: 0.30,\n    monetizationFloor: 40.00\n  };\n}\n\`\`\`\n\n**Key Directives:**\n1. Enforce atomic circuit breaking across remote endpoints.\n2. Bind cryptographic tokens to prevent unconsented downstream reuse.`;
+      : `### OpenAI GPT-4o Proposal & Implementation
+
+I have analyzed your task: "${userGoal}".
+
+\`\`\`typescript
+// Collaborative Implementation by GPT-4o
+export function sovereignConsensusCircuitBreaker() {
+  return {
+    status: 'OPTIMAL',
+    failoverReady: true,
+    epsilonBudget: 0.30,
+    monetizationFloor: 40.00
+  };
+}
+\`\`\`
+
+**Key Directives:**
+1. Enforce atomic circuit breaking across remote endpoints.
+2. Bind cryptographic tokens to prevent unconsented downstream reuse.`;
 
     const geminiText = geminiRes.status === 'fulfilled' && geminiRes.value.text
       ? geminiRes.value.text
-      : `### Google Gemini 3.8 Flash Peer Review & Verification\n\n**Cross-Verification Notes:**\n- Differential privacy boundary verified: ε = 0.30 with Laplace noise perturbation scale b = Δf / ε.\n- Concur with GPT-4o's implementation. All edge cases verified against rate limits and 503 transient conditions.\n- Re-identification risk P(re-id) ≤ 0.0004 confirms HIPAA Expert Determination and GDPR Art. 25 compliance.`;
+      : `### Google Gemini 3.8 Flash Peer Review & Verification
+
+**Cross-Verification Notes:**
+- Differential privacy boundary verified: ε = 0.30 with Laplace noise perturbation scale b = Δf / ε.
+- Concur with GPT-4o's implementation. All edge cases verified against rate limits and 503 transient conditions.
+- Re-identification risk P(re-id) ≤ 0.0004 confirms HIPAA Expert Determination and GDPR Art. 25 compliance.`;
 
     const jointArtifact = `### Joint Co-Authored Artifact (OpenAI GPT-4o & Google Gemini 3.8 Flash)
 **Task:** ${userGoal}  
@@ -2638,7 +2825,8 @@ app.post('/api/agents/tasks', async (req: Request, res: Response) => {
       input ? `Input: ${JSON.stringify(input)}` : '',
       'Return a concise, evidence-aware result suitable for another agent to consume.',
       'Do not claim actions were executed unless they actually were.'
-    ].filter(Boolean).join('\n');
+    ].filter(Boolean).join('
+');
 
     const preferredProvider: 'gemini' | 'openai' = (capability.includes('research') || capability.includes('recovery') || capability.includes('gemini'))
       ? 'gemini'

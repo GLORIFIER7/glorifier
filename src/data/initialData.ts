@@ -507,7 +507,7 @@ export const initialInternetAccounts: import('../types').InternetAccount[] = [
     id: 'acc-binance',
     provider: 'Binance Pay & BEP-20',
     category: 'financial',
-    accountIdentifier: 'johnpaularlos28@gmail.com (Pay ID: 89420412)',
+    accountIdentifier: 'johnpaularlos28@gmail.com (Pay ID: 35527353)',
     connected: true,
     status: 'authenticated',
     authMethod: 'Crypto_Sign',

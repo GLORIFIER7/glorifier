@@ -64,6 +64,8 @@ jobs:
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
+          git config user.name "GLORIFIER AI Fleet (${{ matrix.role }})"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           BRANCH="ai/${{ matrix.role }}/${{ github.run_id }}"
           git checkout -b "$BRANCH"
           git add -A

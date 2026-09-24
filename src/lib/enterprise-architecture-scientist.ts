@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import { getPostgresPool } from './db/postgres';
 import { governRevenueAction } from './revenue-control-plane';
 export const GLORIFIER_EAS_VERSION='GEAS-1.2';

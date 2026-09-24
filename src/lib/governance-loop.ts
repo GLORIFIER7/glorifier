@@ -19,10 +19,12 @@ export interface GovernanceCycle {
   capability: string;
   stage: GovernanceStage;
   executive: unknown;
+  policy: unknown;
   routing: unknown;
   council: unknown;
   trust: unknown;
   compliance: unknown;
+  assets: unknown;
   evidence: { id: string; status: 'recorded' | 'missing'; references: string[] };
   action: {
     status: 'approval-required' | 'blocked';
@@ -47,6 +49,7 @@ export async function initializeGovernanceLoop() {
       executive JSONB NOT NULL DEFAULT '{}'::jsonb,
       routing JSONB NOT NULL DEFAULT '{}'::jsonb,
       council JSONB NOT NULL DEFAULT '{}'::jsonb,
+      policy JSONB NOT NULL DEFAULT '{}'::jsonb,
       trust JSONB NOT NULL DEFAULT '{}'::jsonb,
       compliance JSONB NOT NULL DEFAULT '{}'::jsonb,
       assets JSONB NOT NULL DEFAULT '{}'::jsonb,
@@ -54,6 +57,7 @@ export async function initializeGovernanceLoop() {
       action JSONB NOT NULL DEFAULT '{}'::jsonb,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+    ALTER TABLE glorifier_governance_cycles ADD COLUMN IF NOT EXISTS policy JSONB NOT NULL DEFAULT '{}'::jsonb;
     ALTER TABLE glorifier_governance_cycles ADD COLUMN IF NOT EXISTS compliance JSONB NOT NULL DEFAULT '{}'::jsonb;
     ALTER TABLE glorifier_governance_cycles ADD COLUMN IF NOT EXISTS assets JSONB NOT NULL DEFAULT '{}'::jsonb;
     CREATE INDEX IF NOT EXISTS idx_glorifier_governance_cycles_created ON glorifier_governance_cycles(created_at DESC);
@@ -161,6 +165,7 @@ export async function runGovernanceCycle(input: {
     capability,
     stage,
     executive,
+    policy,
     routing,
     council,
     trust: {
@@ -177,10 +182,10 @@ export async function runGovernanceCycle(input: {
 
   await query(
     `INSERT INTO glorifier_governance_cycles
-      (id,task_id,objective,capability,stage,executive,routing,council,trust,compliance,assets,evidence,action)
-     VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb)`,
+      (id,task_id,objective,capability,stage,executive,policy,routing,council,trust,compliance,assets,evidence,action)
+     VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb,$12::jsonb,$13::jsonb,$14::jsonb)`,
     [cycle.id, cycle.taskId, cycle.objective, cycle.capability, cycle.stage,
-      JSON.stringify(cycle.executive), JSON.stringify(cycle.routing), JSON.stringify(cycle.council),
+      JSON.stringify(cycle.executive), JSON.stringify(cycle.policy), JSON.stringify(cycle.routing), JSON.stringify(cycle.council),
       JSON.stringify(cycle.trust), JSON.stringify(cycle.compliance), JSON.stringify(cycle.assets), JSON.stringify({ ...cycle.evidence, windsor: windsorEvidence }), JSON.stringify(cycle.action)]
   );
 
@@ -194,7 +199,7 @@ export async function runGovernanceCycle(input: {
 
 export async function listGovernanceCycles(limit = 50) {
   const result = await query(
-    `SELECT id,task_id AS "taskId",objective,capability,stage,executive,routing,council,trust,compliance,assets,evidence,action,created_at AS "createdAt"
+    `SELECT id,task_id AS "taskId",objective,capability,stage,executive,policy,routing,council,trust,compliance,assets,evidence,action,created_at AS "createdAt"
      FROM glorifier_governance_cycles ORDER BY created_at DESC LIMIT $1`,
     [Math.max(1, Math.min(100, limit))]
   );

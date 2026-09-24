@@ -11,6 +11,7 @@ import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgent
 import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
+import { getLatestGeminiInteraction, initializeGeminiInteractionStore, recordGeminiInteraction } from './src/lib/gemini-interactions';
 
 dotenv.config();
 
@@ -208,7 +209,7 @@ async function callGeminiSafe({
   responseMimeType,
   model = 'gemini-3.8-flash',
   previousInteractionId,
-  store = false
+  store = true
 }: GeminiInteractionParams): Promise<{ text: string; modelUsed: string; interactionId?: string } | null> {
   const gemini = getGenAI();
   if (!gemini) return null;
@@ -222,13 +223,13 @@ async function callGeminiSafe({
       const interaction = await gemini.interactions.create({
         model: candidateModel,
         input,
-        previous_interaction_id: previousInteractionId,
+        ...(previousInteractionId && store ? { previous_interaction_id: previousInteractionId } : {}),
         store,
         ...(systemInstruction ? { system_instruction: systemInstruction } : {}),
         generation_config: {
           temperature
         },
-        ...(responseMimeType ? { response_format: { type: 'text' } } : {})
+        ...(responseMimeType ? { response_format: [{ type: 'text', mime_type: responseMimeType }] } : {})
       } as any);
 
       const text = interaction.output_text || '';
@@ -248,6 +249,58 @@ async function callGeminiSafe({
 
   return null;
 }
+// Stateful Gemini Interactions API endpoints.
+// Interaction IDs are persisted in Neon; API credentials remain server-side.
+app.post('/api/gemini/interactions', async (req: Request, res: Response) => {
+  try {
+    if (!process.env.GEMINI_API_KEY) return res.status(503).json({ ok: false, error: 'GEMINI_API_KEY is not configured' });
+    const input = String(req.body?.input || '').trim();
+    if (!input) return res.status(400).json({ ok: false, error: 'input is required' });
+    const sessionId = String(req.body?.sessionId || '').trim() || `session-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    const actor = String(req.body?.actor || 'human-owner');
+    const store = req.body?.store !== false;
+    const previous = store ? await getLatestGeminiInteraction(sessionId) : null;
+    const result = await callGeminiSafe({
+      input,
+      systemInstruction: typeof req.body?.systemInstruction === 'string' ? req.body.systemInstruction : undefined,
+      temperature: typeof req.body?.temperature === 'number' ? req.body.temperature : 0.4,
+      responseMimeType: req.body?.responseMimeType === 'application/json' ? 'application/json' : undefined,
+      model: typeof req.body?.model === 'string' && req.body.model.trim() ? req.body.model.trim() : 'gemini-3.8-flash',
+      previousInteractionId: previous?.interactionId,
+      store
+    });
+    if (!result) return res.status(502).json({ ok: false, error: 'Gemini interaction failed or no response was returned' });
+    if (store && result.interactionId) {
+      await initializeGeminiInteractionStore();
+      await recordGeminiInteraction({
+        sessionId,
+        interactionId: result.interactionId,
+        previousInteractionId: previous?.interactionId || null,
+        model: result.modelUsed,
+        actor
+      });
+      await recordGlobalCollaboration('gemini', 'interaction_state_saved', actor, {
+        sessionId,
+        interactionId: result.interactionId,
+        previousInteractionId: previous?.interactionId || null,
+        model: result.modelUsed
+      });
+    }
+    res.json({ ok: true, sessionId, interactionId: result.interactionId || null, previousInteractionId: previous?.interactionId || null, model: result.modelUsed, stored: store, output: result.text });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, error: 'Gemini interaction request failed', details: error?.message || String(error) });
+  }
+});
+
+app.get('/api/gemini/interactions/:sessionId', async (req: Request, res: Response) => {
+  try {
+    const latest = await getLatestGeminiInteraction(String(req.params.sessionId));
+    if (!latest) return res.status(404).json({ ok: false, error: 'No Gemini interaction found for session' });
+    res.json({ ok: true, interaction: latest });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, error: 'Gemini interaction state lookup failed', details: error?.message || String(error) });
+  }
+});
 
 // Lazy/safe initialization of OpenAI (GPT models)
 let openAIClient: OpenAI | null = null;
@@ -323,7 +376,7 @@ async function runModelExecution({
     
     if (gemini) {
       const comp = await callGeminiSafe({
-        contents: `${systemPrompt}\nFocus on zero-knowledge differential privacy (epsilon bounds), quasi-identifier scrubbing, and telemetry integrity.\n\nUser: ${userPrompt}`,
+        input: `${systemPrompt}\nFocus on zero-knowledge differential privacy (epsilon bounds), quasi-identifier scrubbing, and telemetry integrity.\n\nUser: ${userPrompt}`,
         temperature
       });
       if (comp?.text) {
@@ -367,7 +420,7 @@ async function runModelExecution({
             temperature
           }),
           callGeminiSafe({
-            contents: `${systemPrompt}\n\nUser: ${userPrompt}`,
+            input: `${systemPrompt}\n\nUser: ${userPrompt}`,
             temperature
           })
         ]);
@@ -391,11 +444,11 @@ async function runModelExecution({
   // 4. Google Gemini execution (live or fallback with retry & model switching)
   if (gemini) {
     const geminiRes = await callGeminiSafe({
-      contents: userPrompt,
+      input: userPrompt,
       systemInstruction: systemPrompt,
       temperature,
       responseMimeType: jsonMode ? 'application/json' : undefined,
-      preferredModel: chosenModel.startsWith('gemini') ? chosenModel : 'gemini-3.8-flash'
+      model: chosenModel.startsWith('gemini') ? chosenModel : 'gemini-3.8-flash'
     });
 
     if (geminiRes?.text) {
@@ -497,8 +550,7 @@ Provide your specialized perspective.`;
       ? gptRes.value.text
       : `Commercial Market Valuation: Current consumer and developer telemetry should be valued at a baseline of $215.30/mo. Counter-negotiate incoming enterprise buyer bids by +25% on datasets with verified zero-identifiability.`;
 
-    const geminiText = (geminiRes.status === 'fulfilled' && geminiRes.value.text)
-      ? geminiRes.value.text
+    const geminiText = (geminiRes.status === 'fulfilled' && geminiRes.value.text)      ? geminiRes.value.text
       : `Differential Privacy & Telemetry Bounds: Enforcing ε = 0.30 via Laplace noise perturbation maintains strict mathematical bounds (e^0.30 ≈ 1.35 max information leakage). Quasi-identifiers across search and browsing streams are permanently unlinked.`;
 
     const llamaText = `Decentralized Autonomy & Open Weights Audit: Prohibit single-vendor telemetry capture. Ensure data licensing contracts include cryptographic zero-knowledge attestation, preventing downstream syndication by broker conglomerates (Acxiom, Meta, Google).`;
@@ -747,8 +799,7 @@ Your goal is to provide uncompromising regulatory and scientific legal advice, d
     }
 
     const userQuery = prompt || 'Conduct comprehensive regulatory compliance and statistical privacy audit across active data streams.';
-    let contextualUserPrompt = userQuery;
-    if (regulatoryFramework) {
+    let contextualUserPrompt = userQuery;    if (regulatoryFramework) {
       contextualUserPrompt += `\nTarget Framework: ${regulatoryFramework}`;
     }
     if (exposureContext) {
@@ -998,7 +1049,6 @@ app.post('/api/ai/generate-clawback', async (req: Request, res: Response) => {
   try {
     const { brokerName, complianceStatute, recordCount, model } = req.body;
     const chosenModel = model || 'gpt-4o';
-
     const prompt = `Draft an authoritative, legally binding statutory demand letter for personal data deletion and accounting of unauthorized monetization profits:
 Target Data Broker: ${brokerName}
 Statutes: ${complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, CPRA, and California SB 362'}
@@ -1247,8 +1297,7 @@ interface Gpt247State {
     id: string;
     timestamp: string;
     domain: string;
-    task: string;
-    consensusScore: number;
+    task: string;    consensusScore: number;
     summary: string;
   }>;
 }
@@ -1498,222 +1547,3 @@ app.get('/api/ai/specialists', (_req: Request, res: Response) => {
     count: specialistRoles.length,
     roles: specialistRoles
   });
-});
-
-app.post('/api/ai/specialist-council', async (req: Request, res: Response) => {
-  try {
-    const { objective, roles, providerIds, temperature, standingMission } = req.body || {};
-    if (typeof objective !== 'string' || !objective.trim()) {
-      return res.status(400).json({ error: 'objective is required' });
-    }
-    const result = await runSpecialistCouncil({
-      objective: objective.trim(),
-      roles: Array.isArray(roles) ? roles : undefined,
-      providerIds: Array.isArray(providerIds) ? providerIds : undefined,
-      temperature: typeof temperature === 'number' ? temperature : undefined,
-      standingMission: standingMission === true
-    });
-    res.json(result);
-  } catch (err: any) {
-    console.error('Specialist council execution error:', err);
-    res.status(500).json({
-      error: err?.message || 'Failed to convene specialist council'
-    });
-  }
-});
-
-// ============================================================================
-// GLORIFIER GLOBAL INTELLIGENCE HUB
-// Public-source aggregation, cross-model synthesis, evidence ledger and refresh API.
-// ============================================================================
-async function runIntelligenceModel(provider: 'openai' | 'gemini', prompt: string) {
-  if (provider === 'openai') {
-    const client = getOpenAI();
-    if (!client) return null;
-    try {
-      const response = await client.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: 'You are a factual intelligence analyst. Use only the supplied evidence. Do not invent facts, citations, or consensus. Return the requested JSON.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        response_format: { type: 'json_object' }
-      });
-      return { text: response.choices[0]?.message?.content || '', model: 'gpt-4o' };
-    } catch (err) {
-      console.warn('[Intelligence] OpenAI synthesis failed:', err);
-      return null;
-    }
-  }
-
-  const result = await callGeminiSafe({
-    contents: prompt,
-    systemInstruction: 'You are a factual intelligence analyst. Use only the supplied evidence. Do not invent facts, citations, or consensus. Return the requested JSON.',
-    temperature: 0.1,
-    responseMimeType: 'application/json',
-    preferredModel: 'gemini-3.8-flash'
-  });
-  return result ? { text: result.text, model: result.modelUsed } : null;
-}
-
-let intelligenceRefreshPromise: Promise<any> | null = null;
-
-async function refreshIntelligenceReport() {
-  if (!intelligenceRefreshPromise) {
-    intelligenceRefreshPromise = generateIntelligenceReport({
-      runModel: runIntelligenceModel,
-      windowHours: 24
-    }).finally(() => {
-      intelligenceRefreshPromise = null;
-    });
-  }
-  return intelligenceRefreshPromise;
-}
-
-app.get('/api/intelligence/report', async (req: Request, res: Response) => {
-  try {
-    const refresh = req.query.refresh === 'true';
-    const report = refresh ? await refreshIntelligenceReport() : await getLatestIntelligenceReport() || await refreshIntelligenceReport();
-    res.json(report);
-  } catch (err: any) {
-    console.error('[Intelligence] report generation failed:', err);
-    res.status(500).json({ error: 'Intelligence report generation failed', details: err?.message || String(err) });
-  }
-});
-
-app.post('/api/intelligence/report', async (req: Request, res: Response) => {
-  try {
-    const configuredKey = process.env.INTELLIGENCE_INGEST_KEY;
-    if (configuredKey && req.header('x-glorifier-intelligence-key') !== configuredKey) {
-      return res.status(401).json({ error: 'Unauthorized intelligence refresh' });
-    }
-    const report = await refreshIntelligenceReport();
-    res.json(report);
-  } catch (err: any) {
-    console.error('[Intelligence] scheduled refresh failed:', err);
-    res.status(500).json({ error: 'Scheduled intelligence refresh failed', details: err?.message || String(err) });
-  }
-});
-
-app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
-  const report = await getLatestIntelligenceReport();
-  res.json({
-    ok: true,
-    reportId: report?.id || null,
-    generatedAt: report?.generatedAt || null,
-    evidenceCount: report?.evidenceCount || 0,
-    sourceCount: report?.sourceCount || 0,
-    modelStatus: {
-      openai: !!process.env.OPENAI_API_KEY,
-      gemini: !!process.env.GEMINI_API_KEY
-    },
-    persistence: !!process.env.DATABASE_URL
-  });
-});
-
-// ============================================================================
-// AI-TO-AI RUNTIME
-// The backend is the product runtime; the frontend is an optional observer.
-// ============================================================================
-app.get('/api/agents', (_req: Request, res: Response) => {
-  res.json(agentManifest());
-});
-
-app.get('/.well-known/glorifier-agent.json', (_req: Request, res: Response) => {
-  res.json(agentManifest());
-});
-
-app.get('/api/agents/tasks', (_req: Request, res: Response) => {
-  res.json({ ok: true, tasks: listAgentTasks() });
-});
-
-app.get('/api/agents/tasks/:id', (req: Request, res: Response) => {
-  const task = getAgentTask(req.params.id);
-  if (!task) return res.status(404).json({ ok: false, error: 'Task not found' });
-  res.json({ ok: true, task });
-});
-
-app.post('/api/agents/tasks', async (req: Request, res: Response) => {
-  const { capability, objective, input, requester = 'human-owner', connectionId } = req.body || {};
-  if (!capability || !objective) return res.status(400).json({ ok: false, error: 'capability and objective are required' });
-
-  let approvalRequired = false;
-  if (connectionId) {
-    const connection = await getConnection(String(connectionId));
-    if (!connection) return res.status(404).json({ ok: false, error: 'Requested connection not found' });
-    approvalRequired = connection.requiresHumanApproval || ['high','critical'].includes(connection.risk);
-    if (connection.status !== 'authorized') {
-      return res.status(409).json({ ok: false, error: 'Connection is not authorized', connection });
-    }
-    if (approvalRequired) {
-      await requestConnectionApproval(String(connectionId), String(requester), 'agent-task', [String(capability)]);
-    }
-  }
-
-  const task = createAgentTask({ capability, objective, input, requester, connectionId: connectionId ? String(connectionId) : undefined, approvalRequired });
-  if (approvalRequired) {
-    return res.status(202).json({ ok: true, task, status: 'awaiting_human_approval', humanApprovalRequired: true });
-  }
-  updateAgentTask(task.id, { status: 'running' });
-
-  // Route through the existing model runtime without exposing provider credentials.
-  try {
-    const prompt = [
-      'You are an AI agent participating in the GLORIFIER AI-to-AI runtime.',
-      `Requested capability: ${capability}`,
-      `Objective: ${objective}`,
-      input ? `Input: ${JSON.stringify(input)}` : '',
-      'Return a concise, evidence-aware result suitable for another agent to consume.',
-      'Do not claim actions were executed unless they actually were.'
-    ].filter(Boolean).join('\n');
-
-    let result: any = null;
-    if (capability.includes('research') || capability.includes('recovery') || capability.includes('gemini')) {
-      result = await runIntelligenceModel('gemini', prompt);
-    } else {
-      result = await runIntelligenceModel('openai', prompt);
-    }
-
-    if (!result) {
-      updateAgentTask(task.id, { status: 'failed', error: 'No configured AI provider available' });
-      return res.status(503).json({ ok: false, task: getAgentTask(task.id) });
-    }
-
-    updateAgentTask(task.id, {
-      status: 'completed',
-      result: { providerModel: result.model, artifact: result.text }
-    });
-    return res.json({ ok: true, task: getAgentTask(task.id) });
-  } catch (error) {
-    updateAgentTask(task.id, { status: 'failed', error: error instanceof Error ? error.message : String(error) });
-    return res.status(500).json({ ok: false, task: getAgentTask(task.id) });
-  }
-});
-
-app.get('/api/agents/capabilities', (_req: Request, res: Response) => {
-  res.json({ ok: true, agents: listAgentCards(), protocol: 'GLORIFIER-A2A-v1' });
-});
-
-// Vite middleware for dev or static serving for prod
-async function startServer() {
-  if (process.env.NODE_ENV !== 'production') {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), 'dist');
-    app.use(express.static(distPath));
-    app.get('*', (req: Request, res: Response) => {
-      res.sendFile(path.join(distPath, 'index.html'));
-    });
-  }
-
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Personal Data Monetization Server running on http://0.0.0.0:${PORT}`);
-  });
-}
-
-startServer();

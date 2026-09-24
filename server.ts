@@ -936,7 +936,16 @@ app.post('/api/orchestration/generate', async (req: Request, res: Response) => {
       temperature:req.body?.temperature,
       evaluate:req.body?.evaluate !== false
     });
-    res.json({ ok:true, result, orchestration:{mode:'resilient-provider-fallback',humanAuthority:true} });
+    await recordWorkUnit({
+      tenantId:req.body?.tenantId ? String(req.body.tenantId) : null,
+      kind:req.body?.kind || 'analysis',
+      units:1,
+      provider:result?.provider || req.body?.provider || 'auto',
+      model:result?.model || null,
+      taskRef:req.body?.taskRef ? String(req.body.taskRef) : null,
+      metadata:{orchestrationMode:'resilient-provider-fallback'}
+    });
+    res.json({ ok:true, result, orchestration:{mode:'resilient-provider-fallback',humanAuthority:true,workUnitRecorded:true} });
   } catch(error:any) { res.status(503).json({ error:'All orchestration providers failed', details:error?.message }); }
 });
 app.post('/api/orchestration/consensus', async (req: Request, res: Response) => {
@@ -947,7 +956,15 @@ app.post('/api/orchestration/consensus', async (req: Request, res: Response) => 
       temperature:req.body?.temperature,
       evaluate:true
     }, Number(req.body?.maxProviders)||3);
-    res.json({ ok:true, result, note:result.consensusRequiresHumanReview?'Provider disagreement detected; reconciliation is required before consequential action.':'No provider disagreement detected.' });
+    await recordWorkUnit({
+      tenantId:req.body?.tenantId ? String(req.body.tenantId) : null,
+      kind:'analysis',
+      units:Number(req.body?.maxProviders)||3,
+      provider:'multi-provider',
+      taskRef:req.body?.taskRef ? String(req.body.taskRef) : null,
+      metadata:{orchestrationMode:'consensus',humanReviewRequired:Boolean(result.consensusRequiresHumanReview)}
+    });
+    res.json({ ok:true, result, note:result.consensusRequiresHumanReview?'Provider disagreement detected; reconciliation is required before consequential action.':'No provider disagreement detected.',workUnitRecorded:true });
   } catch(error:any) { res.status(503).json({ error:'Consensus orchestration failed', details:error?.message }); }
 });
 

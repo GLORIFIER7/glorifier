@@ -5,6 +5,7 @@ import { runSpecialistCouncil } from './ai/specialist-council';
 import { routeAgentCapability, createAgentTask, updateAgentTask } from './agent-runtime';
 import { getGlorifierAiTrustStandard, evaluateGlorifierAiTrustConformance } from './ai/trust-standard';
 import { getWindsorSocialGatewayStatus, getWindsorSocialData } from './windsor-social-gateway';
+import { buildComplianceAssessment } from './compliance-policy';
 
 const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);
 
@@ -20,6 +21,7 @@ export interface GovernanceCycle {
   routing: unknown;
   council: unknown;
   trust: unknown;
+  compliance: unknown;
   evidence: { id: string; status: 'recorded' | 'missing'; references: string[] };
   action: {
     status: 'approval-required' | 'blocked';
@@ -96,7 +98,7 @@ export async function runGovernanceCycle(input: {
   const trust = evaluateGlorifierAiTrustConformance();
   const trustGatePassed = trust.status === 'conformant-self-attestation' && trust.controls.every((c) => c.status === 'implemented');
 
-  // 4. Evidence is explicit. References are recorded, never inferred. Windsor observations are source evidence only.
+  // 4. Compliance Scientist collaborates with Policy Scientist before evidence/action gating.\n  const compliance = buildComplianceAssessment({ objective, evidenceRefs, applicableRequirements: ['GATS governance policy', 'applicable AI/data/security requirements'] });\n\n  // 5. Evidence is explicit. References are recorded, never inferred. Windsor observations are source evidence only.
   let windsorEvidence: unknown = null;
   if (windsorEnabled && windsor?.configured) {
     try {
@@ -117,7 +119,7 @@ export async function runGovernanceCycle(input: {
     windsor: windsorEvidence
   };
 
-  // 5. Governed action is a proposal only. No irreversible execution is performed here.
+  // 6. Governed action is a proposal only. No irreversible execution is performed here.
   const actionStatus = trustGatePassed && evidence.references.length ? 'approval-required' as const : 'blocked' as const;
   const action = {
     status: actionStatus,
@@ -141,6 +143,7 @@ export async function runGovernanceCycle(input: {
       gatePassed: trustGatePassed,
       rule: 'GATS trust controls gate consequential actions.'
     },
+    compliance,
     evidence,
     action,
     createdAt: new Date().toISOString()
@@ -152,7 +155,7 @@ export async function runGovernanceCycle(input: {
      VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb)`,
     [cycle.id, cycle.taskId, cycle.objective, cycle.capability, cycle.stage,
       JSON.stringify(cycle.executive), JSON.stringify(cycle.routing), JSON.stringify(cycle.council),
-      JSON.stringify(cycle.trust), JSON.stringify({ ...cycle.evidence, windsor: windsorEvidence }), JSON.stringify(cycle.action)]
+      JSON.stringify({ ...cycle.trust, compliance: cycle.compliance }), JSON.stringify({ ...cycle.evidence, windsor: windsorEvidence }), JSON.stringify(cycle.action)]
   );
 
   updateAgentTask(task.id, {

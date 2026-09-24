@@ -29,7 +29,8 @@ const agents: AgentCard[] = [
   { id: 'specialists', name: 'Specialist Council', role: 'domain-agents', capabilities: ['security', 'data', 'revenue-analysis', 'operations', 'research'], endpoint: '/api/agents/specialists', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'uspto-ai-attorney-scientist', name: 'GLORIFIER USPTO AI Attorney/Scientist', role: 'ip-research', capabilities: ['ip-research', 'prior-art-analysis', 'invention-provenance', 'patent-preparation'], endpoint: '/api/agents/uspto-ai-attorney-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'iso-ai-scientist', name: 'GLORIFIER ISO AI Scientist', role: 'ai-standards-research', capabilities: ['iso-alignment', 'ai-governance', 'ai-risk', 'lifecycle-assessment', 'continual-improvement'], endpoint: '/api/agents/iso-ai-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
-  { id: 'assets-scientist', name: 'GLORIFIER Assets Scientist', role: 'asset-intelligence', capabilities: ['asset-intelligence', 'asset-lifecycle', 'asset-valuation', 'asset-risk', 'asset-evidence'], endpoint: '/api/agents/assets-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
+  { id: 'assets-scientist', name: 'GLORIFIER Assets Scientist', role: 'asset-intelligence', capabilities: ['asset-intelligence', 'asset-lifecycle', 'asset-valuation', 'asset-risk', 'asset-evidence'], endpoint: '/api/agents/assets-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'finance-scientist', name: 'GLORIFIER Finance Scientist', role: 'institutional-finance-intelligence', capabilities: ['portfolio-intelligence', 'multi-asset-risk', 'scenario-analysis', 'stress-testing', 'capital-allocation', 'valuation', 'financial-forensics', 'liquidity-analysis'], endpoint: '/api/agents/finance-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
 ];
 
 const tasks = new Map<string, AgentTask>();
@@ -37,7 +38,12 @@ const capabilityOwners: Record<string, string[]> = {
   research: ['research-scientist','market-scientist'],
   engineering: ['engineering-scientist','software-architect','api-scientist'],
   security: ['cybersecurity-scientist','threat-intelligence-scientist','privacy-scientist'],
-  finance: ['finance-scientist','revenue-scientist','risk-scientist'],
+  finance: ['finance-scientist','revenue-scientist','risk-scientist','economics-scientist','market-scientist'],
+  'portfolio-intelligence': ['finance-scientist','assets-scientist','risk-scientist'],
+  'capital-allocation': ['finance-scientist','economics-scientist','risk-scientist'],
+  'financial-forensics': ['finance-scientist','data-scientist','compliance-scientist'],
+  'scenario-analysis': ['finance-scientist','economics-scientist','risk-scientist'],
+  'stress-testing': ['finance-scientist','risk-scientist','data-scientist'],
   data: ['data-scientist','database-scientist'],
   product: ['product-scientist','ux-scientist','growth-scientist'],
   infrastructure: ['cloud-scientist','ai-infrastructure-scientist','operations-scientist'],

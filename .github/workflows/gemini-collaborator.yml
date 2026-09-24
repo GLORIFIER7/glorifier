@@ -19,6 +19,7 @@ jobs:
     timeout-minutes: 45
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_CLI_TRUST_WORKSPACE: "true"
     steps:
       - name: Checkout
         uses: actions/checkout@v5

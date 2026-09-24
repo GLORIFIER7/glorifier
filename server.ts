@@ -15,7 +15,7 @@ import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/l
 import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
-import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
+import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount, recordAssetHolding, listAssetHoldings, recordAssetEvidence } from './src/lib/asset-registry';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
 
@@ -239,8 +239,94 @@ app.post('/api/bounties/events', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(400).json({ error: 'Unable to record bounty event', details: error?.message }); }
 });
 
-// Prioritized asset/account registry: crypto, fiat, and gaming assets.
+// Unified asset integration registry: crypto, fiat, gaming, stocks, bonds and ETFs.
+// Prioritized asset/account registry: crypto, fiat, gaming, stocks, bonds, ETFs and other assets.
 // This is an inventory/governance layer; it does not expose private keys or move funds.
+app.get('/api/assets/holdings', async (req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, holdings: await listAssetHoldings(typeof req.query.assetAccountId === 'string' ? req.query.assetAccountId : undefined) });
+  } catch (error: any) {
+    res.status(503).json({ error: 'Asset holdings unavailable', details: error?.message });
+  }
+});
+
+app.post('/api/assets/holdings', async (req: Request, res: Response) => {
+  try {
+    const { assetAccountId, symbol, instrumentType, source } = req.body || {};
+    if (!assetAccountId || !symbol || !['stock','bond','etf','crypto','other'].includes(instrumentType) || !source) {
+      return res.status(400).json({ ok: false, error: 'assetAccountId, symbol, instrumentType and source are required' });
+    }
+    const account = await getAssetAccount(String(assetAccountId));
+    if (!account) return res.status(404).json({ ok: false, error: 'Asset account not found' });
+    if (account.connectionId) {
+      const connection = await getConnection(account.connectionId);
+      if (!connection || connection.status !== 'authorized') {
+        return res.status(409).json({ ok: false, error: 'Linked connection is not authorized', connectionId: account.connectionId });
+      }
+    }
+    const holding = await recordAssetHolding({ ...req.body, assetAccountId: String(assetAccountId), symbol: String(symbol), instrumentType, source: String(source) });
+    await recordAssetAccountEvent(String(assetAccountId), 'holding_recorded', String(req.body.actor || 'asset-runtime'), {
+      holdingId: holding.id, symbol: holding.symbol, instrumentType: holding.instrument_type, source: holding.source, evidenceRef: holding.evidence_ref || null
+    });
+    res.status(201).json({ ok: true, holding, verification: { status: 'source_recorded', revenueVerified: false } });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to record asset holding', details: error?.message });
+  }
+});
+
+app.post('/api/assets/evidence', async (req: Request, res: Response) => {
+  try {
+    const { assetAccountId, holdingId, evidenceType, source } = req.body || {};
+    if (!evidenceType || !source) return res.status(400).json({ ok: false, error: 'evidenceType and source are required' });
+    const evidence = await recordAssetEvidence({
+      assetAccountId: assetAccountId ? String(assetAccountId) : null,
+      holdingId: holdingId ? String(holdingId) : null,
+      evidenceType: String(evidenceType),
+      source: String(source),
+      sourceRef: req.body.sourceRef ? String(req.body.sourceRef) : null,
+      observedAt: req.body.observedAt ? String(req.body.observedAt) : null,
+      payloadHash: req.body.payloadHash ? String(req.body.payloadHash) : null,
+      details: req.body.details && typeof req.body.details === 'object' ? req.body.details : {}
+    });
+    if (assetAccountId) await recordAssetAccountEvent(String(assetAccountId), 'evidence_recorded', String(req.body.actor || 'asset-runtime'), { evidenceId: evidence.id, evidenceType, source });
+    res.status(201).json({ ok: true, evidence });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to record asset evidence', details: error?.message });
+  }
+});
+
+app.post('/api/assets/accounts', async (req: Request, res: Response) => {
+  try {
+    const { provider, displayName, assetClass, status = 'discovered', custody = 'unknown', capabilities = [], scopes = [], priority = 50, risk = 'medium', requiresHumanApproval = true, connectionId } = req.body || {};
+    if (!provider || !displayName || !assetClass) return res.status(400).json({ ok: false, error: 'provider, displayName and assetClass are required' });
+    if (!['crypto','fiat','gaming','stock','bond','etf','other'].includes(assetClass)) return res.status(400).json({ ok: false, error: 'Unsupported assetClass' });
+    if (connectionId) {
+      const connection = await getConnection(String(connectionId));
+      if (!connection) return res.status(404).json({ ok: false, error: 'Linked connection not found' });
+      if (connection.status !== 'authorized') return res.status(409).json({ ok: false, error: 'Linked connection is not authorized', connection });
+    }
+    const account = await registerAssetAccount({
+      ...req.body,
+      provider: String(provider),
+      displayName: String(displayName),
+      assetClass,
+      status,
+      custody,
+      capabilities: Array.isArray(capabilities) ? capabilities : [],
+      scopes: Array.isArray(scopes) ? scopes : [],
+      priority: Number(priority),
+      risk,
+      requiresHumanApproval: Boolean(requiresHumanApproval),
+      connectionId: connectionId ? String(connectionId) : null
+    });
+    if (connectionId) await recordConnectionEvent(String(connectionId), 'asset_account_linked', String(req.body.actor || 'asset-registry'), { assetAccountId: account.id, assetClass, provider });
+    await recordAssetAccountEvent(account.id, 'registered', String(req.body.actor || 'asset-registry'), { connectionId: account.connectionId || null });
+    res.status(201).json({ ok: true, account });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Unable to register asset account', details: error?.message });
+  }
+});
+
 app.get('/api/assets/accounts', async (req: Request, res: Response) => {
   try { res.json({ ok: true, accounts: await listAssetAccounts(req.query.assetClass as any) }); }
   catch (error: any) { res.status(503).json({ error: 'Asset registry unavailable', details: error?.message }); }

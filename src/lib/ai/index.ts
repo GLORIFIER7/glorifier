@@ -2,3 +2,4 @@ export * from './types';
 export * from './registry';
 export * from './orchestrator';
 export * from './specialist-council';
+export * from './model-trust';

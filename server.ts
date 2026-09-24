@@ -16,7 +16,7 @@ import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, s
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
-import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent } from './src/lib/bounty-registry';
+import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 
 dotenv.config();
 
@@ -183,6 +183,14 @@ app.post('/api/bounties/programs', async (req: Request, res: Response) => {
 app.get('/api/bounties/findings', async (req: Request, res: Response) => {
   try { res.json({ ok: true, findings: await listBountyFindings(req.query.status as any) }); }
   catch (error: any) { res.status(503).json({ error: 'Finding registry unavailable', details: error?.message }); }
+});
+
+app.post('/api/bounties/authorize-target', async (req: Request, res: Response) => {
+  try {
+    const result = await authorizeBountyTarget(String(req.body?.programId || ''), String(req.body?.target || ''));
+    await recordBountyEvent(String(req.body?.programId || ''), null, 'authorization_gate_checked', String(req.body?.actor || 'bounty-agent'), result);
+    res.status(result.decision === 'allowed' ? 200 : 403).json({ ok: result.decision === 'allowed', ...result });
+  } catch (error: any) { res.status(400).json({ error: 'Authorization gate failed', details: error?.message }); }
 });
 
 app.post('/api/bounties/findings', async (req: Request, res: Response) => {

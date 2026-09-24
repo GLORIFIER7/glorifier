@@ -15,7 +15,7 @@ import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/l
 import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
-import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount, recordAssetHolding, listAssetHoldings, recordAssetEvidence } from './src/lib/asset-registry';
+import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount, recordAssetHolding, listAssetHoldings, recordAssetEvidence, listAssetEvidence } from './src/lib/asset-registry';
 import { syncAlpacaAssets, getAlpacaStockQuote, getBinancePublicQuote, listAssetProviderAdapters } from './src/lib/asset-provider-adapters';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
@@ -405,6 +405,16 @@ app.post('/api/assets/accounts/:id/events', async (req: Request, res: Response) 
     res.status(201).json({ ok: true, event });
   } catch (error: any) {
     res.status(400).json({ error: 'Unable to record asset event', details: error?.message });
+  }
+});
+
+app.get('/api/assets/evidence', async (req: Request, res: Response) => {
+  try {
+    const assetAccountId = req.query.assetAccountId ? String(req.query.assetAccountId) : undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : 100;
+    res.json({ ok: true, evidence: await listAssetEvidence(assetAccountId, limit) });
+  } catch (error: any) {
+    res.status(500).json({ ok: false, error: error?.message || 'Unable to list asset evidence' });
   }
 });
 

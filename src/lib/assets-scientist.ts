@@ -1,4 +1,4 @@
-import { getGatsGovernancePolicy } from './ai/trust-standard';
+import { getGatsGovernancePolicy } from './gats-policy';
 import { getGlorifierCompliancePolicy } from './compliance-policy';
 
 export const GLORIFIER_ASSET_SCIENTIST_VERSION = 'GAS-0.1';

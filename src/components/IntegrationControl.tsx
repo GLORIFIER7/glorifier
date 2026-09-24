@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Activity, CheckCircle2, CircleAlert, ExternalLink, Globe2, LockKeyhole, RefreshCw } from 'lucide-react';
 import { IntelligenceHub } from './IntelligenceHub';
 
+type CollaborationProvider = { id: string; name: string; category: string; capabilities: string[]; status: string; authorized: boolean; requiresHumanApproval: boolean; connectionId: string | null; scopes: string[]; };
+
 type Integration = {
   id: string;
   name: string;
@@ -37,6 +39,7 @@ export const IntegrationControl: React.FC = () => {
   const [registry, setRegistry] = useState<Registry | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [collaboration, setCollaboration] = useState<CollaborationProvider[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -45,6 +48,8 @@ export const IntegrationControl: React.FC = () => {
       const response = await fetch('/api/integrations', { cache: 'no-store' });
       if (!response.ok) throw new Error('Integration registry unavailable');
       setRegistry(await response.json());
+      const collaborationResponse = await fetch('/api/collaboration/status', { cache: 'no-store' });
+      if (collaborationResponse.ok) setCollaboration((await collaborationResponse.json()).providers || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load integration registry');
     } finally {
@@ -82,7 +87,7 @@ export const IntegrationControl: React.FC = () => {
         <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4 text-sm text-rose-300">{error}</div>
       )}
 
-      {registry && (
+      {collaboration.length > 0 && (\n        <div className="rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-5">\n          <div className="flex items-center gap-2">\n            <Globe2 className="w-5 h-5 text-indigo-300" />\n            <h3 className="font-semibold text-white">Global Synthesis & Collaboration</h3>\n          </div>\n          <p className="text-xs text-slate-400 mt-1">External AI and platform ecosystems use the same connection, authorization and audit model.</p>\n          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">\n            {collaboration.map((provider) => (\n              <div key={provider.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">\n                <div className="flex items-center justify-between gap-3">\n                  <span className="font-semibold text-white">{provider.name}</span>\n                  <span className="text-[10px] rounded-full px-2 py-1 bg-slate-800 text-slate-300">{provider.authorized ? 'Authorized' : 'Discovered / permission-gated'}</span>\n                </div>\n                <div className="text-[10px] text-slate-500 uppercase mt-2">{provider.category}</div>\n                <div className="flex flex-wrap gap-1 mt-3">{provider.capabilities.map((cap) => <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">{cap}</span>)}</div>\n                <div className="text-[10px] text-emerald-400 mt-3">Human approval required for consequential actions</div>\n              </div>\n            ))}\n          </div>\n        </div>\n      )}\n\n      {registry && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">

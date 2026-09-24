@@ -37,7 +37,7 @@ import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
-import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
+import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';\nimport { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 
 dotenv.config();
 
@@ -60,7 +60,7 @@ void Promise.allSettled([
   initializeIsoScientistRegistry(),
   initializeGovernanceLoop(),
   initializeSocialIntegrations(),
-  initializeBusinessModel()
+  initializeBusinessModel(),\n  initializeValuationEngine()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {
@@ -2805,6 +2805,67 @@ app.post('/api/revenue/control-plane/govern', async (req: Request, res: Response
   } catch (error: any) {
     res.status(400).json({ ok: false, error: error?.message || 'Revenue governance failed' });
   }
+});
+
+// ============================================================================
+// GLORIFIER VALUATION ENGINE
+// Evidence-backed valuation range; estimates remain NOT VERIFIED.
+// ============================================================================
+app.get('/api/valuation', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, valuation: await calculateGlorifierValuation() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Valuation engine unavailable' }); }
+});
+
+app.get('/api/valuation/latest', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, valuation: await getLatestGlorifierValuation() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Latest valuation unavailable' }); }
+});
+
+app.get('/api/valuation/evidence', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, evidence: await listValuationEvidence(req.query.category ? String(req.query.category) : undefined) }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Valuation evidence unavailable' }); }
+});
+
+app.post('/api/valuation/evidence', async (req: Request, res: Response) => {
+  try {
+    const evidence = await recordValuationEvidence({
+      category: req.body?.category,
+      metric: String(req.body?.metric || ''),
+      value: Number(req.body?.value),
+      currency: req.body?.currency || 'USD',
+      evidenceStatus: req.body?.evidenceStatus || 'not_verified',
+      sourceRef: req.body?.sourceRef || null,
+      observedAt: req.body?.observedAt || null,
+      notes: req.body?.notes || null,
+      metadata: req.body?.metadata || {}
+    });
+    res.status(201).json({ ok: true, evidence });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Valuation evidence recording failed' }); }
+});
+
+app.get('/api/valuation/comparables', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, comparables: await listValuationComparables() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Valuation comparables unavailable' }); }
+});
+
+app.post('/api/valuation/comparables', async (req: Request, res: Response) => {
+  try {
+    const comparable = await recordValuationComparable({
+      name: String(req.body?.name || ''),
+      sector: String(req.body?.sector || 'AI/software'),
+      stage: req.body?.stage || null,
+      geography: req.body?.geography || null,
+      valuation: Number(req.body?.valuation),
+      currency: req.body?.currency || 'USD',
+      revenue: req.body?.revenue == null ? null : Number(req.body.revenue),
+      revenuePeriod: req.body?.revenuePeriod || null,
+      evidenceStatus: req.body?.evidenceStatus || 'not_verified',
+      sourceRef: String(req.body?.sourceRef || ''),
+      observedAt: req.body?.observedAt || null,
+      notes: req.body?.notes || null
+    });
+    res.status(201).json({ ok: true, comparable });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Valuation comparable recording failed' }); }
 });
 
 // Vite middleware for dev or static serving for prod

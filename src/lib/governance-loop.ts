@@ -4,6 +4,7 @@ import { aiOrchestrator } from './ai/orchestrator';
 import { runSpecialistCouncil } from './ai/specialist-council';
 import { routeAgentCapability, createAgentTask, updateAgentTask } from './agent-runtime';
 import { getGlorifierAiTrustStandard, evaluateGlorifierAiTrustConformance } from './ai/trust-standard';
+import { getWindsorSocialGatewayStatus, getWindsorSocialData } from './windsor-social-gateway';
 
 const query = (text: string, values?: unknown[]) => getPostgresPool().query(text, values);
 
@@ -66,6 +67,8 @@ export async function runGovernanceCycle(input: {
   if (!objective) throw new Error('objective is required');
   const capability = String(input.capability || 'research').trim().toLowerCase();
   const evidenceRefs = Array.isArray(input.evidenceRefs) ? input.evidenceRefs.map(String).filter(Boolean) : [];
+  const windsorEnabled = capability === 'social-intelligence' || capability === 'social-monitoring' || objective.toLowerCase().includes('windsor');
+  const windsor = windsorEnabled ? getWindsorSocialGatewayStatus() : null;
   const reversible = input.reversible === true;
 
   const task = createAgentTask({
@@ -93,13 +96,26 @@ export async function runGovernanceCycle(input: {
   const trust = evaluateGlorifierAiTrustConformance();
   const trustGatePassed = trust.status === 'conformant-self-attestation' && trust.controls.every((c) => c.status === 'implemented');
 
-  // 4. Evidence is explicit. References are recorded, never inferred.
+  // 4. Evidence is explicit. References are recorded, never inferred. Windsor observations are source evidence only.
+  let windsorEvidence: unknown = null;
+  if (windsorEnabled && windsor?.configured) {
+    try {
+      const platforms = ['facebook','linkedin','tiktok'] as const;
+      const observations = [];
+      for (const platform of platforms) {
+        try { observations.push(await getWindsorSocialData(platform, ['date','source'], 'last_30d')); }
+        catch (error: any) { observations.push({ platform, status: 'unavailable', error: error?.message || String(error) }); }
+      }
+      windsorEvidence = { source: 'windsor.ai', observations, economicTruth: 'NOT VERIFIED; source observations are not revenue evidence' };
+    } catch (error: any) { windsorEvidence = { source: 'windsor.ai', status: 'error', error: error?.message || String(error) }; }
+  }
   const evidenceId = `gev-${crypto.randomUUID()}`;
   const evidence = {
     id: evidenceId,
     status: evidenceRefs.length ? 'recorded' as const : 'missing' as const,
-    references: evidenceRefs
+    references: [...evidenceRefs, ...(windsorEnabled && windsor?.configured ? ['windsor.ai:social-observations'] : [])]
   };
+  if (windsorEnabled) (cyclePlaceholder => void cyclePlaceholder)(windsorEvidence);
 
   // 5. Governed action is a proposal only. No irreversible execution is performed here.
   const actionStatus = trustGatePassed && evidenceRefs.length ? 'approval-required' as const : 'blocked' as const;
@@ -136,7 +152,7 @@ export async function runGovernanceCycle(input: {
      VALUES ($1,$2,$3,$4,$5,$6::jsonb,$7::jsonb,$8::jsonb,$9::jsonb,$10::jsonb,$11::jsonb)`,
     [cycle.id, cycle.taskId, cycle.objective, cycle.capability, cycle.stage,
       JSON.stringify(cycle.executive), JSON.stringify(cycle.routing), JSON.stringify(cycle.council),
-      JSON.stringify(cycle.trust), JSON.stringify(cycle.evidence), JSON.stringify(cycle.action)]
+      JSON.stringify(cycle.trust), JSON.stringify({ ...cycle.evidence, windsor: windsorEvidence }), JSON.stringify(cycle.action)]
   );
 
   updateAgentTask(task.id, {

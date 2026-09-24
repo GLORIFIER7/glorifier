@@ -38,6 +38,7 @@ import { getGatsGovernancePolicy, evaluateGatsGovernancePolicy } from './src/lib
 import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildComplianceAssessment } from './src/lib/compliance-policy';
 import { initializeMarketplaceTransactions, registerMarketplaceParty, listMarketplaceParties, createMarketplaceTransaction, acceptMarketplaceTransaction, governMarketplaceTransaction, recordMarketplaceContract, recordMarketplaceInvoice, recordMarketplacePaymentEvidence, getMarketplaceTransaction, listMarketplaceTransactions } from './src/lib/marketplace-transactions';
 import { initializeCustomerOperatingSystem, onboardCustomer, attachCustomerSubscription, recordCustomerUsage, recordCustomerRoiAndAdvance, createCustomerOpportunity, recordCustomerBillingEvent, advanceCustomerLifecycle, getCustomerLifecycle } from './src/lib/customer-operating-system';
+import { initializeVerifiedOutcomes, recordVerifiedOutcome, verifyOutcome, disputeOutcome, getVerifiedOutcome, listVerifiedOutcomes } from './src/lib/verified-outcomes';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
@@ -81,6 +82,7 @@ void Promise.allSettled([
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
     await initializeCustomerOperatingSystem();
+    await initializeVerifiedOutcomes();
   if (failures.length) {
     console.warn('[GLORIFIER] some persistence initializers are deferred:', failures.map((result: any) => result.reason?.message || String(result.reason)));
     return;
@@ -3022,6 +3024,11 @@ app.post('/api/opportunity-graph/edges', async (req: Request, res: Response) => 
   } catch (error:any) { res.status(400).json({ ok:false,error:error?.message || 'Opportunity edge creation failed' }); }
 });
 
+app.get('/api/outcomes', async (req: Request,res: Response)=>{try{res.json({ok:true,version:'GVO-1.0',outcomes:await listVerifiedOutcomes(Number(req.query.limit||100))});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Outcome ledger unavailable'});}});
+app.get('/api/outcomes/:id', async (req: Request,res: Response)=>{try{const outcome=await getVerifiedOutcome(req.params.id);if(!outcome)return res.status(404).json({ok:false,error:'Outcome not found'});res.json({ok:true,outcome});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Outcome lookup failed'});}});
+app.post('/api/outcomes', async (req: Request,res: Response)=>{try{const outcome=await recordVerifiedOutcome({opportunityRef:String(req.body?.opportunityRef||''),governanceEventId:req.body?.governanceEventId||null,observedWhat:req.body?.observedWhat||{},opportunityWhat:req.body?.opportunityWhat||{},actionWhat:req.body?.actionWhat||{},authorizedBy:req.body?.authorizedBy||null,authorizationAt:req.body?.authorizationAt||null,evidence:req.body?.evidence||[],economicOutcome:req.body?.economicOutcome||{},actor:req.body?.actor||'human-owner'});res.status(201).json({ok:true,outcome});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Outcome recording failed'});}});
+app.post('/api/outcomes/:id/verify', async (req: Request,res: Response)=>{try{res.json({ok:true,outcome:await verifyOutcome(req.params.id,{evidence:req.body?.evidence||[],economicOutcome:req.body?.economicOutcome||{},verificationBasis:req.body?.verificationBasis||{},actor:req.body?.actor||'human-owner'})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Outcome verification failed'});}});
+app.post('/api/outcomes/:id/dispute', async (req: Request,res: Response)=>{try{res.json({ok:true,outcome:await disputeOutcome(req.params.id,String(req.body?.reason||''),String(req.body?.actor||'human-owner'))});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Outcome dispute failed'});}});
 app.post('/api/customers/onboard', async (req: Request,res: Response)=>{try{const customer=await onboardCustomer({name:String(req.body?.name||''),ownerRef:req.body?.ownerRef||null,externalRef:req.body?.externalRef||null,metadata:req.body?.metadata||{}});res.status(201).json({ok:true,customer});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer onboarding failed'});}});
 app.get('/api/customers/:tenantId/lifecycle', async (req: Request,res: Response)=>{try{res.json({ok:true,customer:await getCustomerLifecycle(req.params.tenantId)});}catch(error:any){res.status(503).json({ok:false,error:error?.message||'Customer lifecycle unavailable'});}});
 app.post('/api/customers/:tenantId/subscription', async (req: Request,res: Response)=>{try{res.status(201).json({ok:true,...await attachCustomerSubscription({tenantId:req.params.tenantId,planId:String(req.body?.planId||''),status:req.body?.status,renewsAt:req.body?.renewsAt||null,externalRef:req.body?.externalRef||null})});}catch(error:any){res.status(400).json({ok:false,error:error?.message||'Customer subscription failed'});}});

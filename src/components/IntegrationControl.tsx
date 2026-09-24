@@ -40,6 +40,9 @@ export const IntegrationControl: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [collaboration, setCollaboration] = useState<CollaborationProvider[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [agentSyncing, setAgentSyncing] = useState(false);
+  const [agentSyncMessage, setAgentSyncMessage] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -50,6 +53,8 @@ export const IntegrationControl: React.FC = () => {
       setRegistry(await response.json());
       const collaborationResponse = await fetch('/api/collaboration/status', { cache: 'no-store' });
       if (collaborationResponse.ok) setCollaboration((await collaborationResponse.json()).providers || []);
+      const agentResponse = await fetch('/api/agents/registry', { cache: 'no-store' });
+      if (agentResponse.ok) setAgents((await agentResponse.json()).agents || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load integration registry');
     } finally {
@@ -104,6 +109,52 @@ export const IntegrationControl: React.FC = () => {
                 <div className="text-[10px] text-slate-500 uppercase mt-2">{provider.category}</div>
                 <div className="flex flex-wrap gap-1 mt-3">{provider.capabilities.map((cap) => <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">{cap}</span>)}</div>
                 <div className="text-[10px] text-emerald-400 mt-3">Human approval required for consequential actions</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {agents.length > 0 && (
+        <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <Globe2 className="w-5 h-5 text-cyan-300" />
+                <h3 className="font-semibold text-white">Global Agent Registry</h3>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Protocol-aware discovery and synchronization for internal and authorized external agents.</p>
+            </div>
+            <button
+              onClick={async () => {
+                setAgentSyncing(true); setAgentSyncMessage('');
+                try {
+                  const response = await fetch('/api/agents/synchronize', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actor: 'human-owner' }) });
+                  const data = await response.json();
+                  if (!response.ok) throw new Error(data.error || 'Synchronization failed');
+                  setAgentSyncMessage(`Synchronized ${data.agentCount} agents; audit records written to Neon.`);
+                  await load();
+                } catch (err) {
+                  setAgentSyncMessage(err instanceof Error ? err.message : 'Synchronization failed');
+                } finally { setAgentSyncing(false); }
+              }}
+              disabled={agentSyncing}
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-xs font-semibold text-cyan-200 border border-cyan-500/20 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${agentSyncing ? 'animate-spin' : ''}`} /> {agentSyncing ? 'Syncing…' : 'Synchronize agents'}
+            </button>
+          </div>
+          {agentSyncMessage && <div className="mt-3 text-xs text-cyan-300">{agentSyncMessage}</div>}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+            {agents.map((agent) => (
+              <div key={agent.id} className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="font-semibold text-white">{agent.name}</span>
+                  <span className="text-[10px] rounded-full px-2 py-1 bg-slate-800 text-slate-300">{agent.status}</span>
+                </div>
+                <div className="text-[10px] text-slate-500 uppercase mt-2">{agent.provider} · {agent.protocol}</div>
+                <div className="flex flex-wrap gap-1 mt-3">{(agent.capabilities || []).map((cap: string) => <span key={cap} className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800/80 text-slate-400">{cap}</span>)}</div>
+                <div className="text-[10px] text-emerald-400 mt-3">{agent.requiresHumanApproval ? 'Human approval required for consequential actions' : 'No approval gate'}</div>
               </div>
             ))}
           </div>

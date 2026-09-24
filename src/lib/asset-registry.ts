@@ -96,6 +96,7 @@ export async function initializeAssetRegistry() {
 
 export async function ensureCoreAssetIntegrations() {
   const seeds: Array<Omit<AssetAccountRecord, 'id' | 'lastVerifiedAt' | 'accountRef'>> = [
+    { provider: 'alpaca', displayName: 'Alpaca Brokerage', assetClass: 'stock', status: 'discovered', custody: 'custodial', capabilities: ['account-read','positions-read','market-data'], scopes: ['read:account','read:positions'], priority: 100, risk: 'high', requiresHumanApproval: true, metadata: { integrationType: 'broker', credentialsStoredOutsideRegistry: true, fundMovementEnabled: false } },
     { provider: 'binance', displayName: 'Binance Crypto', assetClass: 'crypto', status: 'discovered', custody: 'custodial', capabilities: ['balances','portfolio-metadata','market-data'], scopes: ['read:balances','read:portfolio'], priority: 100, risk: 'high', requiresHumanApproval: true, metadata: { integrationType: 'exchange', credentialsStoredOutsideRegistry: true } },
     { provider: 'fiat', displayName: 'Fiat / Bank Accounts', assetClass: 'fiat', status: 'discovered', custody: 'bank', capabilities: ['account-inventory','balance-read','transaction-history'], scopes: ['read:accounts','read:balances','read:transactions'], priority: 95, risk: 'critical', requiresHumanApproval: true, metadata: { integrationType: 'banking-connector', transfersDisabledByDefault: true } },
     { provider: 'steam', displayName: 'Steam Gaming', assetClass: 'gaming', status: 'discovered', custody: 'platform', capabilities: ['account-inventory','game-library','digital-assets'], scopes: ['read:profile','read:library','read:inventory'], priority: 85, risk: 'medium', requiresHumanApproval: true, metadata: { integrationType: 'gaming-platform' } },
@@ -170,7 +171,7 @@ export async function prioritizeAssetAccount(id: string, priority: number, actor
 function mapAsset(x: any): AssetAccountRecord {
   return {
     id:x.id, provider:x.provider, displayName:x.display_name, assetClass:x.asset_class,
-    status:x.status, accountRef:x.account_ref||null, custody:x.custody,
+    status:x.status, accountRef:x.account_ref||null, connectionId:x.connection_id||null, custody:x.custody,
     capabilities:x.capabilities||[], scopes:x.scopes||[], priority:Number(x.priority||0),
     risk:x.risk, requiresHumanApproval:Boolean(x.requires_human_approval),
     lastVerifiedAt:x.last_verified_at ? new Date(x.last_verified_at).toISOString() : null,

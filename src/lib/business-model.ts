@@ -165,3 +165,9 @@ export function getBusinessModel() {
 
 function mapWorkUnit(x:any){return {id:x.id,tenantId:x.tenant_id||null,kind:x.kind,units:Number(x.units),status:x.status,provider:x.provider||null,model:x.model||null,taskRef:x.task_ref||null,estimatedCost:x.estimated_cost==null?null:Number(x.estimated_cost),currency:x.currency||'USD',estimatedCostLabel:'NOT VERIFIED',createdAt:x.created_at};}
 function mapRoi(x:any){return {id:x.id,tenantId:x.tenant_id,metricType:x.metric_type,quantity:Number(x.quantity),currency:x.currency||null,evidenceStatus:x.evidence_status,sourceRef:x.source_ref||null,notes:x.notes||null,observedAt:x.observed_at,truthLabel:x.evidence_status==='verified'?'VERIFIED':x.evidence_status==='evidence-backed'?'EVIDENCE-BACKED':'NOT VERIFIED'};}
+
+
+export async function governWorkUnitAction(input: { objective: string; actionType?: string; evidenceRefs?: string[]; actor?: string }) {
+  const { governRevenueAction } = await import('./revenue-control-plane');
+  return governRevenueAction({ machine: 'work-units', actionType: (input.actionType || 'propose') as any, objective: input.objective, evidenceRefs: input.evidenceRefs || [], actor: input.actor || 'human-owner' });
+}

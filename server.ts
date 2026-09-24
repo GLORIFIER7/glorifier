@@ -33,7 +33,8 @@ const integrationStatus = [
   { id: 'web', name: 'Public Web', category: 'monitoring', status: 'connected', detail: 'Public-source intelligence aggregation and evidence tracking', publicUrl: 'https://news.google.com/' },
   { id: 'google-cloud', name: 'Google Cloud', category: 'optional-ai', status: 'optional', detail: 'Optional intelligence layer; not required by core infrastructure', publicUrl: 'https://cloud.google.com/' },
   { id: 'hugging-face', name: 'Hugging Face', category: 'ai-ecosystem', status: 'connected', detail: 'Authenticated model, dataset, paper, Space and compute collaboration surface', publicUrl: 'https://huggingface.co/' },
-  { id: 'meta', name: 'Meta / Facebook', category: 'social-ai-platform', status: 'ready', detail: 'Permission-gated Meta developer, Facebook, Instagram, Messenger and Llama collaboration surface', publicUrl: 'https://developers.facebook.com/' }
+  { id: 'meta', name: 'Meta / Facebook', category: 'social-ai-platform', status: 'ready', detail: 'Permission-gated Meta developer, Facebook, Instagram, Messenger and Llama collaboration surface', publicUrl: 'https://developers.facebook.com/' },
+  { id: 'gemini', name: 'Google Gemini', category: 'ai-ecosystem', status: process.env.GEMINI_API_KEY ? 'configured' : 'needs-config', detail: process.env.GEMINI_API_KEY ? 'Server-side Gemini API configured; calls remain permission-gated and audited' : 'GEMINI_API_KEY required for server-side Gemini collaboration', publicUrl: 'https://ai.google.dev/gemini-api' }
 ];
 
 // Global connection/authentication registry. Tokens and secrets are never returned by these endpoints.
@@ -214,14 +215,12 @@ async function callGeminiSafe({
   const gemini = getGenAI();
   if (!gemini) return null;
 
-  // Use fast, high-availability, free-tier supported models:
-  // 1. gemini-3.8-flash (primary recommended)
-  // 2. gemini-3.1-flash-lite (high rate-limit headroom)
-  // 3. gemini-flash-latest (general alias)
+  // Prefer current stable Gemini models. Avoid retired/preview-only fallback IDs.
+  // Gemini 3.8 Flash is the primary model; Gemini 3.5 Flash-Lite is the lightweight fallback.
   const candidateModels = [
     preferredModel || 'gemini-3.8-flash',
-    'gemini-3.1-flash-lite',
-    'gemini-flash-latest'
+    'gemini-3.8-flash',
+    'gemini-3.5-flash-lite'
   ].filter((m): m is string => Boolean(m) && typeof m === 'string')
    .filter((m, idx, arr) => arr.indexOf(m) === idx);
 
@@ -238,6 +237,7 @@ async function callGeminiSafe({
       });
       const text = response.text || '';
       if (text) {
+        void recordGlobalCollaboration('gemini', 'model_inference', 'gemini-runtime').catch(() => undefined);
         return { text, modelUsed: model };
       }
     } catch (err: any) {
@@ -246,9 +246,10 @@ async function callGeminiSafe({
       const isQuota = status === 429 || errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED');
       const isUnavailable = status === 503 || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE') || errMsg.includes('overloaded');
 
-      console.warn(`[Sentinel-AI] Gemini call [model=${model}] ${isUnavailable ? '503 high-demand spike' : (isQuota ? '429 quota' : 'error')}:`, errMsg);
+      console.warn(`[Gemini] call [model=${model}] ${isUnavailable ? '503 unavailable' : (isQuota ? '429 quota' : 'error')}:`, errMsg);
 
-      // On 503 or 429, immediately switch to the next lighter model in candidateModels
+      // Only fail over on transient capacity/quota errors; configuration/auth errors should not be masked.
+      if (!isUnavailable && !isQuota) break;
       continue;
     }
   }
@@ -339,15 +340,15 @@ async function runModelExecution({
     }
 
     if (!gptPart) {
-      gptPart = `Commercial Valuation Analysis: Current telemetry holds an estimated market value of $215–$340/mo. We recommend establishing a strict $40/mo floor and asserting a 25% premium for synthetic AI training datasets.`;
+      gptPart = 'OpenAI contribution unavailable; no verified result was returned.';
     }
     if (!geminiPart) {
-      geminiPart = `Differential Privacy & Mathematical Bounds: Under Laplacian noise (ε=0.35), reconstruction probability is statistically constrained below 0.01%. Recommend masking granular GPS coordinates to 3-decimal-point centroids.`;
+      geminiPart = 'Gemini contribution unavailable; no verified result was returned.';
     }
 
     const llamaPart = `Decentralized Sovereignty & Open-Weights Audit: Unconsented data broker syndicates (Acxiom, Meta Graph, Experian) must be formally notified under statutory rights. Consent tokens should be cryptographically bound to prevent downstream resale.`;
 
-    const consensusPart = `UNIFIED COUNCIL VERDICT (100% Agreement): All models unanimously approve licensing de-identified developer & browsing cohorts for frontier AI pre-training with an updated floor of $40/mo, while indefinitely quarantining commercial ad retargeters.`;
+    const consensusPart = 'No automatic consensus directive is issued. GLORIFIER records each model contribution separately; a human or an explicit synthesis step must determine any consequential decision.';
 
     return {
       text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n` +
@@ -355,7 +356,7 @@ async function runModelExecution({
             `🔵 **Google Gemini 3.8 Flash (Differential Privacy & Telemetry)**:\n${geminiPart}\n\n` +
             `🟣 **Meta LLaMA 3.3 (Decentralized Sovereignty & Anti-Silo)**:\n${llamaPart}\n\n` +
             `⚖️ **COUNCIL CONSENSUS DIRECTIVE**:\n${consensusPart}`,
-      modelUsed: 'all-models (gpt-4o + gemini-3.8-flash + llama-3.3)',
+      modelUsed: `all-models (gpt-4o + ${geminiPart ? 'gemini' : 'unavailable'} + llama)`,
       provider: 'All-AI Sovereign Collaboration Council'
     };
   }
@@ -1355,8 +1356,8 @@ app.post('/api/ai/work-247-gpt/trigger', async (req: Request, res: Response) => 
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       domain,
       task,
-      consensusScore: 100,
-      summary: 'Verified 100% agreement between GPT-4o and Gemini 3.8 Flash. Codebase verified clean.'
+      consensusScore: null,
+      summary: 'Manual trigger recorded; no automatic agreement or code-health claim is asserted.'
     };
     
     gpt247State.recentDeliverables.unshift(newDeliverable);

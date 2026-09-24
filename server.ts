@@ -30,6 +30,7 @@ import { initializeIsoIntegration, getIsoIntegrationStatus, requestIsoAuthorizat
 import { initializeUsptoIntegration, getUsptoIntegrationStatus, requestUsptoAuthorization, getUsptoTrademarkStatus } from './src/lib/uspto-integration';
 import { initializeIpResearchRegistry, runIpResearch, listIpResearchRuns, getIpResearchPolicy } from './src/lib/ip-research';
 import { initializeIsoScientistRegistry, runIsoScientistResearch, listIsoScientistRuns, getIsoScientistPolicy } from './src/lib/iso-scientist';
+import { initializeGovernanceLoop, runGovernanceCycle, listGovernanceCycles, getGovernanceLoopPolicy } from './src/lib/governance-loop';
 
 dotenv.config();
 
@@ -49,7 +50,8 @@ void Promise.allSettled([
   initializeIsoIntegration(),
   initializeUsptoIntegration(),
   initializeIpResearchRegistry(),
-  initializeIsoScientistRegistry()
+  initializeIsoScientistRegistry(),
+  initializeGovernanceLoop()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
   if (failures.length) {

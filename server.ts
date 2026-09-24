@@ -15,7 +15,7 @@ import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/l
 import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
-import { initializeAssetRegistry, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
+import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
 
 dotenv.config();
 
@@ -25,6 +25,7 @@ void initializeConnectionRegistry()
   .then(() => initializeGeminiInteractionStore())
   .then(() => initializeLinuxRuntimeRegistry())
   .then(() => initializeAssetRegistry())
+  .then(() => ensureCoreAssetIntegrations())
   .catch((error) => console.warn('[GLORIFIER] persistence initialization deferred:', error?.message));
 
 const app = express();

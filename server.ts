@@ -31,7 +31,7 @@ import { initializeUsptoIntegration, getUsptoIntegrationStatus, requestUsptoAuth
 import { initializeIpResearchRegistry, runIpResearch, listIpResearchRuns, getIpResearchPolicy } from './src/lib/ip-research';
 import { initializeIsoScientistRegistry, runIsoScientistResearch, listIsoScientistRuns, getIsoScientistPolicy } from './src/lib/iso-scientist';
 import { initializeGovernanceLoop, runGovernanceCycle, listGovernanceCycles, getGovernanceLoopPolicy } from './src/lib/governance-loop';
-import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization } from './src/lib/social-integrations';
+import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 
 dotenv.config();
 

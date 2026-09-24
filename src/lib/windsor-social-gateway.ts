@@ -51,3 +51,9 @@ export async function getWindsorSocialData(platformInput:string, fields:string[]
     [crypto.randomUUID(),platform,connector,JSON.stringify({fields,datePreset})]);
   return {platform,connector,datePreset,source:'windsor.ai',observedAt:new Date().toISOString(),data};
 }
+
+
+export async function governValueAction(input: { objective: string; actionType?: string; evidenceRefs?: string[]; actor?: string }) {
+  const { governRevenueAction } = await import('./revenue-control-plane');
+  return governRevenueAction({ machine: 'social-intelligence', actionType: (input.actionType || 'propose') as any, objective: input.objective, evidenceRefs: input.evidenceRefs || [], actor: input.actor || 'human-owner' });
+}

@@ -1617,10 +1617,26 @@ app.get('/api/agents/tasks/:id', (req: Request, res: Response) => {
 });
 
 app.post('/api/agents/tasks', async (req: Request, res: Response) => {
-  const { capability, objective, input, requester = 'human-owner' } = req.body || {};
+  const { capability, objective, input, requester = 'human-owner', connectionId } = req.body || {};
   if (!capability || !objective) return res.status(400).json({ ok: false, error: 'capability and objective are required' });
 
-  const task = createAgentTask({ capability, objective, input, requester });
+  let approvalRequired = false;
+  if (connectionId) {
+    const connection = await getConnection(String(connectionId));
+    if (!connection) return res.status(404).json({ ok: false, error: 'Requested connection not found' });
+    approvalRequired = connection.requiresHumanApproval || ['high','critical'].includes(connection.risk);
+    if (connection.status !== 'authorized') {
+      return res.status(409).json({ ok: false, error: 'Connection is not authorized', connection });
+    }
+    if (approvalRequired) {
+      await requestConnectionApproval(String(connectionId), String(requester), 'agent-task', [String(capability)]);
+    }
+  }
+
+  const task = createAgentTask({ capability, objective, input, requester, connectionId: connectionId ? String(connectionId) : undefined, approvalRequired });
+  if (approvalRequired) {
+    return res.status(202).json({ ok: true, task, status: 'awaiting_human_approval', humanApprovalRequired: true });
+  }
   updateAgentTask(task.id, { status: 'running' });
 
   // Route through the existing model runtime without exposing provider credentials.

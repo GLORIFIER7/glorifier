@@ -38,6 +38,7 @@ import { getGlorifierCompliancePolicy, evaluateCompliancePolicy, buildCompliance
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';\nimport { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
+import { buildFinanceScientistReport, compareCapitalScenarios } from './src/lib/finance-intelligence';
 
 dotenv.config();
 
@@ -2509,6 +2510,34 @@ app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
 // ============================================================================
 app.get('/api/agents', (_req: Request, res: Response) => {
   res.json(agentManifest());
+});
+
+app.post('/api/finance-scientist/analyze', async (req: Request, res: Response) => {
+  try {
+    const report = buildFinanceScientistReport({
+      positions: Array.isArray(req.body?.positions) ? req.body.positions : [],
+      scenarios: Array.isArray(req.body?.scenarios) ? req.body.scenarios : [],
+      verifiedRevenue: Number(req.body?.verifiedRevenue || 0),
+      currency: String(req.body?.currency || 'USD'),
+    });
+    res.json({ ok: true, agent: 'finance-scientist', report });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Finance Scientist analysis failed', details: error?.message });
+  }
+});
+
+app.post('/api/finance-scientist/capital-allocation', (req: Request, res: Response) => {
+  try {
+    const scenarios = Array.isArray(req.body?.scenarios) ? req.body.scenarios : [];
+    res.json({
+      ok: true,
+      agent: 'finance-scientist',
+      scenarios: compareCapitalScenarios(scenarios),
+      policy: { noAutomaticWinner: true, humanDecisionRequired: true, executionEnabled: false }
+    });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: 'Capital allocation analysis failed', details: error?.message });
+  }
 });
 
 app.get('/api/agents/registry', async (_req: Request, res: Response) => {

@@ -101,3 +101,24 @@ export function evaluateGatsGovernancePolicy() {
     disclaimer: 'Internal GLORIFIER governance policy; not legal advice, ISO certification, accreditation, or third-party conformity assessment.'
   };
 }
+
+export const GLORIFIER_COHERENT_SYSTEM_POLICY = {
+  statement:'GLORIFIER is a coherent governed system, not a collection of disconnected features.',
+  architecturePrinciple:'Each intelligence, architecture, asset, revenue, connection and action capability participates in a common governance and evidence lifecycle.',
+  operatingLoop:['Observe','Understand','Govern','Act','Prove','Improve'],
+  centralPath:['GEAS','AI CEO','Specialist Council','GATS','Revenue Control Plane','Human Authority','Governed Action','Evidence','GEAS'],
+  policyScientistMandate:[
+    'Preserve cross-system coherence across GLORIFIER architecture and agent behavior.',
+    'Require policy interpretation before consequential governed actions.',
+    'Surface conflicts, uncertainty and missing evidence rather than silently resolving them.',
+    'Keep human authority as the final decision point for consequential actions.',
+    'Treat architecture improvements as governed, measurable system improvements.'
+  ],
+  economicTruth:{
+    estimatesAreNotVerifiedRevenue:true,
+    marketValueIsNotRevenue:true,
+    missingEvidenceIsNotZero:true,
+    verifiedRevenueRequiresQualifyingEvidence:true
+  },
+  autonomousIrreversibleActions:false
+} as const;

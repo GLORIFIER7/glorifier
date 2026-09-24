@@ -17,6 +17,7 @@ import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGem
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
 import { initializeAssetRegistry, ensureCoreAssetIntegrations, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount, recordAssetHolding, listAssetHoldings, recordAssetEvidence, listAssetEvidence } from './src/lib/asset-registry';
 import { syncAlpacaAssets, getAlpacaStockQuote, getBinancePublicQuote, listAssetProviderAdapters } from './src/lib/asset-provider-adapters';
+import { buildGlorifierSummaryReport } from './src/lib/economic-report';
 import { initializeBountyRegistry, listBountyPrograms, registerBountyProgram, createBountyFinding, listBountyFindings, updateBountyFindingStatus, recordBountyEvent, authorizeBountyTarget } from './src/lib/bounty-registry';
 import { initializeBountyRevenueLedger, recordBountyRevenueEvent, listBountyRevenueEvents, getBountyRevenueSummary } from './src/lib/bounty-revenue';
 
@@ -93,7 +94,7 @@ app.post('/api/connections/:id/verify', async (req: Request, res: Response) => {
   try {
     const connection = await verifyConnection(req.params.id, String(req.body?.actor || 'connection-manager'));
     if (!connection) return res.status(404).json({ error: 'Connection not found' });
-    res.json({ ok: true, connection });
+    res.json({ ok: true, connection, authorizationChanged: false, note: 'Verification does not grant authorization; authorization remains an explicit human-approved state.' });
   } catch (error: any) { res.status(503).json({ error: 'Connection verification failed', details: error?.message }); }
 });
 
@@ -243,6 +244,15 @@ app.post('/api/bounties/events', async (req: Request, res: Response) => {
 
 // Unified asset integration registry: crypto, fiat, gaming, stocks, bonds, ETFs and other assets.
 // Inventory/governance only: private keys are never stored and fund movement is disabled by default.
+
+app.get('/api/reports/summary', async (_req: Request, res: Response) => {
+  try {
+    const report = await buildGlorifierSummaryReport();
+    res.json({ ok: true, report });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Economic summary unavailable', details: error?.message || String(error) });
+  }
+});
 
 app.get('/api/assets/accounts', async (req: Request, res: Response) => {
   try {

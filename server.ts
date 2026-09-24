@@ -15,6 +15,7 @@ import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/l
 import { initializeAgentRegistry, listRegisteredAgents, registerExternalAgent, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 import { initializeGeminiInteractionStore, recordGeminiInteraction, getLatestGeminiInteraction } from './src/lib/gemini-interactions';
 import { initializeLinuxRuntimeRegistry, registerLinuxRuntime, listLinuxRuntimes, getLinuxRuntime, recordLinuxRuntimeEvent, requestLinuxExecution } from './src/lib/linux-runtime';
+import { initializeAssetRegistry, registerAssetAccount, listAssetAccounts, getAssetAccount, recordAssetAccountEvent, prioritizeAssetAccount } from './src/lib/asset-registry';
 
 dotenv.config();
 
@@ -23,6 +24,7 @@ void initializeConnectionRegistry()
   .then(() => initializeAgentRegistry())
   .then(() => initializeGeminiInteractionStore())
   .then(() => initializeLinuxRuntimeRegistry())
+  .then(() => initializeAssetRegistry())
   .catch((error) => console.warn('[GLORIFIER] persistence initialization deferred:', error?.message));
 
 const app = express();
@@ -160,6 +162,68 @@ app.post('/api/linux/runtimes/:id/events', async (req: Request, res: Response) =
     );
     res.status(201).json({ ok: true, event });
   } catch (error: any) { res.status(400).json({ error: 'Unable to record Linux runtime event', details: error?.message }); }
+});
+
+// Prioritized asset/account registry: crypto, fiat, and gaming assets.
+// This is an inventory/governance layer; it does not expose private keys or move funds.
+app.get('/api/assets/accounts', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, accounts: await listAssetAccounts(req.query.assetClass as any) }); }
+  catch (error: any) { res.status(503).json({ error: 'Asset registry unavailable', details: error?.message }); }
+});
+
+app.get('/api/assets/accounts/:id', async (req: Request, res: Response) => {
+  try {
+    const account = await getAssetAccount(req.params.id);
+    if (!account) return res.status(404).json({ error: 'Asset account not found' });
+    res.json({ ok: true, account });
+  } catch (error: any) { res.status(503).json({ error: 'Asset account lookup failed', details: error?.message }); }
+});
+
+app.post('/api/assets/accounts', async (req: Request, res: Response) => {
+  try {
+    if (!req.body?.provider || !req.body?.displayName || !req.body?.assetClass) {
+      return res.status(400).json({ error: 'provider, displayName and assetClass are required' });
+    }
+    const account = await registerAssetAccount({
+      provider: String(req.body.provider),
+      displayName: String(req.body.displayName),
+      assetClass: req.body.assetClass,
+      status: req.body.status || 'discovered',
+      accountRef: req.body.accountRef ? String(req.body.accountRef) : null,
+      custody: req.body.custody || 'unknown',
+      capabilities: Array.isArray(req.body.capabilities) ? req.body.capabilities.map(String) : [],
+      scopes: Array.isArray(req.body.scopes) ? req.body.scopes.map(String) : [],
+      priority: typeof req.body.priority === 'number' ? req.body.priority : 50,
+      risk: req.body.risk || 'medium',
+      requiresHumanApproval: req.body.requiresHumanApproval !== false,
+      lastVerifiedAt: null,
+      metadata: req.body.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    await recordAssetAccountEvent(account.id, 'registered', String(req.body.actor || 'human-owner'), {
+      assetClass: account.assetClass, priority: account.priority, scopes: account.scopes
+    });
+    res.status(201).json({ ok: true, account, policy: { privateKeysStored: false, fundMovementEnabled: false, humanApprovalForConsequentialActions: true } });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to register asset account', details: error?.message }); }
+});
+
+app.post('/api/assets/accounts/:id/priority', async (req: Request, res: Response) => {
+  try {
+    const account = await prioritizeAssetAccount(req.params.id, Number(req.body?.priority), String(req.body?.actor || 'human-owner'));
+    if (!account) return res.status(404).json({ error: 'Asset account not found' });
+    res.json({ ok: true, account });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to prioritize asset account', details: error?.message }); }
+});
+
+app.post('/api/assets/accounts/:id/events', async (req: Request, res: Response) => {
+  try {
+    const event = await recordAssetAccountEvent(
+      req.params.id,
+      String(req.body?.eventType || 'asset_event'),
+      String(req.body?.actor || 'asset-manager'),
+      req.body?.details && typeof req.body.details === 'object' ? req.body.details : {}
+    );
+    res.status(201).json({ ok: true, event });
+  } catch (error: any) { res.status(400).json({ error: 'Unable to record asset event', details: error?.message }); }
 });
 
 // Global Synthesis & Collaboration Fabric

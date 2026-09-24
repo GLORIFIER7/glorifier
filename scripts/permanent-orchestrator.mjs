@@ -132,7 +132,7 @@ async function standingGptCoWorkingMission() {
     const body = await response.text();
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
     log('STANDING_GPT_COWORKING_OK', {
-      mission: '24/7 continuous provider-neutral AI collaboration; use whichever eligible intelligence providers are available.'
+      mission: '24/7 continuous provider-neutral AI collaboration; use whichever eligible intelligence providers are available.',
       response: body.slice(-2000),
     });
   } catch (error) {
@@ -153,7 +153,7 @@ async function standingGlobalSyncMission() {
     const body = await response.text();
     if (!response.ok) throw new Error(`HTTP ${response.status}: ${body.slice(0, 1000)}`);
     log('GLOBAL_SYNC_AND_SYNTHESIS_OK', {
-      mission: 'Synchronize authorized GLORIFIER intelligence and ecosystem signals across connected agents and providers; do not imply universal internet access.'
+      mission: 'Synchronize authorized GLORIFIER intelligence and ecosystem signals across connected agents and providers; do not imply universal internet access.',
       response: body.slice(-2000),
     });
   } catch (error) {

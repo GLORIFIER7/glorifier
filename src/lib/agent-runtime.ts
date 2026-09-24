@@ -26,7 +26,8 @@ const agents: AgentCard[] = [
   { id: 'ai-ceo', name: 'GLORIFIER AI CEO', role: 'orchestrator', capabilities: ['delegate', 'prioritize', 'synthesize', 'govern'], endpoint: '/api/agents/ai-ceo', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'gpt', name: 'GPT', role: 'reasoning', capabilities: ['reason', 'code-review', 'synthesis'], endpoint: '/api/agents/gpt', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
   { id: 'gemini', name: 'Gemini', role: 'engineering-collaborator', capabilities: ['research', 'code-analysis', 'recovery'], endpoint: '/api/agents/gemini', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
-  { id: 'specialists', name: 'Specialist Council', role: 'domain-agents', capabilities: ['security', 'data', 'revenue-analysis', 'operations', 'research'], endpoint: '/api/agents/specialists', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
+  { id: 'specialists', name: 'Specialist Council', role: 'domain-agents', capabilities: ['security', 'data', 'revenue-analysis', 'operations', 'research'], endpoint: '/api/agents/specialists', protocol: 'GLORIFIER-A2A-v1', status: 'active' },
+  { id: 'uspto-ai-attorney-scientist', name: 'GLORIFIER USPTO AI Attorney/Scientist', role: 'ip-research', capabilities: ['ip-research', 'prior-art-analysis', 'invention-provenance', 'patent-preparation'], endpoint: '/api/agents/uspto-ai-attorney-scientist', protocol: 'GLORIFIER-A2A-v1', status: 'active' }
 ];
 
 const tasks = new Map<string, AgentTask>();
@@ -38,7 +39,8 @@ const capabilityOwners: Record<string, string[]> = {
   data: ['data-scientist','database-scientist'],
   product: ['product-scientist','ux-scientist','growth-scientist'],
   infrastructure: ['cloud-scientist','ai-infrastructure-scientist','operations-scientist'],
-  assets: ['blockchain-scientist','game-technology-scientist','economics-scientist']
+  assets: ['blockchain-scientist','game-technology-scientist','economics-scientist'],
+  'ip-research': ['uspto-ai-attorney-scientist']
 };
 
 export function listAgentCards() { return agents; }

@@ -138,6 +138,7 @@ export default function App() {
         if (Array.isArray(remote.transactions)) setTransactions(remote.transactions);
         if (Array.isArray(remote.footprints) && remote.footprints.length) setFootprints(remote.footprints);
         if (Array.isArray(remote.exposures)) setExposures(remote.exposures);
+        if (remote.sentinelState) setSentinelState(prev => ({ ...prev, ...remote.sentinelState }));
         if (remote.stats) setStats(prev => ({ ...prev, ...remote.stats }));
       } catch (error) {
         console.error('Command Center state load failed:', error);
@@ -583,7 +584,7 @@ export default function App() {
                 txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
                 status: 'settled'
               };
-              setTransactions(t => [newTx, ...t]);
+              setTransactions(t => { const next = [newTx, ...t]; void persistAppState({ transactions: next }); return next; });
             }}
             onOpenWithdrawModal={() => setIsWithdrawOpen(true)}
           />
@@ -597,8 +598,8 @@ export default function App() {
             onDeleteError={handleDeleteSentinelError}
             onCreateError={handleCreateSentinelError}
             onAutoFixError={handleAutoFixSentinelError}
-            onToggleMonitoring={(enabled) => setSentinelState(s => ({ ...s, isMonitoringActive: enabled }))}
-            onToggleAutoHeal={(enabled) => setSentinelState(s => ({ ...s, autoHealEnabled: enabled }))}
+            onToggleMonitoring={(enabled) => { setSentinelState(s => ({ ...s, isMonitoringActive: enabled })); void persistAppState({ sentinelState: { ...sentinelState, isMonitoringActive: enabled } }); }}
+            onToggleAutoHeal={(enabled) => { setSentinelState(s => ({ ...s, autoHealEnabled: enabled })); void persistAppState({ sentinelState: { ...sentinelState, autoHealEnabled: enabled } }); }}
             onOpenCoWorkingStudio={() => setActiveTab('gpt_cowork')}
           />
         )}
@@ -639,7 +640,7 @@ export default function App() {
                 txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
                 status: 'settled'
               };
-              setTransactions(t => [newTx, ...t]);
+              setTransactions(t => { const next = [newTx, ...t]; void persistAppState({ transactions: next }); return next; });
             }}
           />
         )}
@@ -663,7 +664,7 @@ export default function App() {
                 txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
                 status: 'settled'
               };
-              setTransactions(t => [newTx, ...t]);
+              setTransactions(t => { const next = [newTx, ...t]; void persistAppState({ transactions: next }); return next; });
             }}
           />
         )}

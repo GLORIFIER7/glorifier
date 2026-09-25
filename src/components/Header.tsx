@@ -81,23 +81,23 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-[#090909] border-b border-slate-800">
+    <header className="sticky top-0 z-40 bg-[#080808]/95 backdrop-blur-sm border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between min-h-16 py-2">
           {/* Logo & Platform Name */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-sm border border-slate-700 bg-[#111] flex items-center justify-center">
+            <div className="w-9 h-9 rounded-md border border-slate-700 bg-[#111] flex items-center justify-center">
               <div className="w-full h-full bg-[#090909] rounded-sm flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4 text-emerald-300" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+                <h1 className="text-[15px] font-semibold tracking-[-0.03em] text-white flex items-center gap-1.5">
                   GLORIFIER <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-transparent text-emerald-300 border border-slate-700 font-mono">AI CONTROL PLANE</span>
                 </h1>
               </div>
-              <p className="text-xs text-slate-400 hidden sm:block">
+              <p className="text-[11px] text-slate-500 hidden sm:block mt-0.5">
                 Provider-Neutral Intelligence Orchestration
               </p>
             </div>
@@ -111,7 +111,7 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Navigation Tabs */}
-        <nav className="flex space-x-1 sm:space-x-2 overflow-x-auto py-1.5 scrollbar-none border-t border-slate-900">
+        <nav className="flex space-x-1 overflow-x-auto py-2 border-t border-slate-900">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -120,10 +120,10 @@ export const Header: React.FC<HeaderProps> = ({
                 key={tab.id}
                 id={`tab-btn-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3 py-2 text-[11px] font-semibold rounded-sm whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 text-[11px] font-medium rounded-md whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-transparent text-emerald-300 border-b border-emerald-300'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
+                    ? 'bg-slate-900 text-white border border-slate-700'
+                    : 'text-slate-500 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />

@@ -160,7 +160,7 @@ export async function syncAlpacaAssets(input: {
       assetAccountId: assetAccount.id,
       symbol: position.symbol,
       instrumentType: type,
-      name: position.name || null,
+      name: position.name || undefined,
       quantity: num(position.qty),
       currency: account.currency || 'USD',
       costBasis: num(position.cost_basis) ?? (

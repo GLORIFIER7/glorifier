@@ -597,7 +597,7 @@ export default function App() {
         {activeTab === 'compensation' && (
           <CompensationEngine
             telemetryEvents={telemetryEvents}
-            onTriggerSimulatedUsage={handleTriggerSimulatedUsage}
+            onPreviewUsage={handleTriggerSimulatedUsage}
             onClearSettlement={handleClearSettlement}
             totalPendingUsd={stats.pendingSettlementUsd}
           />

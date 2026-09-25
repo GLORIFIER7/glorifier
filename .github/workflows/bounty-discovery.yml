@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  issues: read
 
 jobs:
   discover:
@@ -16,6 +17,9 @@ jobs:
         run: |
           echo "DISCOVER -> VERIFY FUNDING -> VERIFY ELIGIBILITY -> CLAIM -> SOLVE -> PR/REPORT -> ACCEPTANCE -> VERIFY PAYOUT -> SETTLE"
           echo "No advertised bounty is revenue until canonical payment evidence exists."
-      - name: Public GitHub bounty signal scan
-        run: |
-          gh api --method GET search/issues -f q='is:issue is:open (bounty OR reward OR paid OR funded) -label:spam' -f per_page=30 --jq '.items[] | [.repository_url, .number, .title, .html_url] | @tsv' | tee bounty-signals.tsv
+      - name: Install dependencies
+        run: npm ci
+      - name: Run governed opportunity discovery
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: npm run -s tsx -- scripts/run-opportunity-discovery.ts

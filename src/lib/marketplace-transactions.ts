@@ -151,7 +151,7 @@ export async function governMarketplaceTransaction(transactionId:string, actor='
   const status=result.status==='blocked'?'governance':'awaiting_human_approval';
   await getPostgresPool().query(
     `UPDATE glorifier_marketplace_transactions SET status=$2,governance_event_id=$3,governance_cycle_id=$4,updated_at=NOW() WHERE id=$1`,
-    [transactionId,status,result.event?.id||null,result.governanceCycle?.id||null]
+    [transactionId,status,result.id||null,result.governanceCycleId||null]
   );
   await event(transactionId,'governance',tx.status,status,actor,{governanceStatus:result.status});
   return { transaction:await getMarketplaceTransaction(transactionId), governance:result };

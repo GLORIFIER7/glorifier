@@ -17,16 +17,11 @@ import { AiCodeSentinelManagement } from './components/AiCodeSentinelManagement'
 import { InternetAccountsFederation } from './components/InternetAccountsFederation';
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { ComplianceScientistBot } from './components/ComplianceScientistBot';
-import { GlobalCollaborationDashboard } from './components/GlobalCollaborationDashboard';
 import { WorkTogetherWithGptStudio } from './components/WorkTogetherWithGptStudio';
 import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { IntegrationControl } from './components/IntegrationControl';
 import { AICeoControl } from './components/AICeoControl';
-import { MonetizationSprint } from './components/MonetizationSprint';
-import { OpportunityDiscoveryDashboard } from './components/OpportunityDiscoveryDashboard';
-import { RevenueVerifiedDashboard } from './components/RevenueVerifiedDashboard';
-import { ConnectionAuthorizationDashboard } from './components/ConnectionAuthorizationDashboard';
-import { MediatorDashboard } from './components/MediatorDashboard';
+import { AiScientistFleetConsole } from './components/AiScientistFleetConsole';
 import { 
   initialStats, 
   initialFootprints, 
@@ -55,7 +50,6 @@ import {
 import { 
   auth, 
   loginWithGoogle, 
-  completeGoogleRedirectSignIn,
   logout, 
   testFirestoreConnection 
 } from './lib/firebase';
@@ -91,9 +85,6 @@ export default function App() {
   // Initialize Firebase Auth listener and test Firestore connection
   useEffect(() => {
     testFirestoreConnection();
-    completeGoogleRedirectSignIn().catch((error) => {
-      console.error('Google sign-in redirect error:', error);
-    });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -531,7 +522,7 @@ export default function App() {
   const pendingOffersCount = offers.filter(o => o.status === 'PENDING').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/20 selection:text-emerald-200">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
       {/* Platform Navigation Header */}
       <Header
         activeTab={activeTab}
@@ -546,7 +537,7 @@ export default function App() {
       />
 
       {/* Main View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-5">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {activeTab === 'overview' && (
           <OverviewTab
             stats={stats}
@@ -560,13 +551,29 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'mediator' && (<MediatorDashboard />)}
-
-        {activeTab === 'discovery' && (<OpportunityDiscoveryDashboard />)}
-
-        {activeTab === 'revenue_verified' && (<RevenueVerifiedDashboard />)}
-
-        {activeTab === 'connections' && (<ConnectionAuthorizationDashboard />)}
+        {activeTab === 'scientists' && (
+          <AiScientistFleetConsole
+            onAddEarnings={(amount, desc) => {
+              setStats(s => ({
+                ...s,
+                totalEarnedUsd: s.totalEarnedUsd + amount,
+                pendingSettlementUsd: s.pendingSettlementUsd + amount
+              }));
+              const newTx: CompensationTransaction = {
+                id: `tx-scientist-${Date.now()}`,
+                timestamp: 'Just now',
+                buyerName: '24/7 AI Scientist Fleet Yield Vault',
+                category: 'developer',
+                amountUsd: amount,
+                privacyTier: 'differential-privacy',
+                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
+                status: 'settled'
+              };
+              setTransactions(t => [newTx, ...t]);
+            }}
+            onOpenWithdrawModal={() => setIsWithdrawOpen(true)}
+          />
+        )}
 
         {activeTab === 'sentinel' && (
           <AiCodeSentinelManagement
@@ -719,16 +726,8 @@ export default function App() {
           <IndependentComputeLayer />
         )}
 
-        {activeTab === 'monetization_sprint' && (
-          <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} userReference={currentUser?.uid || 'anonymous'} />
-        )}
-
         {activeTab === 'ai_ceo' && (
           <AICeoControl />
-        )}
-
-        {activeTab === 'global_collaboration' && (
-          <GlobalCollaborationDashboard />
         )}
 
         {activeTab === 'integrations' && (
@@ -763,7 +762,6 @@ export default function App() {
           onClose={() => setIsWithdrawOpen(false)}
           onWithdrawSuccess={handleWithdrawSuccess}
           onUpdatePolicy={handleUpdatePolicy}
-          userReference={currentUser?.uid || 'anonymous'}
         />
       )}
 
@@ -777,7 +775,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 py-3 text-center text-[10px] text-slate-600">
+      <footer className="border-t border-slate-900 bg-slate-950/60 py-4 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Personal Data Monetization Platform &bull; Autonomous AI Data Governance</span>
           <div className="flex items-center gap-4 font-mono text-[11px]">

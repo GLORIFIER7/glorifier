@@ -23,6 +23,7 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Channel>('gcash');
   const [payoutRequests, setPayoutRequests] = useState<any[]>([]);
+  const [availableBalance, setAvailableBalance] = useState<any>(null);
 
   const load = async () => {
     setLoading(true);
@@ -66,7 +67,7 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
       <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-950/40 to-slate-950 p-5">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider"><Zap className="w-4 h-4" /> 7-Day Monetization Sprint</div>
+            <div className="flex items-center gap-2 text-emerald-300 text-xs font-bold uppercase tracking-wider"><Zap className="w-4 h-4" /> <div className="mb-4 rounded-lg border p-4"><div className="text-sm opacity-70">Neon Verified Available</div><div className="text-2xl font-semibold">{availableBalance ? `$${Number(availableBalance.availableUsd || 0).toFixed(2)}` : '—'}</div><div className="text-xs opacity-70 mt-1">{availableBalance ? 'Paid revenue − refunds − disputes − pending/processing/paid payouts' : 'Waiting for authoritative ledger'}</div></div>7-Day Monetization Sprint</div>
             <h2 className="text-2xl font-bold text-white mt-1">AI Monetization Scientists → Verified Payout</h2>
             <p className="text-sm text-slate-400 mt-1 max-w-2xl">Turn real demand into evidence-backed offers, verified revenue events, confirmed settlement, and an authorized payout request. The seven-day target is a work target, not a guaranteed payment date.</p>
           </div>

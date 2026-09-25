@@ -290,6 +290,176 @@ This reflects Linux Foundation principles around neutral collaboration, open gov
 
 The goal is not to build another single AI model. The goal is to build an **interoperable intelligence infrastructure** in which models, agents, compute resources, services, and humans can collaborate while remaining replaceable, observable, governed, and evidence-driven.
 
+## 24/7 Monetizable Work Discovery
+
+GLORIFIER includes a continuous opportunity-discovery engine that delegates newly observed monetizable work across **all registered AI models/agents and all monetization scientists**.
+
+### Discovery loop
+
+**DISCOVER → FILTER → VERIFY → QUALIFY → EVIDENCE → VALUE → PRIORITIZE → ASSIGN → ACT → MEASURE → LEARN → REPEAT**
+
+The discovery system currently supports public/API-backed sources such as:
+- GitHub issues and paid-work signals
+- Hugging Face models
+- Hugging Face datasets
+- Configurable HTTP(S) discovery sources
+
+Every finding receives provenance, a deterministic fingerprint, evidence metadata, and assignment state. Duplicate findings are suppressed through source-aware fingerprints.
+
+### Delegation model
+
+Each new finding can be assigned to:
+- All registered GLORIFIER AI models and agents
+- All monetization scientists
+- A category-specific primary scientist for focused review
+
+| Finding category | Primary scientist |
+| --- | --- |
+| Data / datasets | Data Scientist |
+| AI / models | Engineering Scientist |
+| Security / bounties | Security Scientist |
+| Compliance | Compliance Scientist |
+| Finance / payments | Finance Scientist |
+| Other opportunities | Business Intelligence Scientist |
+
+Discovery is **not revenue recognition**. An observed opportunity, estimated value, buyer signal, contract, payment, and settled revenue are separate states.
+
+### Evidence rule
+
+Every major opportunity should be able to answer:
+1. **What was observed?**
+2. **What opportunity was identified?**
+3. **What action occurred?**
+4. **Who authorized it?**
+5. **What evidence exists?**
+6. **What was verified?**
+7. **What remains estimated or unverified?**
+
+GLORIFIER never invents opportunities, contracts, earnings, payments, ownership, or settlement evidence.
+
+## Permanent Integration Registry
+
+GLORIFIER is designed to continually expand its integration registry across:
+
+**AI • Cloud • Finance • Crypto • Software • SaaS • Data • Social • Business • IoT • Digital Assets • Developer Ecosystems • Identity • Security • Compliance • Future Providers**
+
+The registry is provider-neutral. An integration records capabilities, authentication requirements, permissions, health, provenance, rate limits, lifecycle state, and revocation/expiration information without permanently coupling the core to one vendor.
+
+### Integration governance
+
+- **Connection ≠ authorization**
+- **Authorization ≠ execution**
+- **Execution ≠ verification**
+- **Verification ≠ settlement**
+- **Asset ownership/value ≠ revenue**
+- **Estimated value ≠ verified earnings**
+- **Provider confirmation is required before settlement**
+
+The operating lifecycle is:
+
+**Discover → Register → Authenticate → Authorize by Capability → Operate → Verify → Monitor → Reconcile → Substitute → Improve**
+
+## AI CEO & Provider-Neutral Orchestration
+
+The **GLORIFIER AI CEO** is the executive orchestration layer above individual AI providers and specialist agents.
+
+```text
+Human Owner / Final Authority
+            │
+     GLORIFIER AI CEO
+            │
+  Executive Orchestration
+            │
+ ┌──────────┼──────────┐
+ │          │          │
+AI Providers  Specialist Council  Tools/Services
+ │          │          │
+Gemini     Finance     GitHub
+GPT        Security    SaaS
+Codex      Data        Cloud
+Meta       Compliance  Data
+Claude     Engineering IoT
+Local      Legal       Crypto
+Models     BI          Other
+```
+
+Providers remain intelligence resources rather than permanent system dependencies.
+
+**Core principle:**
+
+> **No single AI is hard-coded like the brain.**
+
+GLORIFIER can compare provider outputs, reconcile disagreement, route capabilities to specialists, monitor provider health, and substitute available providers when governed fallback is possible.
+
+The human owner remains the final authority for consequential and irreversible actions.
+
+## Economic Truth Boundary
+
+| State | Meaning |
+| --- | --- |
+| Observed | A source or signal was detected |
+| Estimated | A model-derived or market-derived value |
+| Qualified | Evidence supports further commercial review |
+| Proposed | A monetization action or offer is prepared |
+| Contracted | A documented agreement exists |
+| Revenue verified | Qualifying revenue evidence exists |
+| Settlement confirmed | External provider/network evidence confirms settlement |
+| Paid | The authoritative ledger records the completed economic event |
+
+**Estimated revenue is not actual revenue.**
+
+**Market value is not revenue.**
+
+**Wallet balance is not revenue.**
+
+**An unsigned transfer is not a payment.**
+
+**A discovered opportunity is not a contract.**
+
+**A contract is not a payment.**
+
+Neon/PostgreSQL remains the authoritative economic record for the evidence-backed states that GLORIFIER recognizes.
+
+## Security, Governance & Human Authority
+
+GLORIFIER follows a default-deny approach for unknown or high-risk capabilities.
+
+Autonomous systems may continuously perform bounded discovery, analysis, monitoring, evidence collection, planning, routing, and other reversible work. High-risk actions remain governed, including:
+- Fund movement
+- Withdrawals
+- Trading
+- Irreversible wallet operations
+- Binding financial commitments
+- Binding legal commitments
+- Irreversible ownership changes
+- Production actions requiring explicit authorization
+
+Private keys and other sensitive secrets are not returned to AI agents or stored in the normal application registry.
+
+## 24/7 Operating Objective
+
+GLORIFIER's long-running operating objective is:
+
+**EARN → VERIFY → PAYOUT → REINVEST → GROW → MEASURE → IMPROVE → REPEAT**
+
+The system is designed to continuously discover legitimate opportunities, produce evidence, coordinate intelligence, measure outcomes, and improve operations without converting uncertainty into false economic claims.
+
+## Current Architecture References
+
+Key architecture and policy documents include:
+- `docs/GLORIFIER-24X7-MONETIZABLE-WORK-DISCOVERY.md`
+- `docs/GLORIFIER-GITHUB-EXTRACTION-ARCHITECTURE.md`
+- `docs/GLORIFIER-SERVICE-OWNERSHIP-REGISTRY.md`
+- `docs/GLORIFIER-CAPABILITY-AUTHORIZATION.md`
+- `docs/GLORIFIER-INTELLIGENCE-SPACES.md`
+- `docs/GLORIFIER-DEVELOPMENT-GRAPH.md`
+- `config/glorifier-service-ownership.json`
+- `config/glorifier-capabilities.json`
+
+## Status
+
+The repository contains the architecture and implementation for the GLORIFIER orchestration, evidence, monetization, asset-intelligence, integration, and continuous-operation layers. Production deployment status should be verified from the active CI/CD and hosting environments rather than inferred from repository state.
+
 ## Project
 
 Repository: [GLORIFIER Artificial Intelligence](https://github.com/GLORIFIER7/glorifier-artificial-intelligence)

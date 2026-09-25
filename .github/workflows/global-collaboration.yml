@@ -1,0 +1,30 @@
+name: GLORIFIER Global Collaboration & Resolution
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glorifier-global-collaboration
+  cancel-in-progress: false
+
+jobs:
+  collaborate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Run global collaboration and resolution cycle
+        run: npx tsx scripts/run-global-collaboration.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GLORIFIER_COLLABORATION_LIMIT: "200"

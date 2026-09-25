@@ -78,7 +78,6 @@ export const PatentDisclosureDossier: React.FC<PatentDisclosureDossierProps> = (
   const handleCopyText = (text: string, sectionKey: string) => {
     navigator.clipboard.writeText(text);
     setCopiedSection(sectionKey);
-    setTimeout(() => setCopiedSection(null), 2500);
   };
 
   // Download raw spec file

@@ -56,6 +56,7 @@ import { initializeRevenueLedger } from './src/lib/revenue/engine';
 import { initializeAutonomousGrowth, runAutonomousGrowthCycle, getAutonomousGrowthStatus, getAutonomousGrowthPolicy } from './src/lib/autonomous-growth';
 import { initializeCryptographicTrustGateway, requestCryptographicOperation, listCryptographicTrustOperations, getCryptographicTrustPolicy } from './src/lib/cryptographic-trust-gateway';
 import { initializeUniversalAssetIntelligence, getUniversalAssetIntelligenceSnapshot, getUniversalAssetIntelligencePolicy, planUniversalAssetActions, requestUniversalAssetCryptoOperation } from './src/lib/universal-asset-intelligence';
+import { initialize24x7OpportunityDiscovery, run24x7OpportunityDiscoveryCycle, get24x7OpportunityDiscoveryStatus, get24x7OpportunityDiscoveryPolicy } from './src/lib/24x7-opportunity-discovery';
 
 dotenv.config();
 
@@ -90,7 +91,8 @@ void Promise.allSettled([
   initializeRevenueControlPlane(),
   initializeAutonomousGrowth(),
   initializeCryptographicTrustGateway(),
-  initializeUniversalAssetIntelligence()
+  initializeUniversalAssetIntelligence(),
+  initialize24x7OpportunityDiscovery()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
@@ -3274,6 +3276,24 @@ app.post('/api/assets/universal/crypto-operation', async (req: Request, res: Res
 });
 
 // ============================================================================
+// GLORIFIER 24/7 MONETIZABLE WORK DISCOVERY
+// Autonomous discovery is evidence-producing only; it never creates verified revenue.
+// ============================================================================
+app.get('/api/discovery/24x7/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: get24x7OpportunityDiscoveryPolicy() });
+});
+
+app.get('/api/discovery/24x7/status', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, ...await get24x7OpportunityDiscoveryStatus() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || '24/7 discovery status unavailable' }); }
+});
+
+app.post('/api/discovery/24x7/cycle', async (_req: Request, res: Response) => {
+  try { res.status(202).json({ ok: true, ...await run24x7OpportunityDiscoveryCycle('ai-ceo-autonomous') }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || '24/7 discovery cycle failed' }); }
+});
+
+// ============================================================================
 // GLORIFIER REVENUE CONTROL PLANE
 // Common governance boundary across every value-creation and monetization machine.
 // ============================================================================
@@ -3497,6 +3517,12 @@ async function startServer() {
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Personal Data Monetization Server running on http://0.0.0.0:${PORT}`);
     const intervalMs = Math.max(60000, Number(process.env.GLORIFIER_AUTO_GROWTH_INTERVAL_MS) || 600000);
+    const discoveryIntervalMs = Math.max(60000, Number(process.env.GLORIFIER_DISCOVERY_INTERVAL_MS) || 600000);
+    const runDiscovery = () => run24x7OpportunityDiscoveryCycle('ai-ceo-autonomous')
+      .then(result => console.log('[GLORIFIER] 24/7 monetizable discovery cycle', { runId: result.runId, sourcesScanned: result.sourcesScanned, findingsObserved: result.findingsObserved, opportunitiesCreated: result.opportunitiesCreated }))
+      .catch(error => console.warn('[GLORIFIER] 24/7 discovery cycle deferred:', error?.message || String(error)));
+    setTimeout(runDiscovery, 30000);
+    setInterval(runDiscovery, discoveryIntervalMs);
     const run = () => runAutonomousGrowthCycle(getPayoutOwnerReference())
       .then(result => console.log('[GLORIFIER] autonomous growth cycle', result.actions))
       .catch(error => console.warn('[GLORIFIER] autonomous growth cycle deferred:', error?.message || String(error)));

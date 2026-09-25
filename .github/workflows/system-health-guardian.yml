@@ -45,8 +45,21 @@ jobs:
         env:
           GLORIFIER_HEALTH_URL: https://glorifier-artificial-intelligence-production.up.railway.app/api/health
         run: |
-          curl --fail --silent --show-error --max-time 20 "$GLORIFIER_HEALTH_URL"
-          echo
+          set -e
+          for attempt in 1 2 3 4 5; do
+            echo "Health check attempt $attempt/5"
+            if curl --fail --silent --show-error --connect-timeout 5 --max-time 20 "$GLORIFIER_HEALTH_URL"; then
+              echo
+              echo "GLORIFIER production health: OK"
+              exit 0
+            fi
+            echo
+            if [ "$attempt" -lt 5 ]; then
+              sleep 10
+            fi
+          done
+          echo "::warning::Production health endpoint remained unavailable after 5 attempts."
+          exit 1
 
       - name: Run bounded self-healing
         if: steps.integrity.outcome == 'failure'
@@ -71,7 +84,7 @@ jobs:
             echo "::error::GLORIFIER local integrity check failed."
           fi
           if [ "${{ steps.health.outcome }}" != "success" ]; then
-            echo "::warning::Production health endpoint is unavailable or unhealthy."
+            echo "::warning::GLORIFIER production health is still unavailable; code integrity remains independently tracked."
           fi
           if [ "${{ steps.integrity.outcome }}" != "success" ]; then
             exit 1

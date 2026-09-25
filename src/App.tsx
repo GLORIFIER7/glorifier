@@ -17,6 +17,7 @@ import { AiCodeSentinelManagement } from './components/AiCodeSentinelManagement'
 import { InternetAccountsFederation } from './components/InternetAccountsFederation';
 import { PatentDisclosureDossier } from './components/PatentDisclosureDossier';
 import { ComplianceScientistBot } from './components/ComplianceScientistBot';
+import { GlobalCollaborationDashboard } from './components/GlobalCollaborationDashboard';
 import { WorkTogetherWithGptStudio } from './components/WorkTogetherWithGptStudio';
 import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { IntegrationControl } from './components/IntegrationControl';
@@ -712,6 +713,10 @@ export default function App() {
 
         {activeTab === 'ai_ceo' && (
           <AICeoControl />
+        )}
+
+        {activeTab === 'global_collaboration' && (
+          <GlobalCollaborationDashboard />
         )}
 
         {activeTab === 'integrations' && (

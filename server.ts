@@ -57,6 +57,7 @@ import { initializeAutonomousGrowth, runAutonomousGrowthCycle, getAutonomousGrow
 import { initializeCryptographicTrustGateway, requestCryptographicOperation, listCryptographicTrustOperations, getCryptographicTrustPolicy } from './src/lib/cryptographic-trust-gateway';
 import { initializeUniversalAssetIntelligence, getUniversalAssetIntelligenceSnapshot, getUniversalAssetIntelligencePolicy, planUniversalAssetActions, requestUniversalAssetCryptoOperation } from './src/lib/universal-asset-intelligence';
 import { initialize24x7OpportunityDiscovery, run24x7OpportunityDiscoveryCycle, get24x7OpportunityDiscoveryStatus, get24x7OpportunityDiscoveryPolicy } from './src/lib/24x7-opportunity-discovery';
+import { discoverGithubBounties, listGithubBountyOpportunities, advanceGithubBountyStage, recordVerifiedBountyPayout, getGithubBountyPipelinePolicy } from './src/lib/github-bounty-pipeline';
 
 dotenv.config();
 
@@ -3513,6 +3514,37 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+
+app.get('/api/opportunities/24x7/status', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, ...await get24x7OpportunityDiscoveryStatus() }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:'24x7 opportunity discovery unavailable', details:error?.message }); }
+});
+app.get('/api/opportunities/24x7/policy', (_req: Request, res: Response) => {
+  res.json({ ok:true, policy:get24x7OpportunityDiscoveryPolicy(), bountyPolicy:getGithubBountyPipelinePolicy() });
+});
+app.post('/api/opportunities/24x7/run', async (req: Request, res: Response) => {
+  try { res.status(202).json({ ok:true, ...(await run24x7OpportunityDiscoveryCycle(String(req.body?.actor||'human-owner'))) }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:'Opportunity discovery cycle failed', details:error?.message }); }
+});
+app.post('/api/opportunities/github-bounties/discover', async (req: Request, res: Response) => {
+  try { res.status(200).json({ ok:true, opportunities:await discoverGithubBounties(Math.min(Math.max(Number(req.body?.limit)||30,1),100)), economicTruth:'OBSERVED — NOT VERIFIED REVENUE' }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:'GitHub bounty discovery failed', details:error?.message }); }
+});
+app.get('/api/opportunities/github-bounties', async (req: Request, res: Response) => {
+  try { res.json({ ok:true, opportunities:await listGithubBountyOpportunities(req.query.stage ? String(req.query.stage) as any : undefined, Number(req.query.limit)||100), policy:getGithubBountyPipelinePolicy() }); }
+  catch (error:any) { res.status(503).json({ ok:false, error:'GitHub bounty queue unavailable', details:error?.message }); }
+});
+app.post('/api/opportunities/github-bounties/:id/stage', async (req: Request, res: Response) => {
+  try { res.status(200).json({ ok:true, result:await advanceGithubBountyStage({ id:req.params.id, stage:String(req.body?.stage) as any, actor:String(req.body?.actor||'human-owner'), evidenceRefs:Array.isArray(req.body?.evidenceRefs)?req.body.evidenceRefs.map(String):[] }) }); }
+  catch (error:any) { res.status(400).json({ ok:false, error:'Bounty stage transition rejected', details:error?.message }); }
+});
+app.post('/api/opportunities/github-bounties/:id/settle', async (req: Request, res: Response) => {
+  try {
+    const result=await recordVerifiedBountyPayout({ id:req.params.id, amount:Number(req.body?.amount), currency:String(req.body?.currency||'USD'), paymentReference:String(req.body?.paymentReference||''), evidenceUrl:String(req.body?.evidenceUrl||''), actor:String(req.body?.actor||'human-owner') });
+    res.status(201).json({ ok:true, result, ledgerBoundary:'VERIFIED_REVENUE_ONLY' });
+  } catch(error:any) { res.status(400).json({ ok:false, error:'Bounty settlement rejected', details:error?.message }); }
+});
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Personal Data Monetization Server running on http://0.0.0.0:${PORT}`);

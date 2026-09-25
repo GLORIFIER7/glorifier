@@ -5,6 +5,13 @@ import { MediatorDashboard } from './MediatorDashboard';
 
 type CollaborationProvider = { id: string; name: string; category: string; capabilities: string[]; status: string; authorized: boolean; requiresHumanApproval: boolean; connectionId: string | null; scopes: string[]; };
 
+type DataClassification = {
+  verificationStatus: 'verified' | 'not-verified';
+  configurationStatus: 'configured' | 'needs-configuration' | 'available' | 'optional';
+  verificationEvidence: string | null;
+  truthRule: string;
+};
+
 type Integration = {
   id: string;
   name: string;
@@ -12,6 +19,29 @@ type Integration = {
   status: string;
   detail: string;
   publicUrl: string;
+  verificationStatus?: DataClassification['verificationStatus'];
+  configurationStatus?: DataClassification['configurationStatus'];
+  verificationEvidence?: string | null;
+  truthRule?: string;
+};
+
+type DataStatus = {
+  ok: boolean;
+  generatedAt: string;
+  policy: {
+    verifiedMeansEvidenceBacked: boolean;
+    configuredDoesNotMeanVerified: boolean;
+    estimatedDoesNotMeanVerified: boolean;
+    humanFinalAuthority: boolean;
+  };
+  summary: {
+    total: number;
+    verified: number;
+    notVerified: number;
+    configured: number;
+    needsConfiguration: number;
+  };
+  data: Integration[];
 };
 
 type Registry = {
@@ -37,7 +67,7 @@ const statusLabel: Record<string, string> = {
 };
 
 export const IntegrationControl: React.FC = () => {
-  const [registry, setRegistry] = useState<Registry | null>(null);
+  const [registry, setRegistry] = useState<Registry | null>(null);\n  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [collaboration, setCollaboration] = useState<CollaborationProvider[]>([]);
@@ -54,7 +84,7 @@ export const IntegrationControl: React.FC = () => {
     try {
       const response = await fetch('/api/integrations', { cache: 'no-store' });
       if (!response.ok) throw new Error('Integration registry unavailable');
-      setRegistry(await response.json());
+      setRegistry(await response.json());\n      const dataStatusResponse = await fetch('/api/data-status', { cache: 'no-store' });\n      if (dataStatusResponse.ok) setDataStatus(await dataStatusResponse.json());
       const collaborationResponse = await fetch('/api/collaboration/status', { cache: 'no-store' });
       if (collaborationResponse.ok) setCollaboration((await collaborationResponse.json()).providers || []);
       const agentResponse = await fetch('/api/agents/registry', { cache: 'no-store' });
@@ -78,6 +108,73 @@ export const IntegrationControl: React.FC = () => {
     <section className="space-y-6">
       <MediatorDashboard />
       <div className="border-t border-slate-900 pt-6" />
+      {dataStatus && (
+        <section className="border border-slate-800 bg-slate-950 p-5">
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+            <div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Data truth control</div>
+              <h2 className="text-xl font-semibold text-white mt-1">Verification & Configuration</h2>
+              <p className="text-xs text-slate-400 mt-1">Configuration or connection never proves truth. Only qualifying evidence can mark data verified.</p>
+            </div>
+            <div className="text-[10px] text-slate-500">Updated {new Date(dataStatus.generatedAt).toLocaleString()}</div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-800 mt-5 border border-slate-800">
+            {[
+              ['Total', dataStatus.summary.total],
+              ['Verified', dataStatus.summary.verified],
+              ['Not verified', dataStatus.summary.notVerified],
+              ['Needs configuration', dataStatus.summary.needsConfiguration],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="bg-slate-950 p-4">
+                <div className="text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+                <div className="text-2xl font-semibold text-white mt-1">{value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 overflow-x-auto border border-slate-800">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b border-slate-800 text-[10px] uppercase tracking-wider text-slate-500">
+                <tr>
+                  <th className="px-3 py-3">Integration</th>
+                  <th className="px-3 py-3">Configuration</th>
+                  <th className="px-3 py-3">Truth</th>
+                  <th className="px-3 py-3">Evidence</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dataStatus.data.map((item) => (
+                  <tr key={item.id} className="border-b border-slate-900 last:border-0">
+                    <td className="px-3 py-3">
+                      <div className="font-medium text-white">{item.name}</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{item.category}</div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="inline-flex border border-slate-700 px-2 py-1 text-[10px] uppercase tracking-wide text-slate-300">
+                        {item.configurationStatus === 'needs-configuration' ? 'Needs configuration' : item.configurationStatus}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`inline-flex border px-2 py-1 text-[10px] uppercase tracking-wide ${item.verificationStatus === 'verified' ? 'border-emerald-500/40 text-emerald-300' : 'border-amber-500/40 text-amber-300'}`}>
+                        {item.verificationStatus === 'verified' ? 'Verified' : 'Not verified'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-slate-500">
+                      {item.verificationEvidence || 'No qualifying evidence recorded'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-4 text-[10px] text-slate-500">
+            Policy: {dataStatus.policy.configuredDoesNotMeanVerified ? 'configured ≠ verified' : 'configuration policy unavailable'} · {dataStatus.policy.estimatedDoesNotMeanVerified ? 'estimated ≠ verified' : 'estimate policy unavailable'} · Human final authority: {dataStatus.policy.humanFinalAuthority ? 'active' : 'not confirmed'}.
+          </div>
+        </section>
+      )}
+
       <IntelligenceHub />
       <div className="border-t border-slate-800 pt-8" />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

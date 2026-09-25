@@ -9,6 +9,7 @@ import { aiOrchestrator, runSpecialistCouncil, specialistRoles, initializeModelT
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
 import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask, routeAgentCapability, orchestrationPolicy } from './src/lib/agent-runtime';
+import { listCapabilityPolicies } from './src/lib/capability-authorization';
 import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
@@ -2767,7 +2768,7 @@ app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
 // The backend is the product runtime; the frontend is an optional observer.
 // ============================================================================
 app.get('/api/governance/capabilities', (_req: Request, res: Response) => {
-  res.json({ ok: true, policy: 'default-deny-for-privileged-actions', capabilities: require('./src/lib/capability-authorization').listCapabilityPolicies() });
+  res.json({ ok: true, policy: 'default-deny-for-privileged-actions', capabilities: listCapabilityPolicies() });
 });
 
 app.get('/api/agents', (_req: Request, res: Response) => {

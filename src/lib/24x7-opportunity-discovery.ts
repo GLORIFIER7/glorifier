@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { getPostgresPool } from './db/postgres';
 import { MONETIZATION_SCIENTISTS, createMonetizationOpportunity } from './monetization-sprint';
+import { listAgentCards } from './agent-runtime';
 
 export const GLORIFIER_24X7_DISCOVERY_VERSION = 'G24D-1.0';
 type DiscoverySource = { id: string; name: string; url: string; category: string; enabled: boolean };

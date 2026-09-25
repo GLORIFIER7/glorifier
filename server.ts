@@ -13,6 +13,11 @@ import { initializeConnectionRegistry, registerConnection, listConnections, getC
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
 import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/lib/global-sync';
 import { listRegisteredAgents, synchronizeRegisteredAgents } from './src/lib/agent-registry';
+import { initializeRevenueLedger } from './src/lib/revenue/engine';
+import { initializeEconomicOperatingSystem } from './src/lib/economic-operating-system';
+import { initializeBusinessModel } from './src/lib/business-model';
+import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-discovery';
+import { initializeGlorifierMediator } from './src/lib/glorifier-mediator';
 import { 
   getScientistFleet, 
   getInternetIssues, 
@@ -32,7 +37,15 @@ void initializeConnectionRegistry().then(() => ensureGlobalProviderConnections()
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+app.disable('x-powered-by');
 app.use(express.json({ limit: '10mb' }));
+
+function apiError(res: Response, status: number, error: string, details?: unknown) {
+  const payload: Record<string, unknown> = { ok: false, error };
+  if (process.env.NODE_ENV !== 'production' && details) payload.details = details instanceof Error ? details.message : details;
+  return res.status(status).json(payload);
+}
+
 // Public integration/control registry. Secrets are never returned to clients.
 const integrationStatus = [
   { id: 'github', name: 'GitHub', category: 'code', status: 'connected', detail: 'Repository control and CI source', publicUrl: 'https://github.com/GLORIFIER7/glorifier-artificial-intelligence' },
@@ -437,8 +450,22 @@ async function runModelExecution({
 }
 
 // 1. Health check & AI Config
-app.get('/api/health', (req: Request, res: Response) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (_req: Request, res: Response) => {
+  const startedAt = Date.now();
+  let database = 'not-configured';
+  let databaseLatencyMs: number | null = null;
+  if (process.env.DATABASE_URL) {
+    try { const started = Date.now(); await getPostgresPool().query('SELECT 1'); database = 'ok'; databaseLatencyMs = Date.now() - started; }
+    catch (error) { database = 'error'; console.warn('[Health] database probe failed:', error instanceof Error ? error.message : error); }
+  }
+  const status = database === 'error' ? 'degraded' : 'ok';
+  res.status(status === 'ok' ? 200 : 503).json({ ok: status === 'ok', status, timestamp: new Date().toISOString(), uptimeSeconds: Math.round(process.uptime()), responseTimeMs: Date.now() - startedAt, database, databaseLatencyMs, providers: { openai: Boolean(process.env.OPENAI_API_KEY), gemini: Boolean(process.env.GEMINI_API_KEY) } });
+});
+
+app.get('/api/health/ready', async (_req: Request, res: Response) => {
+  if (!process.env.DATABASE_URL) return res.status(503).json({ ok: false, status: 'not-ready', reason: 'DATABASE_URL is not configured' });
+  try { await getPostgresPool().query('SELECT 1'); return res.json({ ok: true, status: 'ready', timestamp: new Date().toISOString() }); }
+  catch (error) { return apiError(res, 503, 'Backend dependencies are not ready', error); }
 });
 
 app.get('/api/ai/config', (req: Request, res: Response) => {
@@ -1877,8 +1904,18 @@ app.post('/api/scientists/monetization/claim', (_req: Request, res: Response) =>
   res.json({ ok: true, ...claim, state: getScientistMonetizationState() });
 });
 
+// Unknown API routes must remain JSON. This prevents the SPA fallback from masquerading as an API response.
+app.use('/api', (_req: Request, res: Response) => { apiError(res, 404, 'API endpoint not found'); });
+
+async function initializeBackend() {
+  if (!process.env.DATABASE_URL) { console.warn('[BackendInit] DATABASE_URL is not configured; database-backed APIs will remain unavailable.'); return; }
+  const initializers: Array<[string, () => Promise<unknown>]> = [['revenue ledger', initializeRevenueLedger],['economic operating system', initializeEconomicOperatingSystem],['business model', initializeBusinessModel],['24/7 opportunity discovery', initialize24x7OpportunityDiscovery],['mediator', initializeGlorifierMediator]];
+  for (const [name, initialize] of initializers) { try { await initialize(); console.log(`[BackendInit] ${name}: ready`); } catch (error) { console.warn(`[BackendInit] ${name}: deferred`, error instanceof Error ? error.message : error); } }
+}
+
 // Vite middleware for dev or static serving for prod
 async function startServer() {
+  await initializeBackend();
   // Start the 24/7 autonomous scientist multi-agent daemon in the background
   try {
     start247ScientistDaemon(runIntelligenceModel);

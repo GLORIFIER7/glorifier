@@ -1,3 +1,5 @@
+import { getCapabilityPolicy, listCapabilityPolicies } from './capability-authorization';
+
 export type AgentCard = {
   id: string;
   name: string;
@@ -79,8 +81,20 @@ export function orchestrationPolicy() {
     disagreement: 'surface-for-reconciliation',
     evidence: 'required-for-verification',
     humanAuthority: true,
-    irreversibleActions: 'approval-gated'
+    irreversibleActions: 'approval-gated',
+    capabilityAuthorization: 'default-deny-for-privileged-actions',
+    capabilityPolicies: listCapabilityPolicies().map(p => p.id)
   };
+}
+
+export function evaluateAgentCapability(capability: string, humanApproved = false) {
+  const policy = getCapabilityPolicy(capability);
+  if (!policy) return { allowed: false, requiresHumanApproval: true, reason: 'unknown_capability' as const };
+  if (policy.requiresHumanApproval && !humanApproved) {
+    return { allowed: false, requiresHumanApproval: true, reason: 'human_approval_required' as const, policy };
+  }
+  return { allowed: true, requiresHumanApproval: policy.requiresHumanApproval, reason: 'policy_allowed' as const, policy };
+}
 }
 
 export function createAgentTask(input: Pick<AgentTask, 'capability'|'objective'|'input'|'requester'|'connectionId'|'approvalRequired'>) {

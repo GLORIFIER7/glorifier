@@ -30,12 +30,8 @@ export async function initializeRevenueLedger(): Promise<void> {
       received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       metadata JSONB NOT NULL DEFAULT '{}'::jsonb
     );
-
-    CREATE INDEX IF NOT EXISTS revenue_ledger_occurred_at_idx
-      ON revenue_ledger (occurred_at DESC);
-
-    CREATE INDEX IF NOT EXISTS revenue_ledger_provider_tx_idx
-      ON revenue_ledger (provider, provider_transaction_id);
+    CREATE INDEX IF NOT EXISTS revenue_ledger_occurred_at_idx ON revenue_ledger (occurred_at DESC);
+    CREATE INDEX IF NOT EXISTS revenue_ledger_provider_tx_idx ON revenue_ledger (provider, provider_transaction_id);
   `);
 }
 
@@ -47,43 +43,36 @@ export async function recordRevenueEvent(event: RevenueEvent): Promise<{ inserte
   if (!/^[A-Z]{3}$/.test(event.currency)) throw new Error('Currency must be an ISO 4217 uppercase code');
 
   const result = await getPostgresPool().query(
-    `
-      INSERT INTO revenue_ledger
-        (event_id, provider, provider_transaction_id, customer_reference, user_reference, currency, amount_minor, status, occurred_at, metadata)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,NOW()),$10)
-      ON CONFLICT (event_id) DO NOTHING
-      RETURNING id
-    `,
+    `INSERT INTO revenue_ledger
+      (event_id, provider, provider_transaction_id, customer_reference, user_reference, currency, amount_minor, status, occurred_at, metadata)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9,NOW()),$10)
+     ON CONFLICT (event_id) DO NOTHING
+     RETURNING id`,
     [
       event.eventId,
       event.provider,
       event.providerTransactionId ?? null,
       event.customerReference ?? null,
-      event.currency,
       event.userReference,
+      event.currency,
       event.amountMinor,
       event.status,
       event.occurredAt ?? null,
       JSON.stringify(event.metadata ?? {}),
     ],
   );
-
   return { inserted: result.rowCount === 1, id: result.rows[0]?.id };
 }
 
 export async function getRevenueSummary() {
   const result = await getPostgresPool().query(`
-    SELECT
-      currency,
+    SELECT currency,
       COALESCE(SUM(CASE WHEN status = 'paid' THEN amount_minor ELSE 0 END), 0)::bigint AS paid_minor,
       COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount_minor ELSE 0 END), 0)::bigint AS refunded_minor,
       COALESCE(SUM(CASE WHEN status = 'disputed' THEN amount_minor ELSE 0 END), 0)::bigint AS disputed_minor,
       COUNT(*)::bigint AS event_count
-    FROM revenue_ledger
-    GROUP BY currency
-    ORDER BY currency
+    FROM revenue_ledger GROUP BY currency ORDER BY currency
   `);
-
   return result.rows.map((row) => ({
     currency: row.currency,
     paidMinor: Number(row.paid_minor),

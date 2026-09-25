@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { getPostgresPool } from './db/postgres';
+import { recordRevenueEvent, initializeRevenueLedger } from './revenue/engine';
 
 export type BountyStage =
   | 'DISCOVERED' | 'FUNDING_UNVERIFIED' | 'FUNDING_VERIFIED'
@@ -115,15 +116,29 @@ export async function advanceGithubBountyStage(input: { id: string; stage: Bount
   return { id:input.id, previousStage:from, stage:input.stage, actor:input.actor, evidenceRefs:input.evidenceRefs, updatedAt:new Date().toISOString() };
 }
 
-export async function recordVerifiedBountyPayout(input: { id:string; amount:number; currency:string; paymentReference:string; evidenceUrl:string; actor:string }) {
+export async function recordVerifiedBountyPayout(input: { id:string; userReference:string; amount:number; currency:string; paymentReference:string; evidenceUrl:string; actor:string }) {
   await initializeGithubBountyPipeline();
   if (!Number.isFinite(input.amount) || input.amount <= 0) throw new Error('Verified payout amount must be positive.');
-  if (!input.paymentReference || !input.evidenceUrl) throw new Error('Canonical payment reference and evidence URL are required.');
+  if (!input.userReference || !input.paymentReference || !input.evidenceUrl) throw new Error('User reference, canonical payment reference and evidence URL are required.');
+  await initializeRevenueLedger();
   const db = getPostgresPool();
   const r = await db.query('SELECT * FROM github_bounty_opportunities WHERE id=$1',[input.id]);
   if (!r.rows[0] || !['ACCEPTED','PAYMENT_PENDING'].includes(r.rows[0].stage)) throw new Error('Payout requires accepted work.');
-  await db.query('UPDATE github_bounty_opportunities SET stage=\'SETTLED\',last_verified_at=NOW() WHERE id=$1',[input.id]);
-  return { status:'SETTLED', economicTruth:'VERIFIED_REVENUE', amount:input.amount, currency:input.currency.toUpperCase(), paymentReference:input.paymentReference, evidenceUrl:input.evidenceUrl, actor:input.actor, settledAt:new Date().toISOString() };
+  const currency=input.currency.toUpperCase();
+  const eventId='github-bounty-settlement-'+input.id+'-'+crypto.createHash('sha256').update(input.paymentReference+'|'+input.evidenceUrl).digest('hex').slice(0,24);
+  const ledger=await recordRevenueEvent({
+    eventId,
+    provider:'github-bounty-settlement',
+    providerTransactionId:input.paymentReference,
+    customerReference:r.rows[0].repository+'#'+r.rows[0].issue_number,
+    userReference:input.userReference,
+    currency,
+    amountMinor:Math.round(input.amount*100),
+    status:'paid',
+    metadata:{ opportunityId:input.id, sourceUrl:r.rows[0].source_url, acceptanceStage:r.rows[0].stage, settlementEvidenceUrl:input.evidenceUrl, evidenceClass:'canonical-payment-evidence' }
+  });
+  await db.query('UPDATE github_bounty_opportunities SET stage=\'SETTLED\',last_verified_at=NOW(),evidence=evidence || $2::jsonb WHERE id=$1',[input.id,JSON.stringify([{type:'settlement',paymentReference:input.paymentReference,evidenceUrl:input.evidenceUrl,ledgerEventId:eventId}])]);
+  return { status:'SETTLED', economicTruth:'VERIFIED_REVENUE', amount:input.amount, currency, paymentReference:input.paymentReference, evidenceUrl:input.evidenceUrl, actor:input.actor, revenueLedgerEventId:eventId, ledgerInserted:ledger.inserted, settledAt:new Date().toISOString() };
 }
 
 export function getGithubBountyPipelinePolicy() {

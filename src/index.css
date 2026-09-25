@@ -1,28 +1,35 @@
 @import "tailwindcss";
 
-/* GLORIFIER — Bespoke Editorial Minimalism
-   A deliberate product language: black field, paper panels, strict grid,
-   typography first, thin rules, no gradients, no decorative AI styling. */
+/* GLORIFIER — Modern Minimalist Product System
+   Principles: hierarchy over decoration, generous spacing, neutral surfaces,
+   restrained accent color, crisp borders, accessible interaction states. */
 
 :root {
-  --g-black: #090909;
-  --g-ink: #111111;
-  --g-paper: #f4f3ef;
-  --g-white: #ffffff;
-  --g-muted: #74736e;
-  --g-rule: #d7d5ce;
-  --g-dark-rule: #262626;
-  --g-accent: #b7ff2a;
-  --g-danger: #d92d20;
+  --g-bg: #080808;
+  --g-surface: #101010;
+  --g-surface-2: #151515;
+  --g-surface-3: #1a1a1a;
+  --g-text: #f3f3ef;
+  --g-text-soft: #b2b1aa;
+  --g-text-muted: #77766f;
+  --g-border: #272727;
+  --g-border-soft: #1d1d1d;
+  --g-accent: #c8ff38;
+  --g-accent-soft: rgba(200, 255, 56, 0.10);
+  --g-danger: #ff6b61;
 }
 
-html { background: var(--g-black); color-scheme: dark; }
+html {
+  background: var(--g-bg);
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
 
 body {
   margin: 0;
   min-width: 320px;
-  background: var(--g-black);
-  color: #e8e7e2;
+  background: var(--g-bg);
+  color: var(--g-text);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
@@ -31,17 +38,21 @@ body {
 
 button, input, textarea, select { font: inherit; }
 button { letter-spacing: -0.01em; }
-::selection { background: var(--g-accent); color: #090909; }
+::selection { background: var(--g-accent); color: #080808; }
 
-main { letter-spacing: -0.012em; }
+main {
+  letter-spacing: -0.012em;
+  line-height: 1.5;
+}
+
 main h1 { letter-spacing: -0.055em; }
 main h2 { letter-spacing: -0.04em; }
 main h3 { letter-spacing: -0.028em; }
 
 main .rounded-2xl,
-main .rounded-xl { border-radius: 4px !important; }
-main .rounded-lg { border-radius: 3px !important; }
-main .rounded-md { border-radius: 2px !important; }
+main .rounded-xl { border-radius: 8px !important; }
+main .rounded-lg { border-radius: 6px !important; }
+main .rounded-md { border-radius: 5px !important; }
 
 main .shadow-2xl,
 main .shadow-xl,
@@ -49,35 +60,76 @@ main .shadow-lg,
 main .shadow-md,
 main .shadow-sm { box-shadow: none !important; }
 
-main [class*="border-slate-"] { border-color: var(--g-dark-rule); }
-main [class*="bg-slate-950"] { background-color: #090909; }
-main [class*="bg-slate-900"] { background-color: #111111; }
-main [class*="bg-slate-800"] { background-color: #171717; }
-main [class*="text-slate-500"] { color: #85847e; }
-main [class*="text-slate-400"] { color: #a5a39d; }
+main [class*="border-slate-"] { border-color: var(--g-border); }
+main [class*="bg-slate-950"] { background-color: var(--g-bg); }
+main [class*="bg-slate-900"] { background-color: var(--g-surface); }
+main [class*="bg-slate-800"] { background-color: var(--g-surface-2); }
+main [class*="bg-slate-700"] { background-color: var(--g-surface-3); }
+main [class*="text-slate-300"] { color: #d4d3cc; }
+main [class*="text-slate-400"] { color: var(--g-text-soft); }
+main [class*="text-slate-500"] { color: var(--g-text-muted); }
 
 main [class*="bg-gradient-"] {
   background-image: none !important;
-  background-color: #111111 !important;
+  background-color: var(--g-surface) !important;
 }
 
-main [class*="from-emerald-"],
-main [class*="to-teal-"],
-main [class*="to-cyan-"],
-main [class*="from-indigo-"] { --tw-gradient-from: transparent !important; --tw-gradient-to: transparent !important; }
+/* Remove decorative color washes while retaining semantic status text. */
+main [class*="bg-emerald-500/"],
+main [class*="bg-cyan-500/"],
+main [class*="bg-indigo-500/"],
+main [class*="bg-amber-500/"],
+main [class*="bg-rose-500/"] {
+  background-color: transparent !important;
+}
 
-main [class*="bg-emerald-500\/"],
-main [class*="bg-cyan-500\/"],
-main [class*="bg-indigo-500\/"],
-main [class*="bg-amber-500\/"] { background-color: transparent !important; }
-
-main [class*="border-emerald-500\/"],
-main [class*="border-cyan-500\/"],
-main [class*="border-indigo-500\/"],
-main [class*="border-amber-500\/"] { border-color: #303030 !important; }
+main [class*="border-emerald-500/"],
+main [class*="border-cyan-500/"],
+main [class*="border-indigo-500/"],
+main [class*="border-amber-500/"],
+main [class*="border-rose-500/"] {
+  border-color: var(--g-border) !important;
+}
 
 main .grid > div { min-width: 0; }
 
+/* Consistent interactive language. */
+main button:not(:disabled),
+main a {
+  transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease, opacity 160ms ease;
+}
+
+main button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+main button:not(:disabled):hover {
+  filter: brightness(1.08);
+}
+
+main input,
+main textarea,
+main select {
+  border-radius: 6px;
+  border-color: var(--g-border);
+}
+
+main input::placeholder,
+main textarea::placeholder {
+  color: var(--g-text-muted);
+}
+
+main table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+main hr {
+  border-color: var(--g-border);
+}
+
+/* Accessible focus ring. */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
@@ -87,13 +139,38 @@ select:focus-visible {
   outline-offset: 2px;
 }
 
-* { scrollbar-width: thin; scrollbar-color: #333 #090909; }
-::-webkit-scrollbar { width: 7px; height: 7px; }
-::-webkit-scrollbar-track { background: #090909; }
-::-webkit-scrollbar-thumb { background: #333; }
+/* Minimal scrollbar. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #343434 transparent;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #343434; border-radius: 999px; }
 
+/* Mobile: prioritize content and reduce navigation density. */
 @media (max-width: 767px) {
-  main { font-size: 0.95rem; }
-  main h1 { font-size: 1.65rem; }
-  main h2 { font-size: 1.3rem; }
+  main {
+    font-size: 0.95rem;
+  }
+
+  main h1 {
+    font-size: 1.7rem;
+  }
+
+  main h2 {
+    font-size: 1.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

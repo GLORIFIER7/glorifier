@@ -69,7 +69,7 @@ export const AICeoControl: React.FC = () => {
         throw new Error(data.error || 'Synchronization returned non-ok status');
       }
     } catch (err: any) {
-      setSyncFeedback(`Sync completed with local fallback: ${err.message}`);
+      setSyncFeedback(`Global sync failed: ${err.message}. No local fallback or synthetic synchronization was claimed.`);
     } finally {
       setIsSyncing(false);
     }

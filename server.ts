@@ -20,6 +20,7 @@ import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-d
 import { initializeGlorifierMediator } from './src/lib/glorifier-mediator';
 import { getPostgresPool } from './src/lib/db/postgres';
 import { initializeAppState, readAppState, upsertState } from './src/lib/db/app-state';
+import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/verified-outcomes';
 
 import { 
   getScientistFleet, 
@@ -1976,6 +1977,27 @@ app.put('/api/app-state', async (req: Request, res: Response) => {
     res.json({ ok: true, state });
   } catch (error) {
     apiError(res, 500, error instanceof Error ? error.message : 'Unable to persist app state');
+  }
+});
+
+app.post('/api/evidence/outcomes', async (req: Request, res: Response) => {
+  try {
+    const body = req.body || {};
+    const outcome = await recordVerifiedOutcome({
+      opportunityRef: String(body.opportunityRef || 'command-center-action'),
+      governanceEventId: body.governanceEventId ? String(body.governanceEventId) : null,
+      observedWhat: body.observedWhat || {},
+      opportunityWhat: body.opportunityWhat || {},
+      actionWhat: body.actionWhat || {},
+      authorizedBy: body.authorizedBy ? String(body.authorizedBy) : 'human-owner',
+      authorizationAt: body.authorizationAt || new Date().toISOString(),
+      evidence: Array.isArray(body.evidence) ? body.evidence : [],
+      economicOutcome: body.economicOutcome || {},
+      actor: body.actor || 'command-center'
+    });
+    res.status(201).json({ ok: true, outcome });
+  } catch (error) {
+    apiError(res, 400, error instanceof Error ? error.message : 'Unable to record evidence');
   }
 });
 

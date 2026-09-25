@@ -401,7 +401,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   Governed Request
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">Verified earnings request • payout remains pending until provider settlement evidence is confirmed</p>
+              <p className="text-[11px] text-slate-400">Request a payout from your verified balance.</p>
             </div>
           </div>
           <button 
@@ -415,555 +415,142 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
         {/* Content */}
         {!settledReceipt ? (
           <div className="p-5 space-y-4 overflow-y-auto grow">
-            {/* Balance Bar */}
-            <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-              <div>
-                <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Available Balance</div>
-                <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
-                  ${stats.totalEarnedUsd.toFixed(2)} USD
-                </div>
-              </div>
-              <button
-                onClick={() => setAmount(stats.totalEarnedUsd)}
-                className="text-xs px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold border border-slate-700 transition-colors"
-              >
-                Max All
-              </button>
-            </div>
-
-            {/* Payout Category Selector: Crypto vs Fiat */}
-            <div>
-              <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                Payout Channel
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPayoutCategory('crypto')}
-                  className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
-                    payoutCategory === 'crypto'
-                      ? 'bg-emerald-500/10 border-emerald-500 text-white shadow-sm'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-1.5 rounded-lg ${payoutCategory === 'crypto' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-800 text-slate-400'}`}>
-                      <Coins className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-200">Crypto Payout</div>
-                      <div className="text-[10px] text-emerald-400 font-mono">Stablecoins (ETH, SOL, BTC)</div>
-                    </div>
-                  </div>
-                  {payoutCategory === 'crypto' && (
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPayoutCategory('fiat')}
-                  className={`p-3 rounded-xl border text-left transition-all flex items-center justify-between ${
-                    payoutCategory === 'fiat'
-                      ? 'bg-cyan-500/10 border-cyan-500 text-white shadow-sm'
-                      : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className={`p-1.5 rounded-lg ${payoutCategory === 'fiat' ? 'bg-cyan-500/20 text-cyan-400' : 'bg-slate-800 text-slate-400'}`}>
-                      <Landmark className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <div className="text-xs font-bold text-slate-200">Fiat Payout</div>
-                      <div className="text-[10px] text-slate-500 font-mono">Bank Wire / Stripe ACH</div>
-                    </div>
-                  </div>
-                  {payoutCategory === 'fiat' && (
-                    <span className="w-2 h-2 rounded-full bg-cyan-400" />
-                  )}
-                </button>
+            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800">
+              <div className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Available Balance</div>
+              <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">
+                ${Number(stats.totalEarnedUsd || 0).toFixed(2)} USD
               </div>
             </div>
 
-            {/* Amount input */}
             <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className="text-xs font-semibold text-slate-300">
-                  Withdrawal Amount
-                </label>
-                {payoutCategory === 'crypto' && (
-                  <span className="text-[10px] font-mono text-slate-400">
-                    Est. {amount.toFixed(2)} {selectedToken} (Indicative 1:1 target • final rate/provider terms apply)
-                  </span>
-                )}
-              </div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Amount</label>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-slate-400 text-sm font-mono">$</span>
                 <input
                   type="number"
-                  min="1"
-                  max={stats.totalEarnedUsd}
+                  min="0.01"
+                  max={Number(stats.totalEarnedUsd || 0)}
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(parseFloat(e.target.value) || 0)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-16 py-2 text-sm font-mono text-white focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-20 py-3 text-sm font-mono text-white focus:outline-none focus:border-emerald-500"
+                  placeholder="0.00"
                 />
-                <span className="absolute right-3 top-2.5 text-xs font-mono font-bold text-slate-400">
-                  USD
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setAmount(Number(stats.totalEarnedUsd || 0))}
+                  className="absolute right-2 top-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[10px] font-bold"
+                >
+                  MAX
+                </button>
               </div>
             </div>
 
-            {/* CRYPTO PAYOUT SPECIFIC CONTROLS */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Payout Method</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPayoutCategory('crypto')}
+                  className={`p-3 rounded-xl border text-left ${payoutCategory === 'crypto' ? 'bg-emerald-500/10 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                >
+                  <div className="text-xs font-bold">Crypto</div>
+                  <div className="text-[10px] mt-1 text-slate-500">USDC / USDT / DAI / PYUSD</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPayoutCategory('fiat')}
+                  className={`p-3 rounded-xl border text-left ${payoutCategory === 'fiat' ? 'bg-cyan-500/10 border-cyan-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                >
+                  <div className="text-xs font-bold">Fiat</div>
+                  <div className="text-[10px] mt-1 text-slate-500">Bank / payment provider</div>
+                </button>
+              </div>
+            </div>
+
             {payoutCategory === 'crypto' ? (
-              <div className="space-y-4 pt-1">
-                {/* Visual Connected Wallets Section */}
-                <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3.5 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-bold text-white">Connected Wallets</span>
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                        {connectedWallets.length} Verified
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-1.5">
-                      {/* Chain Filters */}
-                      <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-[10px] font-mono">
-                        {(['ALL', 'ETH', 'SOL', 'BTC'] as const).map((filter) => (
-                          <button
-                            key={filter}
-                            type="button"
-                            onClick={() => setWalletFilter(filter)}
-                            className={`px-2 py-0.5 rounded transition-colors ${
-                              walletFilter === filter
-                                ? 'bg-slate-800 text-white font-bold'
-                                : 'text-slate-400 hover:text-slate-200'
-                            }`}
-                          >
-                            {filter}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Add Wallet Button */}
-                      <button
-                        type="button"
-                        onClick={() => setShowAddWalletForm(!showAddWalletForm)}
-                        className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[11px] font-semibold flex items-center gap-1 transition-colors"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Add Address</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Add New Wallet Drawer */}
-                  {showAddWalletForm && (
-                    <div className="p-3 bg-slate-900/90 border border-slate-700/70 rounded-xl space-y-2.5 animate-in fade-in zoom-in-95">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-200 flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                          Add Verified Chain Address
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddWalletForm(false);
-                            setAddWalletError(null);
-                          }}
-                          className="text-slate-400 hover:text-white p-0.5"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Chain Selector */}
-                      <div className="grid grid-cols-3 gap-1.5">
-                        {(['ETH', 'SOL', 'BTC'] as const).map((ch) => {
-                          const badge = getChainBadge(ch);
-                          return (
-                            <button
-                              key={ch}
-                              type="button"
-                              onClick={() => {
-                                setNewWalletChain(ch);
-                                setAddWalletError(null);
-                              }}
-                              className={`py-1.5 px-2 rounded-lg border text-xs font-mono font-bold flex items-center justify-center gap-1.5 transition-all ${
-                                newWalletChain === ch
-                                  ? `${badge.badgeClass} ring-1 ring-emerald-500/20 shadow-sm`
-                                  : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                              }`}
-                            >
-                              <span>{ch}</span>
-                              <span className="text-[9px] font-normal text-slate-400">
-                                {ch === 'ETH' ? 'EVM' : ch === 'SOL' ? 'SPL' : 'SegWit'}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      {/* Label Input */}
-                      <div>
-                        <input
-                          type="text"
-                          value={newWalletName}
-                          onChange={(e) => setNewWalletName(e.target.value)}
-                          placeholder="Wallet Label (e.g. Ledger Cold Vault, Mobile Phantom)"
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-sans"
-                        />
-                      </div>
-
-                      {/* Address Input */}
-                      <div>
-                        <input
-                          type="text"
-                          value={newWalletAddress}
-                          onChange={(e) => {
-                            setNewWalletAddress(e.target.value);
-                            setAddWalletError(null);
-                          }}
-                          placeholder={
-                            newWalletChain === 'ETH'
-                              ? '0x... (42-character Ethereum address)'
-                              : newWalletChain === 'SOL'
-                              ? 'Base58 Solana address (32-44 characters)'
-                              : 'bc1... (Native SegWit / Taproot address)'
-                          }
-                          className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500"
-                        />
-                      </div>
-
-                      {addWalletError && (
-                        <div className="flex items-center gap-1.5 text-[10px] text-rose-400 bg-rose-500/10 border border-rose-500/20 px-2 py-1 rounded-lg">
-                          <AlertCircle className="w-3 h-3 shrink-0" />
-                          <span>{addWalletError}</span>
-                        </div>
-                      )}
-
-                      <div className="flex items-center justify-end gap-2 pt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowAddWalletForm(false);
-                            setAddWalletError(null);
-                          }}
-                          className="px-2.5 py-1 text-xs text-slate-400 hover:text-white rounded-lg hover:bg-slate-800"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAddWallet}
-                          disabled={isVerifyingNewWallet}
-                          className="px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs rounded-lg flex items-center gap-1.5 shadow-sm transition-all"
-                        >
-                          {isVerifyingNewWallet ? (
-                            <>
-                              <RefreshCw className="w-3 h-3 animate-spin" />
-                              <span>Attesting Key Proof...</span>
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle2 className="w-3 h-3" />
-                              <span>Verify & Connect</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wallets List */}
-                  <div className="space-y-1.5 max-h-44 overflow-y-auto pr-0.5">
-                    {filteredWallets.length === 0 ? (
-                      <div className="py-4 text-center text-xs text-slate-500 font-mono">
-                        No verified {walletFilter} addresses found. Click "+ Add Address" to connect one.
-                      </div>
-                    ) : (
-                      filteredWallets.map((w) => {
-                        const isSelected = walletAddress.toLowerCase() === w.address.toLowerCase();
-                        const badge = getChainBadge(w.chain);
-
-                        return (
-                          <div
-                            key={w.id}
-                            onClick={() => handleSelectWallet(w)}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center justify-between group ${
-                              isSelected
-                                ? 'bg-slate-800/90 border-emerald-500 ring-1 ring-emerald-500/20 shadow-sm'
-                                : 'bg-slate-900/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              {/* Chain tag */}
-                              <div className={`px-2 py-1 rounded-lg border text-[10px] font-mono font-bold shrink-0 ${badge.badgeClass}`}>
-                                {w.chain}
-                              </div>
-
-                              {/* Label and Address */}
-                              <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs font-semibold text-white truncate">
-                                    {w.name}
-                                  </span>
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono shrink-0 flex items-center gap-1">
-                                    <CheckCircle2 className="w-2.5 h-2.5" />
-                                    <span>Verified</span>
-                                  </span>
-                                </div>
-                                <div className="text-[11px] font-mono text-slate-400 truncate mt-0.5 flex items-center gap-1.5">
-                                  <span>
-                                    {w.address.substring(0, 10)}...{w.address.substring(w.address.length - 8)}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-1.5 shrink-0 pl-2">
-                              {/* Copy button */}
-                              <button
-                                type="button"
-                                onClick={(e) => handleCopyAddress(w.id, w.address, e)}
-                                title="Copy Address"
-                                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-                              >
-                                {copiedId === w.id ? (
-                                  <Check className="w-3.5 h-3.5 text-emerald-400" />
-                                ) : (
-                                  <Copy className="w-3.5 h-3.5" />
-                                )}
-                              </button>
-
-                              {/* Remove button */}
-                              <button
-                                type="button"
-                                onClick={(e) => handleRemoveWallet(w.id, e)}
-                                title="Remove Address"
-                                className="p-1 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-800 transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Selected check */}
-                              <div className="ml-1">
-                                {isSelected ? (
-                                  <span className="w-4 h-4 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center">
-                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
-                                  </span>
-                                ) : (
-                                  <span className="w-4 h-4 rounded-full border border-slate-700 group-hover:border-slate-500" />
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Stablecoin Selection */}
+              <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                    Select Stablecoin
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    {SUPPORTED_STABLECOINS.map((token) => (
-                      <button
-                        key={token.symbol}
-                        type="button"
-                        onClick={() => setSelectedToken(token.symbol)}
-                        className={`p-2.5 rounded-xl border text-left transition-all ${
-                          selectedToken === token.symbol
-                            ? 'bg-slate-800 border-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/20'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-bold text-xs text-white font-mono">{token.symbol}</span>
-                          <span className="text-[9px] px-1 py-0.5 rounded bg-slate-900 font-mono text-slate-400">
-                            {token.peg}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 truncate mt-1">
-                          {token.name}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Blockchain Network Selection */}
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                    Settlement Network
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {NETWORKS.map((net) => {
-                      const isNetworkCompatible = net.chain === activeChain;
-                      return (
-                        <button
-                          key={net.id}
-                          type="button"
-                          onClick={() => setSelectedNetwork(net.id)}
-                          className={`p-2 rounded-lg border text-left transition-all ${
-                            selectedNetwork === net.id
-                              ? 'bg-slate-800 border-emerald-500 text-white shadow-sm'
-                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                          } ${!isNetworkCompatible ? 'opacity-60' : ''}`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-[11px] font-bold text-slate-200">{net.name}</span>
-                            <span className="text-[8px] font-mono px-1 rounded bg-slate-900 text-slate-400">
-                              {net.chain}
-                            </span>
-                          </div>
-                          <div className="text-[9px] text-emerald-400 font-mono mt-0.5 flex items-center gap-1">
-                            <Zap className="w-2.5 h-2.5" />
-                            <span>{net.gasSubsidy}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Active Destination Address Preview & Manual Override */}
-                <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                      <span>Destination Address</span>
-                      {connectedWalletName && (
-                        <span className="text-[10px] text-emerald-400 font-mono font-normal">
-                          ({connectedWalletName})
-                        </span>
-                      )}
-                    </label>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      Chain: <strong className="text-white">{activeChain}</strong>
-                    </span>
-                  </div>
-
-                  <input
-                    type="text"
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Wallet</label>
+                  <select
                     value={walletAddress}
                     onChange={(e) => {
-                      setWalletAddress(e.target.value);
-                      const matched = connectedWallets.find(w => w.address.toLowerCase() === e.target.value.trim().toLowerCase());
-                      setConnectedWalletName(matched ? matched.name : 'Custom Address');
+                      const value=e.target.value;
+                      setWalletAddress(value);
+                      const matched=connectedWallets.find(w=>w.address===value);
+                      setConnectedWalletName(matched?.name || 'Custom Address');
+                      if (matched) {
+                        setSelectedNetwork(matched.chain === 'SOL' ? 'Solana' : matched.chain === 'BTC' ? 'Bitcoin' : 'Base');
+                      }
                     }}
-                    placeholder="Selected address from verified wallets above..."
-                    className={`w-full bg-slate-950 border rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none transition-colors ${
-                      walletAddress && !isCurrentAddressValid()
-                        ? 'border-rose-500/50 focus:border-rose-500 text-rose-200'
-                        : 'border-slate-800 focus:border-emerald-500'
-                    }`}
-                  />
-
-                  {walletAddress && !isCurrentAddressValid() && (
-                    <p className="text-[10px] text-rose-400 mt-1 flex items-center gap-1">
-                      <AlertCircle className="w-3 h-3" />
-                      <span>
-                        {activeChain === 'ETH'
-                          ? 'Address must be a valid 42-char EVM hex address (0x...).'
-                          : activeChain === 'SOL'
-                          ? 'Address must be a valid 32-44 char base58 Solana address.'
-                          : 'Address must be a valid Bitcoin SegWit (bc1), Legacy (1), or Script (3) address.'}
-                      </span>
-                    </p>
-                  )}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    {connectedWallets.map(w => (
+                      <option key={w.id} value={w.address}>{w.name} • {w.chain}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Gas Relayer & Peg Attestation */}
-                <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-[11px] text-slate-400 space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-1.5 text-slate-300">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Gasless Smart Contract Relayer</span>
-                    </span>
-                    <span className="font-mono text-emerald-400 font-semibold">Provider fee shown at settlement</span>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Token</label>
+                    <select
+                      value={selectedToken}
+                      onChange={(e) => setSelectedToken(e.target.value as StablecoinType)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-white"
+                    >
+                      {SUPPORTED_STABLECOINS.map(t => <option key={t.symbol} value={t.symbol}>{t.symbol}</option>)}
+                    </select>
                   </div>
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span>Exchange Conversion</span>
-                    <span className="font-mono text-slate-300">1 USD ≈ 1.0000 {selectedToken} (indicative)</span>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-300 block mb-1.5">Network</label>
+                    <select
+                      value={selectedNetwork}
+                      onChange={(e) => setSelectedNetwork(e.target.value as CryptoNetwork)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-white"
+                    >
+                      {NETWORKS.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
+                    </select>
                   </div>
                 </div>
+
+                <input
+                  type="text"
+                  value={walletAddress}
+                  onChange={(e) => {
+                    setWalletAddress(e.target.value);
+                    const matched=connectedWallets.find(w=>w.address.toLowerCase()===e.target.value.trim().toLowerCase());
+                    setConnectedWalletName(matched?.name || 'Custom Address');
+                  }}
+                  placeholder="Wallet address"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
+                />
               </div>
             ) : (
-              /* FIAT SPECIFIC CONTROLS */
-              <div className="space-y-3.5 pt-1">
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                    Fiat Channel
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: 'stripe_connect', label: 'Stripe Direct', sub: 'Debit Card • Instant', icon: CreditCard },
-                      { id: 'direct_ach', label: 'Bank Wire / ACH', sub: '1-2 Days • USD', icon: Landmark }
-                    ].map((ch) => {
-                      const Icon = ch.icon;
-                      return (
-                        <div
-                          key={ch.id}
-                          onClick={() => setFiatMethod(ch.id as any)}
-                          className={`cursor-pointer rounded-xl p-3 border text-left transition-all ${
-                            fiatMethod === ch.id
-                              ? 'bg-slate-800 border-cyan-500 text-white'
-                              : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
-                          }`}
-                        >
-                          <Icon className="w-4 h-4 mb-1 text-cyan-400" />
-                          <div className="text-xs font-bold text-slate-200">{ch.label}</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">{ch.sub}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1">
-                    Bank Account / Routing / Debit Token
-                  </label>
-                  <input
-                    type="text"
-                    value={fiatAccount}
-                    onChange={(e) => setFiatAccount(e.target.value)}
-                    placeholder="Account ending in 4092..."
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Payout Account</label>
+                <input
+                  type="text"
+                  value={fiatAccount}
+                  onChange={(e) => setFiatAccount(e.target.value)}
+                  placeholder="Bank or payment account"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-cyan-500"
+                />
               </div>
             )}
 
             {payoutError && (
-              <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                <span>{payoutError}</span>
+              <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs">
+                {payoutError}
               </div>
             )}
 
-            {/* Action Button */}
             <button
               onClick={handleWithdraw}
-              disabled={isProcessing || amount <= 0 || amount > stats.totalEarnedUsd || !isCurrentAddressValid()}
-              className="w-full mt-2 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 disabled:opacity-50 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 transition-all"
+              disabled={isProcessing || amount <= 0 || amount > Number(stats.totalEarnedUsd || 0) || !isCurrentAddressValid()}
+              className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-bold text-xs transition-all"
             >
-              {isProcessing ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Submitting Governed Request...
-                </>
-              ) : (
-                <>
-                  Request ${amount.toFixed(2)} USD via {payoutCategory === 'crypto' ? `${selectedToken} (${selectedNetwork})` : 'Fiat Wire'}
-                </>
-              )}
+              {isProcessing ? 'Submitting…' : `Request Payout • $${amount.toFixed(2)} USD`}
             </button>
           </div>
         ) : (

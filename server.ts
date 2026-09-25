@@ -197,6 +197,7 @@ app.get('/api/linux/runtimes/:id', async (req: Request, res: Response) => {
 app.post('/api/linux/runtimes', async (req: Request, res: Response) => {
   try {
     const runtime = await registerLinuxRuntime({
+      runtime: 'linux',
       displayName: String(req.body?.displayName || '').trim(),
       hostRef: String(req.body?.hostRef || '').trim(),
       status: req.body?.status || 'discovered',
@@ -289,7 +290,7 @@ app.get('/api/bounties/findings', async (req: Request, res: Response) => {
 app.post('/api/bounties/authorize-target', async (req: Request, res: Response) => {
   try {
     const result = await authorizeBountyTarget(String(req.body?.programId || ''), String(req.body?.target || ''));
-    await recordBountyEvent(String(req.body?.programId || ''), null, 'authorization_gate_checked', String(req.body?.actor || 'bounty-agent'), result);
+    await recordBountyEvent(String(req.body?.programId || ''), null, 'authorization_gate_checked', String(req.body?.actor || 'bounty-agent'), result as unknown as Record<string, unknown>);
     res.status(result.decision === 'allowed' ? 200 : 403).json({ ok: result.decision === 'allowed', ...result });
   } catch (error: any) { res.status(400).json({ error: 'Authorization gate failed', details: error?.message }); }
 });

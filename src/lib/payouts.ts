@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import { getPostgresPool } from './db/postgres';
 import { governRevenueAction } from './revenue-control-plane';
+import { initializeRevenueLedger } from './revenue/engine';
 
 export type PayoutRequest = {
   userReference: string;
@@ -133,7 +134,8 @@ export type PayoutBalance = {
 
 export async function getAvailablePayoutBalance(userReference?: string): Promise<PayoutBalance> {
   const safeReference = safeUser(userReference);
-  await initializeRevenueLedgerForPayoutRead();
+  await initializeRevenueLedger();
+  await initializePayoutRegistry();
   const db = getPostgresPool();
   const [revenue, payouts] = await Promise.all([
     db.query(
@@ -179,25 +181,6 @@ export async function getAvailablePayoutBalance(userReference?: string): Promise
   };
 }
 
-async function initializeRevenueLedgerForPayoutRead() {
-  await getPostgresPool().query(
-    `CREATE TABLE IF NOT EXISTS revenue_ledger (
-      id BIGSERIAL PRIMARY KEY,
-      event_id TEXT NOT NULL UNIQUE,
-      provider TEXT NOT NULL,
-      provider_transaction_id TEXT,
-      customer_reference TEXT,
-      user_reference TEXT NOT NULL,
-      currency CHAR(3) NOT NULL,
-      amount_minor BIGINT NOT NULL,
-      status TEXT NOT NULL CHECK (status IN ('paid','refunded','disputed','voided')),
-      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      metadata JSONB NOT NULL DEFAULT '{}'::jsonb
-    )`
-  );
-  await initializePayoutRegistry();
-}
 export async function listPayoutRequests(userReference?: string) {
   await initializePayoutRegistry();
   const result = await getPostgresPool().query(

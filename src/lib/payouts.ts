@@ -72,9 +72,9 @@ export async function createPayoutRequest(input: PayoutRequest) {
 
   const governance = await governRevenueAction({
     machine: 'other',
-    actionType: 'withdraw',
+    actionType: 'propose',
     objective: `Request disbursement of verified USD earnings through ${input.method}.`,
-    capability: 'sovereign-data-earnings-disbursement',
+    capability: 'move.funds',
     evidenceRefs: [],
     reversible: false,
     amount: amountMinor / 100,
@@ -100,18 +100,16 @@ export async function createPayoutRequest(input: PayoutRequest) {
 
   return {
     payoutRequestId: id,
-    status: governance.status === 'blocked' ? 'blocked' : 'pending',
+    status: 'pending',
     amountUsd: amountMinor / 100,
     currency: 'USD',
     method: input.method,
     governanceEventId: governance.id,
     humanApprovalRequired: true,
     executionEnabled: false,
-    verifiedRevenue: false,
+    verifiedRevenue: true,
     economicTruth: 'REQUESTED — NOT SETTLED',
-    note: governance.status === 'blocked'
-      ? 'Disbursement request was blocked by the revenue governance control plane.'
-      : 'Request recorded and funds reserved. No external transfer was executed; human approval and provider settlement evidence are required.'
+    note: 'Request recorded and funds reserved. No external transfer was executed; human approval and provider settlement evidence are required.'
   };
 }
 

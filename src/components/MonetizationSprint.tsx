@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BadgeDollarSign, Bot, CheckCircle2, Clock3, Gift, Landmark, RefreshCw, ShieldCheck, WalletCards, Zap } from 'lucide-react';
+import { BadgeDollarSign, Bot, CheckCircle2, Clock3, Gift, Landmark, RefreshCw, ShieldCheck, WalletCards, Zap, Target } from 'lucide-react';
 
 type Channel = 'voucher' | 'crypto' | 'fiat' | 'gcash';
 interface MonetizationSprintProps { onOpenWithdraw: () => void; userReference?: string; }
@@ -77,6 +77,28 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="text-xs text-slate-500 uppercase">Verified revenue</div><div className="text-2xl font-mono font-bold text-emerald-400 mt-1">${verified.toFixed(2)}</div><div className="text-[11px] text-slate-500 mt-1">External evidence required.</div></div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="text-xs text-slate-500 uppercase">Estimated pipeline</div><div className="text-2xl font-mono font-bold text-amber-300 mt-1">${estimated.toFixed(2)}</div><div className="text-[11px] text-slate-500 mt-1">NOT VERIFIED; never payout balance.</div></div>
           <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"><div className="text-xs text-slate-500 uppercase">Payout-ready opportunities</div><div className="text-2xl font-bold text-white mt-1">{payoutReadyCount}</div><div className="text-[11px] text-slate-500 mt-1">{verified > 0 ? 'Verified funds detected' : 'No verified funds detected'}</div></div>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+        <div className="flex items-center gap-2 mb-2"><Target className="w-5 h-5 text-cyan-400" /><h3 className="font-bold text-white">Fractional & outcome monetization</h3></div>
+        <p className="text-xs text-slate-400 mb-4">Monetization Scientists can price verified work by measured token usage or by an externally verified outcome. Pricing is a proposal until the buyer/provider authorizes it.</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div className="text-sm font-semibold text-white">Fractional Pay-Per-Token</div>
+            <div className="text-[11px] text-slate-500 mt-1">Metered consumption • 1K-token unit</div>
+            <div className="mt-3 text-xs text-slate-300">Formula: verified token usage × authorized rate.</div>
+            <div className="mt-2 text-[10px] text-amber-300">Rate must be externally agreed; usage is not revenue until settled.</div>
+          </div>
+          <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div className="text-sm font-semibold text-white">Outcome-Based</div>
+            <div className="text-[11px] text-slate-500 mt-1">Pay for a defined, measurable result</div>
+            <div className="mt-3 text-xs text-slate-300">Formula: verified outcome × authorized commercial terms.</div>
+            <div className="mt-2 text-[10px] text-amber-300">Outcome acceptance and settlement evidence are mandatory.</div>
+          </div>
+        </div>
+        <div className="mt-3 rounded-lg border border-cyan-500/20 bg-cyan-500/5 p-3 text-[11px] text-slate-400">
+          <span className="text-cyan-300 font-semibold">Scientist mandate:</span> discover demand, model unit economics, propose pricing, verify evidence, and improve conversion — never manufacture a buyer, rate, outcome, contract, invoice, or payment.
         </div>
       </div>
 

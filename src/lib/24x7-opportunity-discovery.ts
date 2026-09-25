@@ -56,7 +56,9 @@ export async function initialize24x7OpportunityDiscovery() {
     'CREATE TABLE IF NOT EXISTS glorifier_discovery_runs (id TEXT PRIMARY KEY, actor TEXT NOT NULL, status TEXT NOT NULL, sources_scanned INTEGER NOT NULL DEFAULT 0, findings_observed INTEGER NOT NULL DEFAULT 0, opportunities_created INTEGER NOT NULL DEFAULT 0, details JSONB NOT NULL DEFAULT \'{}\'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())',
     'CREATE TABLE IF NOT EXISTS glorifier_discovery_findings (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, title TEXT NOT NULL, url TEXT NOT NULL, description TEXT NOT NULL, category TEXT NOT NULL, fingerprint TEXT NOT NULL UNIQUE, scientist_id TEXT NOT NULL, status TEXT NOT NULL DEFAULT \'observed\', evidence JSONB NOT NULL DEFAULT \'{}\'::jsonb, created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())',
     'CREATE INDEX IF NOT EXISTS glorifier_discovery_findings_status_idx ON glorifier_discovery_findings(status, created_at DESC)',
-    'CREATE INDEX IF NOT EXISTS glorifier_discovery_findings_scientist_idx ON glorifier_discovery_findings(scientist_id, created_at DESC)'
+    'CREATE INDEX IF NOT EXISTS glorifier_discovery_findings_scientist_idx ON glorifier_discovery_findings(scientist_id, created_at DESC)',
+    'CREATE TABLE IF NOT EXISTS glorifier_discovery_assignments (id TEXT PRIMARY KEY, finding_id TEXT NOT NULL, assignee_id TEXT NOT NULL, assignee_type TEXT NOT NULL, status TEXT NOT NULL DEFAULT \'queued\', created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), UNIQUE(finding_id, assignee_id))',
+    'CREATE INDEX IF NOT EXISTS glorifier_discovery_assignments_queue_idx ON glorifier_discovery_assignments(status, created_at DESC)'
   ].join(';'));
 }
 
@@ -79,6 +81,12 @@ export async function run24x7OpportunityDiscoveryCycle(actor = 'ai-ceo-autonomou
         const scientistId = scientistForCategory(finding.category);
         const insert = await db.query('INSERT INTO glorifier_discovery_findings (id,source_id,title,url,description,category,fingerprint,scientist_id,evidence) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb) ON CONFLICT(fingerprint) DO NOTHING RETURNING id', [ 'finding-' + crypto.randomUUID(), finding.sourceId, finding.title, finding.url, finding.description, finding.category, fingerprint, scientistId, JSON.stringify({ source: finding.sourceId, observedAt: finding.observedAt, evidenceStatus: 'observed' }) ]);
         if (!insert.rowCount) continue;
+        const modelAssignees = listAgentCards().map((agent: any) => ({ id: String(agent.id || agent.name || 'agent'), type: 'model-or-agent' }));
+        const scientistAssignees = MONETIZATION_SCIENTISTS.map((scientist) => ({ id: scientist.id, type: 'scientist' }));
+        const assignees = [...modelAssignees, ...scientistAssignees];
+        for (const assignee of assignees) {
+          await db.query('INSERT INTO glorifier_discovery_assignments(id,finding_id,assignee_id,assignee_type) VALUES($1,$2,$3,$4) ON CONFLICT(finding_id,assignee_id) DO NOTHING', ['assignment-' + crypto.randomUUID(), insert.rows[0].id, assignee.id, assignee.type]);
+        }
         const opportunity = await createMonetizationOpportunity({ title: finding.title, scientistId, evidenceRefs: [finding.url, 'discovery:' + insert.rows[0].id] });
         opportunitiesCreated++;
         await db.query('UPDATE glorifier_discovery_findings SET status=$2,updated_at=NOW() WHERE id=$1', [insert.rows[0].id, 'qualified-for-review']);
@@ -95,5 +103,6 @@ export async function get24x7OpportunityDiscoveryStatus() {
   const db = getPostgresPool();
   const runs = await db.query('SELECT * FROM glorifier_discovery_runs ORDER BY created_at DESC LIMIT 20');
   const findings = await db.query('SELECT status, scientist_id, COUNT(*)::int AS count FROM glorifier_discovery_findings GROUP BY status, scientist_id ORDER BY count DESC');
-  return { policy: get24x7OpportunityDiscoveryPolicy(), recentRuns: runs.rows, queueByScientist: findings.rows };
+  const assignments = await db.query('SELECT assignee_type, status, COUNT(*)::int AS count FROM glorifier_discovery_assignments GROUP BY assignee_type, status ORDER BY assignee_type, status');
+  return { policy: get24x7OpportunityDiscoveryPolicy(), recentRuns: runs.rows, queueByScientist: findings.rows, assignmentQueue: assignments.rows, modelAndScientistDelegation: 'ALL_REGISTERED_MODELS_AND_ALL_MONETIZATION_SCIENTISTS' };
 }

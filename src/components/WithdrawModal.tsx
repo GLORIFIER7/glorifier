@@ -86,20 +86,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [gcashAccount, setGcashAccount] = useState('');
   const [binanceAccount, setBinanceAccount] = useState('');
 
-  // Connected Wallets State
-  const [connectedWallets, setConnectedWallets] = useState<VerifiedWallet[]>(() => {
-    try {
-      const saved = localStorage.getItem('sovereign_connected_wallets');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch {
-      // ignore
-    }
-    // Never seed the UI with example or unverified financial destinations.
-    return DEFAULT_VERIFIED_WALLETS;
-  });
+  // Payout destinations are session state only until a provider-backed
+  // wallet registry and ownership attestation are available.
+  const [connectedWallets, setConnectedWallets] = useState<VerifiedWallet[]>(DEFAULT_VERIFIED_WALLETS);
 
   const [walletFilter, setWalletFilter] = useState<'ALL' | CryptoChain>('ALL');
   const [showAddWalletForm, setShowAddWalletForm] = useState(false);

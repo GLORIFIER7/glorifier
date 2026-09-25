@@ -75,9 +75,9 @@ export const IntegrationControl: React.FC = () => {
   useEffect(() => { void load(); }, []);
 
   return (
-    <section className="space-y-10">
+    <section className="space-y-6">
       <MediatorDashboard />
-      <div className="border-t border-slate-800 pt-8" />
+      <div className="border-t border-slate-900 pt-6" />
       <IntelligenceHub />
       <div className="border-t border-slate-800 pt-8" />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

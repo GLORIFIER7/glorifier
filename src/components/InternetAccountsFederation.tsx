@@ -119,6 +119,7 @@ export const InternetAccountsFederation: React.FC<InternetAccountsFederationProp
     <div className="space-y-6">
       {/* Top Banner: Global Internet Accounts Federation */}
       <div className="bg-gradient-to-r from-slate-900 via-slate-900/90 to-indigo-950/40 border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl relative overflow-hidden">
+        {actionState && <div className="text-xs text-slate-400 mb-3" role="status">{actionState}</div>}
         <div className="absolute top-0 right-0 w-80 h-80 bg-indigo-500/5 rounded-full blur-3xl pointer-events-none" />
         
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
@@ -434,7 +435,19 @@ export const InternetAccountsFederation: React.FC<InternetAccountsFederationProp
               {/* Statutory Action Trigger */}
               <div className="pt-2">
                 <button
-                  onClick={() => alert(`Statutory CCPA/GDPR erasure command dispatched to ${selectedAccount.provider} compliance office.`)}
+                  onClick={async () => {
+  try {
+    const response = await fetch('/api/compliance/erasure', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ connectionId: selectedAccount.id, provider: selectedAccount.provider, requestedAt: new Date().toISOString() })
+    });
+    if (!response.ok) throw new Error('Erasure request was not accepted by the compliance backend');
+    setActionState(`Erasure request recorded for ${selectedAccount.provider}`);
+  } catch (error) {
+    setActionState(error instanceof Error ? error.message : 'Erasure request failed');
+  }
+}}
                   className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/30 flex items-center justify-center gap-2 transition-colors"
                 >
                   <ShieldAlert className="w-4 h-4 text-rose-400" />

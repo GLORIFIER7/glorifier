@@ -420,24 +420,22 @@ async function runModelExecution({
       }
     }
 
-    if (!gptPart) {
-      gptPart = `Commercial Valuation Analysis: Current telemetry holds an estimated market value of $215–$340/mo. We recommend establishing a strict $40/mo floor and asserting a 25% premium for synthetic AI training datasets.`;
+    const llamaPart = 'No Meta/Llama provider response was verified for this run.';
+    const availableParts = [
+      gptPart ? `🟢 **OpenAI GPT-4o (Valuation & Strategy):**\n${gptPart}` : '🟢 **OpenAI GPT-4o:** no verified response (provider unavailable or quota-limited).',
+      geminiPart ? `🔵 **Google Gemini (Differential Privacy & Telemetry):**\n${geminiPart}` : '🔵 **Google Gemini:** no verified response (provider unavailable or quota-limited).',
+      llamaPart
+    ];
+    if (!gptPart && !geminiPart) {
+      return {
+        text: '',
+        modelUsed: 'all-models',
+        provider: 'All-AI Sovereign Collaboration Council',
+      };
     }
-    if (!geminiPart) {
-      geminiPart = `Differential Privacy & Mathematical Bounds: Under Laplacian noise (ε=0.35), reconstruction probability is statistically constrained below 0.01%. Recommend masking granular GPS coordinates to 3-decimal-point centroids.`;
-    }
-
-    const llamaPart = `Decentralized Sovereignty & Open-Weights Audit: Unconsented data broker syndicates (Acxiom, Meta Graph, Experian) must be formally notified under statutory rights. Consent tokens should be cryptographically bound to prevent downstream resale.`;
-
-    const consensusPart = `UNIFIED COUNCIL VERDICT (100% Agreement): All models unanimously approve licensing de-identified developer & browsing cohorts for frontier AI pre-training with an updated floor of $40/mo, while indefinitely quarantining commercial ad retargeters.`;
-
     return {
-      text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n` +
-            `🟢 **OpenAI GPT-4o (Valuation & Strategy)**:\n${gptPart}\n\n` +
-            `🔵 **Google Gemini 3.8 Flash (Differential Privacy & Telemetry)**:\n${geminiPart}\n\n` +
-            `🟣 **Meta LLaMA 3.3 (Decentralized Sovereignty & Anti-Silo)**:\n${llamaPart}\n\n` +
-            `⚖️ **COUNCIL CONSENSUS DIRECTIVE**:\n${consensusPart}`,
-      modelUsed: 'all-models (gpt-4o + gemini-3.8-flash + llama-3.3)',
+      text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n${availableParts.join('\n\n')}\n\n⚖️ **Consensus:** No consensus is asserted unless multiple live provider responses are actually available.`,
+      modelUsed: 'all-models (live responses only)',
       provider: 'All-AI Sovereign Collaboration Council'
     };
   }
@@ -496,12 +494,27 @@ async function runModelExecution({
     }
   }
 
-  // 5. Local High-Fidelity Sovereign GPT-grade Fallback Engine
-  const isGpt = chosenModel.startsWith('gpt');
+  // 5. Authenticated independent compute fallback. This is real execution only:
+  // no fabricated model response is returned when every provider is unavailable.
+  const compute = await executeComputeTask({
+    id: `model-execution-${randomUUID()}`,
+    objective: `${systemPrompt}\n\nUser request:\n${userPrompt}`,
+    taskType: chosenModel.startsWith('gpt') || chosenModel.startsWith('gemini') ? 'inference' : 'code',
+    preferredModel: chosenModel.startsWith('gpt') || chosenModel.startsWith('gemini') ? undefined : chosenModel,
+    priority: 1,
+  });
+  if (compute.status === 'completed' && compute.text) {
+    return {
+      text: compute.text,
+      modelUsed: compute.model || chosenModel,
+      provider: compute.resourceId === 'ollama-gpu' ? 'Authenticated Ollama' : 'Independent Compute'
+    };
+  }
+
   return {
     text: '',
     modelUsed: chosenModel,
-    provider: isGpt ? 'OpenAI GPT-4o Enclave' : 'Sovereign Core'
+    provider: 'No verified provider response'
   };
 }
 
@@ -1322,26 +1335,28 @@ ${conversationHistory.length > 0 ? `\nPrior Session Notes:\n${JSON.stringify(con
       })
     ]);
 
-    const gptText = gptRes.status === 'fulfilled' && gptRes.value.text
-      ? gptRes.value.text
-      : `### OpenAI GPT-4o Proposal & Implementation\n\nI have analyzed your task: "${userGoal}".\n\n\`\`\`typescript\n// Collaborative Implementation by GPT-4o\nexport function sovereignConsensusCircuitBreaker() {\n  return {\n    status: 'OPTIMAL',\n    failoverReady: true,\n    epsilonBudget: 0.30,\n    monetizationFloor: 40.00\n  };\n}\n\`\`\`\n\n**Key Directives:**\n1. Enforce atomic circuit breaking across remote endpoints.\n2. Bind cryptographic tokens to prevent unconsented downstream reuse.`;
+    const gptText = gptRes.status === 'fulfilled' && gptRes.value.text ? gptRes.value.text : '';
+    const geminiText = geminiRes.status === 'fulfilled' && geminiRes.value.text ? geminiRes.value.text : '';
 
-    const geminiText = geminiRes.status === 'fulfilled' && geminiRes.value.text
-      ? geminiRes.value.text
-      : `### Google Gemini 3.8 Flash Peer Review & Verification\n\n**Cross-Verification Notes:**\n- Differential privacy boundary verified: ε = 0.30 with Laplace noise perturbation scale b = Δf / ε.\n- Concur with GPT-4o's implementation. All edge cases verified against rate limits and 503 transient conditions.\n- Re-identification risk P(re-id) ≤ 0.0004 confirms HIPAA Expert Determination and GDPR Art. 25 compliance.`;
+    if (!gptText && !geminiText) {
+      return res.status(503).json({
+        error: 'No verified AI provider response is currently available.',
+        providerStatus: 'OpenAI and/or Gemini may be unavailable or quota-limited; no synthetic response was generated.'
+      });
+    }
 
-    const jointArtifact = `### Joint Co-Authored Artifact (OpenAI GPT-4o & Google Gemini 3.8 Flash)
-**Task:** ${userGoal}  
-**Domain:** ${chosenDomain}  
-**Consensus Attestation:** Verified 100% Agreement
+    const jointArtifact = `### Joint Co-Authored Artifact
+**Task:** ${userGoal}
+**Domain:** ${chosenDomain}
+**Provider evidence:** Only live provider responses returned by this request are included. No agreement or verification is asserted unless both providers actually responded.
 
-#### 1. Core Architecture & GPT-4o Solution
-${gptText}
+#### OpenAI GPT response
+${gptText || 'No verified OpenAI response was available.'}
 
 ---
 
-#### 2. Gemini Cryptographic & Privacy Cross-Audit
-${geminiText}`;
+#### Gemini response
+${geminiText || 'No verified Gemini response was available.'}`;
 
     res.json({
       success: true,

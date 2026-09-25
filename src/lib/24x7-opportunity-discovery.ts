@@ -20,7 +20,7 @@ function configuredSources(): DiscoverySource[] {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_SOURCES;
-    return parsed.map((x: any, i: number) => ({ id: String(x.id || 'custom-' + i), name: String(x.name || x.id || 'Custom Source ' + (i + 1)), url: String(x.url || ''), category: String(x.category || 'other'), enabled: x.enabled !== false })).filter((x: DiscoverySource) => x.url);
+    return parsed.map((x: any, i: number) => ({ id: String(x.id || 'custom-' + i), name: String(x.name || x.id || 'Custom Source ' + (i + 1)), url: String(x.url || ''), category: String(x.category || 'other'), enabled: x.enabled !== false })).filter((x: DiscoverySource) => /^https?:\\/\\//i.test(x.url));
   } catch { return DEFAULT_SOURCES; }
 }
 
@@ -46,7 +46,7 @@ async function fetchSource(source: DiscoverySource): Promise<DiscoveryFinding[]>
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 15000);
   try {
-    const response = await fetch(source.url, { headers: { accept: 'application/json', 'user-agent': 'GLORIFIER-24x7-Discovery/1.0' }, signal: controller.signal });
+    const response = await fetch(source.url, { headers: { accept: 'application/json', 'user-agent': 'GLORIFIER-24x7-Discovery/1.0', 'x-glorifier-discovery': 'opportunity-evidence' }, signal: controller.signal });
     if (!response.ok) throw new Error('HTTP ' + response.status);
     return extractFindings(source, await response.json());
   } finally { clearTimeout(timer); }

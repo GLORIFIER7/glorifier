@@ -70,6 +70,14 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },
     { id: 'revenue_verified', label: 'Verified Revenue', icon: Wallet },
     { id: 'connections', label: 'Connections', icon: Lock },
+    { id: 'scientists', label: 'Scientists', icon: Atom },
+    { id: 'control', label: 'Data Control', icon: ShieldCheck },
+    { id: 'gmail', label: 'Gmail', icon: Mail },
+    { id: 'drive', label: 'Drive', icon: HardDrive },
+    { id: 'privacy_lab', label: 'Privacy Lab', icon: Lock },
+    { id: 'footprints', label: 'Data Footprints', icon: Database },
+    { id: 'broker', label: 'AI Broker', icon: Scale },
+    { id: 'gpt_cowork', label: 'GPT Co-Work', icon: BrainCircuit },
   ];
 
   return (

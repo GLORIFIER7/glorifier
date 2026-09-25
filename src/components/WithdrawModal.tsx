@@ -135,15 +135,6 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     isCrypto: boolean;
   } | null>(null);
 
-  // Sync to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem('sovereign_connected_wallets', JSON.stringify(connectedWallets));
-    } catch {
-      // ignore
-    }
-  }, [connectedWallets]);
-
   // Address validation per chain
   const validateAddress = (addr: string, chain: CryptoChain): boolean => {
     const trimmed = addr.trim();
@@ -247,8 +238,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
     // Adding an address is not cryptographic ownership verification.
     // Keep it unverified until a real provider/wallet attestation is implemented.
-    setTimeout(() => {
-      const created: VerifiedWallet = {
+    const created: VerifiedWallet = {
         id: `w-${newWalletChain.toLowerCase()}-${Date.now()}`,
         chain: newWalletChain,
         name: newWalletName.trim(),
@@ -272,7 +262,6 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     e.stopPropagation();
     navigator.clipboard.writeText(addr);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1800);
   };
 
   const handleWithdraw = async () => {
@@ -348,7 +337,6 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     if (!settledReceipt) return;
     navigator.clipboard.writeText(settledReceipt.txHash);
     setCopiedTx(true);
-    setTimeout(() => setCopiedTx(false), 2000);
   };
 
   const filteredWallets = connectedWallets.filter(w => {

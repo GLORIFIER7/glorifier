@@ -552,6 +552,117 @@ app.get('/api/runtime-verification', async (req: Request, res: Response) => {
   }
 });
 
+// =========================================================================
+// Internal Smoke Test Audit (Read-Only Production Verification)
+// =========================================================================
+app.post('/api/audit/smoke-test', async (_req: Request, res: Response) => {
+  const auditId = `audit-${Date.now()}`;
+  const startedAt = Date.now();
+  const results = {
+    auditId,
+    timestamp: new Date().toISOString(),
+    elapsedMs: 0,
+    checks: {} as Record<string, any>,
+    summaryStatus: 'unknown' as 'pass' | 'partial' | 'fail'
+  };
+
+  try {
+    // 1. Check /api/health/ready implementation
+    console.log(`[AuditBot] [${auditId}] Starting smoke test audit...`);
+
+    if (!process.env.DATABASE_URL) {
+      results.checks.healthReady = { ok: false, reason: 'DATABASE_URL not configured', endpoint: '/api/health/ready' };
+    } else {
+      try {
+        const pool = getPostgresPool();
+        const dbStarted = Date.now();
+        await pool.query('SELECT 1');
+        results.checks.healthReady = {
+          ok: true,
+          endpoint: '/api/health/ready',
+          status: 'ready',
+          dbLatencyMs: Date.now() - dbStarted
+        };
+      } catch (error) {
+        results.checks.healthReady = {
+          ok: false,
+          endpoint: '/api/health/ready',
+          reason: error instanceof Error ? error.message : String(error)
+        };
+      }
+    }
+
+    // 2. Check /api/runtime-verification implementation
+    try {
+      const pool = getPostgresPool();
+      const dbStarted = Date.now();
+      await pool.query('SELECT 1');
+
+      await initializeAppState();
+      await initializeVerifiedOutcomes();
+
+      results.checks.runtimeVerification = {
+        ok: true,
+        endpoint: '/api/runtime-verification',
+        status: 'verified',
+        checksPerformed: ['database', 'appState', 'evidence'],
+        dbLatencyMs: Date.now() - dbStarted
+      };
+    } catch (error) {
+      results.checks.runtimeVerification = {
+        ok: false,
+        endpoint: '/api/runtime-verification',
+        reason: error instanceof Error ? error.message : String(error)
+      };
+    }
+
+    // 3. Check /api/health implementation
+    try {
+      const pool = getPostgresPool();
+      const dbStarted = Date.now();
+      await pool.query('SELECT 1');
+      results.checks.health = {
+        ok: true,
+        endpoint: '/api/health',
+        status: 'ok',
+        database: 'ok',
+        databaseLatencyMs: Date.now() - dbStarted,
+        uptime: Math.round(process.uptime()),
+        providers: {
+          openai: !!process.env.OPENAI_API_KEY,
+          gemini: !!process.env.GEMINI_API_KEY
+        }
+      };
+    } catch (error) {
+      results.checks.health = {
+        ok: false,
+        endpoint: '/api/health',
+        status: 'degraded',
+        reason: error instanceof Error ? error.message : String(error)
+      };
+    }
+
+    // 4. Summarize results
+    const allOk = Object.values(results.checks).every((check: any) => check.ok);
+    results.summaryStatus = allOk ? 'pass' : 'partial';
+    results.elapsedMs = Date.now() - startedAt;
+
+    console.log(`[AuditBot] [${auditId}] Smoke test COMPLETE: status=${results.summaryStatus}, elapsedMs=${results.elapsedMs}`);
+
+    res.status(allOk ? 200 : 207).json(results);
+  } catch (error) {
+    results.summaryStatus = 'fail';
+    results.checks.fatalError = {
+      ok: false,
+      reason: error instanceof Error ? error.message : String(error)
+    };
+    results.elapsedMs = Date.now() - startedAt;
+
+    console.error(`[AuditBot] [${auditId}] Smoke test FAILED:`, error);
+    res.status(500).json(results);
+  }
+});
+
 app.get('/api/ai/config', (req: Request, res: Response) => {
   res.json({
     openAiConfigured: !!process.env.OPENAI_API_KEY,

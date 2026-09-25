@@ -58,6 +58,8 @@ import { initializeCryptographicTrustGateway, requestCryptographicOperation, lis
 import { initializeUniversalAssetIntelligence, getUniversalAssetIntelligenceSnapshot, getUniversalAssetIntelligencePolicy, planUniversalAssetActions, requestUniversalAssetCryptoOperation } from './src/lib/universal-asset-intelligence';
 import { initialize24x7OpportunityDiscovery, run24x7OpportunityDiscoveryCycle, get24x7OpportunityDiscoveryStatus, get24x7OpportunityDiscoveryPolicy } from './src/lib/24x7-opportunity-discovery';
 import { discoverGithubBounties, listGithubBountyOpportunities, advanceGithubBountyStage, recordVerifiedBountyPayout, getGithubBountyPipelinePolicy } from './src/lib/github-bounty-pipeline';
+import { runGlobalCollaborationCycle, getGlobalCollaborationPolicy } from './src/lib/global-collaboration-orchestrator';
+import { getGlobalResolutionStatus, listGlobalResolutionCases } from './src/lib/global-resolution-engine';
 
 dotenv.config();
 
@@ -3539,6 +3541,56 @@ app.post('/api/opportunities/github-bounties/:id/stage', async (req: Request, re
   try { res.status(200).json({ ok:true, result:await advanceGithubBountyStage({ id:req.params.id, stage:String(req.body?.stage) as any, actor:String(req.body?.actor||'human-owner'), evidenceRefs:Array.isArray(req.body?.evidenceRefs)?req.body.evidenceRefs.map(String):[] }) }); }
   catch (error:any) { res.status(400).json({ ok:false, error:'Bounty stage transition rejected', details:error?.message }); }
 });
+// ============================================================================
+// GLOBAL COLLABORATION CONTROL PLANE
+// Operational API for the application dashboard. Read endpoints expose state;
+// the run endpoint triggers the governed discovery/resolution cycle.
+// ============================================================================
+app.get('/api/global-collaboration/status', async (_req: Request, res: Response) => {
+  try {
+    const [globalStatus, resolutionStatus] = await Promise.all([
+      getGlobalCollaborationStatus(),
+      getGlobalResolutionStatus()
+    ]);
+    res.json({ ok: true, version: 'GCR-1.0', status: globalStatus, resolution: resolutionStatus });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Global collaboration status unavailable', details: error?.message });
+  }
+});
+
+app.get('/api/global-collaboration/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getGlobalCollaborationPolicy() });
+});
+
+app.post('/api/global-collaboration/run', async (req: Request, res: Response) => {
+  try {
+    const actor = String(req.body?.actor || 'human-owner-command-center');
+    const limit = Math.min(500, Math.max(1, Number(req.body?.limit || 200)));
+    const result = await runGlobalCollaborationCycle(actor, limit);
+    res.status(202).json({ ok: true, ...result });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Global collaboration cycle failed', details: error?.message });
+  }
+});
+
+app.get('/api/global-resolution/status', async (_req: Request, res: Response) => {
+  try {
+    res.json({ ok: true, ...(await getGlobalResolutionStatus()) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Global resolution status unavailable', details: error?.message });
+  }
+});
+
+app.get('/api/global-resolution/cases', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit || 100)));
+    const stage = req.query.stage ? String(req.query.stage) as any : undefined;
+    res.json({ ok: true, cases: await listGlobalResolutionCases(stage, limit) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Global resolution cases unavailable', details: error?.message });
+  }
+});
+
 app.post('/api/opportunities/github-bounties/:id/settle', async (req: Request, res: Response) => {
   try {
     const result=await recordVerifiedBountyPayout({ id:req.params.id, userReference:String(req.body?.userReference||'').trim(), amount:Number(req.body?.amount), currency:String(req.body?.currency||'USD'), paymentReference:String(req.body?.paymentReference||''), evidenceUrl:String(req.body?.evidenceUrl||''), actor:String(req.body?.actor||'human-owner') });

@@ -3112,39 +3112,50 @@ app.post('/api/marketplace/offers', async (req: Request, res: Response) => {
 // GLORIFIER SOVEREIGN EARNINGS PAYOUTS
 // Requests are governed and recorded; external fund movement is disabled by default.
 // ============================================================================
+// Payout identity is server-controlled. Do not accept userReference from query/body/headers,
+// otherwise one client could read or reserve another user's verified earnings.
+function getPayoutOwnerReference(): string {
+  return String(process.env.PAYOUT_OWNER_USER_REFERENCE || 'anonymous').trim().slice(0, 200);
+}
+
 app.post('/api/payouts/request', async (req: Request, res: Response) => {
   try {
-    const userReference = String(req.body?.userReference || req.headers['x-user-reference'] || 'anonymous');
+    const userReference = getPayoutOwnerReference();
     const amount = Number(req.body?.amount);
-    const method = String(req.body?.method || '').trim();
+    const method = String(req.body?.method || '').trim().toLowerCase();
     const destination = String(req.body?.destination || '').trim();
+    const allowedMethods = new Set(['gcash', 'binance', 'maya', 'stripe', 'paypal', 'voucher', 'crypto', 'fiat']);
+    if (!allowedMethods.has(method)) {
+      return res.status(400).json({ ok: false, error: 'Unsupported payout method.' });
+    }
+    if (!destination) {
+      return res.status(400).json({ ok: false, error: 'Payout destination is required.' });
+    }
     const result = await createPayoutRequest({
       userReference,
       amountUsd: amount,
       method,
       destination,
-      actor: String(req.body?.actor || 'human-owner')
+      actor: 'human-owner'
     });
-    res.status(result.status === 'blocked' ? 409 : 202).json({ ok: true, ...result });
+    res.status(202).json({ ok: true, ...result });
   } catch (error: any) {
     res.status(400).json({ ok: false, error: error?.message || 'Payout request failed' });
   }
 });
 
-app.get('/api/payouts/available', async (req: Request, res: Response) => {
+app.get('/api/payouts/available', async (_req: Request, res: Response) => {
   try {
-    const userReference = String(req.query.userReference || req.headers['x-user-reference'] || 'anonymous');
-    const balance = await getAvailablePayoutBalance(userReference);
+    const balance = await getAvailablePayoutBalance(getPayoutOwnerReference());
     res.json({ ok: true, balance });
   } catch (error: any) {
     res.status(503).json({ ok: false, error: error?.message || 'Verified payout balance unavailable' });
   }
 });
 
-app.get('/api/payouts', async (req: Request, res: Response) => {
+app.get('/api/payouts', async (_req: Request, res: Response) => {
   try {
-    const userReference = String(req.query.userReference || req.headers['x-user-reference'] || 'anonymous');
-    res.json({ ok: true, payouts: await listPayoutRequests(userReference) });
+    res.json({ ok: true, payouts: await listPayoutRequests(getPayoutOwnerReference()) });
   } catch (error: any) {
     res.status(503).json({ ok: false, error: error?.message || 'Payout history unavailable' });
   }

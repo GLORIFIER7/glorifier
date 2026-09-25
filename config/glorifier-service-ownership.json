@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "defaultOwner": "platform-engineering",
+  "services": [
+    {"id":"ai-ceo","owner":"architecture-governance","risk":"high","approval":"human"},
+    {"id":"orchestrator","owner":"platform-engineering","risk":"high","approval":"policy"},
+    {"id":"provider-registry","owner":"ai-infrastructure","risk":"medium","approval":"credential-change"},
+    {"id":"agent-runtime","owner":"ai-infrastructure","risk":"high","approval":"privileged-action"},
+    {"id":"capability-authorization","owner":"security","risk":"critical","approval":"human"},
+    {"id":"connection-registry","owner":"security-integrations","risk":"critical","approval":"human"},
+    {"id":"evidence-engine","owner":"data-compliance","risk":"high","approval":"policy"},
+    {"id":"development-ci","owner":"engineering","risk":"high","approval":"production"},
+    {"id":"deployment-control","owner":"platform-engineering","risk":"critical","approval":"human"},
+    {"id":"economic-ledger","owner":"finance-data","risk":"critical","approval":"human"},
+    {"id":"opportunity-engine","owner":"business-intelligence","risk":"high","approval":"binding-action"},
+    {"id":"payout-control","owner":"finance","risk":"critical","approval":"human"}
+  ]
+}

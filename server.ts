@@ -47,6 +47,26 @@ function apiError(res: Response, status: number, error: string, details?: unknow
 }
 
 // Public integration/control registry. Secrets are never returned to clients.
+type DataTruthStatus = 'verified' | 'not-verified';
+type ConfigurationStatus = 'configured' | 'needs-configuration' | 'available' | 'optional';
+
+function classifyIntegration(item: { status: string; detail: string; id: string }) {
+  const configured: ConfigurationStatus =
+    ['connected', 'configured', 'public-monitoring'].includes(item.status) ? 'configured' :
+    item.status === 'optional' ? 'optional' :
+    item.status === 'available' || item.status === 'ready' ? 'available' :
+    'needs-configuration';
+  // Configuration/connection alone never proves economic or factual truth.
+  // Verification is only granted when an explicit evidence-backed verification record exists.
+  const verified = false as DataTruthStatus extends never ? never : boolean;
+  return {
+    configurationStatus: configured,
+    verificationStatus: verified ? 'verified' as DataTruthStatus : 'not-verified' as DataTruthStatus,
+    verificationEvidence: null,
+    truthRule: 'Only qualifying external evidence may change verificationStatus to verified.'
+  };
+}
+
 const integrationStatus = [
   { id: 'github', name: 'GitHub', category: 'code', status: 'connected', detail: 'Repository control and CI source', publicUrl: 'https://github.com/GLORIFIER7/glorifier-artificial-intelligence' },
   { id: 'npm', name: 'npm', category: 'package', status: 'connected', detail: 'Dependency and package monitoring', publicUrl: 'https://www.npmjs.com/~glorifier' },
@@ -193,6 +213,28 @@ app.post('/api/brand-monitor/scan', async (req: Request, res: Response) => {
   }
 });
 
+app.get('/api/data-status', (_req: Request, res: Response) => {
+  const data = integrationStatus.map((item: any) => ({ ...item, ...classifyIntegration(item) }));
+  res.json({
+    ok: true,
+    generatedAt: new Date().toISOString(),
+    policy: {
+      verifiedMeansEvidenceBacked: true,
+      configuredDoesNotMeanVerified: true,
+      estimatedDoesNotMeanVerified: true,
+      humanFinalAuthority: true
+    },
+    summary: {
+      total: data.length,
+      verified: data.filter((x: any) => x.verificationStatus === 'verified').length,
+      notVerified: data.filter((x: any) => x.verificationStatus === 'not-verified').length,
+      configured: data.filter((x: any) => x.configurationStatus === 'configured').length,
+      needsConfiguration: data.filter((x: any) => x.configurationStatus === 'needs-configuration').length
+    },
+    data
+  });
+});
+
 app.get('/api/integrations', (_req: Request, res: Response) => {
   res.json({
     ok: true,
@@ -202,7 +244,7 @@ app.get('/api/integrations', (_req: Request, res: Response) => {
       privateCredentialsReturned: false,
       coreInfrastructureIndependentOfGoogleCloud: true
     },
-    integrations: integrationStatus
+    integrations: integrationStatus.map((item: any) => ({ ...item, ...classifyIntegration(item) }))
   });
 });
 

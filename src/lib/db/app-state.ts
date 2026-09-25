@@ -11,6 +11,41 @@ export type AppState = {
   stats: Record<string, number>;
 };
 
+export async function initializeAppState() {
+  const db = getPostgresPool();
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS app_policies (
+      user_reference TEXT PRIMARY KEY,
+      policy JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+    CREATE TABLE IF NOT EXISTS app_offers (
+      user_reference TEXT NOT NULL, offer_id TEXT NOT NULL, offer JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_reference, offer_id)
+    );
+    CREATE TABLE IF NOT EXISTS app_grants (
+      user_reference TEXT NOT NULL, grant_id TEXT NOT NULL, grant_data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_reference, grant_id)
+    );
+    CREATE TABLE IF NOT EXISTS app_telemetry (
+      user_reference TEXT NOT NULL, event_id TEXT NOT NULL, event_data JSONB NOT NULL,
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_reference, event_id)
+    );
+    CREATE TABLE IF NOT EXISTS app_transactions (
+      user_reference TEXT NOT NULL, transaction_id TEXT NOT NULL, transaction_data JSONB NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_reference, transaction_id)
+    );
+    CREATE TABLE IF NOT EXISTS app_footprints (
+      user_reference TEXT NOT NULL, footprint_id TEXT NOT NULL, footprint_data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_reference, footprint_id)
+    );
+    CREATE TABLE IF NOT EXISTS app_exposures (
+      user_reference TEXT NOT NULL, exposure_id TEXT NOT NULL, exposure_data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(), PRIMARY KEY (user_reference, exposure_id)
+    );
+  `);
+}
+
 const TABLES = {
   offers: 'app_offers',
   grants: 'app_grants',
@@ -73,6 +108,7 @@ export async function readAppState(userReference?: string): Promise<AppState> {
 export async function upsertState(userReference: string | undefined, payload: Partial<AppState>) {
   const u = user(userReference);
   const db = getPostgresPool();
+  await initializeAppState();
   if (payload.policy !== undefined) {
     await db.query('INSERT INTO app_policies(user_reference,policy) VALUES($1,$2) ON CONFLICT(user_reference) DO UPDATE SET policy=EXCLUDED.policy,updated_at=now()', [u, payload.policy]);
   }
@@ -86,7 +122,7 @@ export async function upsertState(userReference: string | undefined, payload: Pa
       if (key === 'offers') jobs.push(db.query('INSERT INTO app_offers(user_reference,offer_id,offer) VALUES($1,$2,$3) ON CONFLICT(user_reference,offer_id) DO UPDATE SET offer=EXCLUDED.offer,updated_at=now()', [u,id,item]));
       if (key === 'grants') jobs.push(db.query('INSERT INTO app_grants(user_reference,grant_id,grant_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,grant_id) DO UPDATE SET grant_data=EXCLUDED.grant_data,updated_at=now()', [u,id,item]));
       if (key === 'telemetryEvents') jobs.push(db.query('INSERT INTO app_telemetry(user_reference,event_id,event_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,event_id) DO UPDATE SET event_data=EXCLUDED.event_data,occurred_at=now()', [u,id,item]));
-      if (key === 'transactions') continue;
+      if (key === 'transactions') jobs.push(db.query('INSERT INTO app_transactions(user_reference,transaction_id,transaction_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,transaction_id) DO UPDATE SET transaction_data=EXCLUDED.transaction_data,created_at=now()', [u,id,item]));
       if (key === 'footprints') jobs.push(db.query('INSERT INTO app_footprints(user_reference,footprint_id,footprint_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,footprint_id) DO UPDATE SET footprint_data=EXCLUDED.footprint_data,updated_at=now()', [u,id,item]));
       if (key === 'exposures') jobs.push(db.query('INSERT INTO app_exposures(user_reference,exposure_id,exposure_data) VALUES($1,$2,$3) ON CONFLICT(user_reference,exposure_id) DO UPDATE SET exposure_data=EXCLUDED.exposure_data,updated_at=now()', [u,id,item]));
     }

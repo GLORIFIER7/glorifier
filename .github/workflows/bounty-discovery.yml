@@ -22,4 +22,4 @@ jobs:
       - name: Run governed opportunity discovery
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        run: npm run -s tsx -- scripts/run-opportunity-discovery.ts
+        run: npx tsx scripts/run-opportunity-discovery.ts

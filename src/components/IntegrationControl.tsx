@@ -67,7 +67,8 @@ const statusLabel: Record<string, string> = {
 };
 
 export const IntegrationControl: React.FC = () => {
-  const [registry, setRegistry] = useState<Registry | null>(null);\n  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
+  const [registry, setRegistry] = useState<Registry | null>(null);
+  const [dataStatus, setDataStatus] = useState<DataStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [collaboration, setCollaboration] = useState<CollaborationProvider[]>([]);
@@ -84,15 +85,23 @@ export const IntegrationControl: React.FC = () => {
     try {
       const response = await fetch('/api/integrations', { cache: 'no-store' });
       if (!response.ok) throw new Error('Integration registry unavailable');
-      setRegistry(await response.json());\n      const dataStatusResponse = await fetch('/api/data-status', { cache: 'no-store' });\n      if (dataStatusResponse.ok) setDataStatus(await dataStatusResponse.json());
+      setRegistry(await response.json());
+
+      const dataStatusResponse = await fetch('/api/data-status', { cache: 'no-store' });
+      if (dataStatusResponse.ok) setDataStatus(await dataStatusResponse.json());
+
       const collaborationResponse = await fetch('/api/collaboration/status', { cache: 'no-store' });
       if (collaborationResponse.ok) setCollaboration((await collaborationResponse.json()).providers || []);
+
       const agentResponse = await fetch('/api/agents/registry', { cache: 'no-store' });
       if (agentResponse.ok) setAgents((await agentResponse.json()).agents || []);
+
       const bountyResponse = await fetch('/api/bounties/programs', { cache: 'no-store' });
       if (bountyResponse.ok) setBountyPrograms((await bountyResponse.json()).programs || []);
+
       const findingResponse = await fetch('/api/bounties/findings', { cache: 'no-store' });
       if (findingResponse.ok) setBountyFindings((await findingResponse.json()).findings || []);
+
       const revenueResponse = await fetch('/api/bounties/revenue', { cache: 'no-store' });
       if (revenueResponse.ok) setBountyRevenue((await revenueResponse.json()).summary || []);
     } catch (err) {

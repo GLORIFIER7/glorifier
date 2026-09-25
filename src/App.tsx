@@ -26,6 +26,7 @@ import { MonetizationSprint } from './components/MonetizationSprint';
 import { OpportunityDiscoveryDashboard } from './components/OpportunityDiscoveryDashboard';
 import { RevenueVerifiedDashboard } from './components/RevenueVerifiedDashboard';
 import { ConnectionAuthorizationDashboard } from './components/ConnectionAuthorizationDashboard';
+import { MediatorDashboard } from './components/MediatorDashboard';
 import { 
   initialStats, 
   initialFootprints, 
@@ -558,6 +559,8 @@ export default function App() {
             transactions={transactions}
           />
         )}
+
+        {activeTab === 'mediator' && (<MediatorDashboard />)}
 
         {activeTab === 'discovery' && (<OpportunityDiscoveryDashboard />)}
 

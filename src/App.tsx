@@ -23,6 +23,9 @@ import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { IntegrationControl } from './components/IntegrationControl';
 import { AICeoControl } from './components/AICeoControl';
 import { MonetizationSprint } from './components/MonetizationSprint';
+import { OpportunityDiscoveryDashboard } from './components/OpportunityDiscoveryDashboard';
+import { RevenueVerifiedDashboard } from './components/RevenueVerifiedDashboard';
+import { ConnectionAuthorizationDashboard } from './components/ConnectionAuthorizationDashboard';
 import { 
   initialStats, 
   initialFootprints, 
@@ -555,6 +558,12 @@ export default function App() {
             transactions={transactions}
           />
         )}
+
+        {activeTab === 'discovery' && (<OpportunityDiscoveryDashboard />)}
+
+        {activeTab === 'revenue_verified' && (<RevenueVerifiedDashboard />)}
+
+        {activeTab === 'connections' && (<ConnectionAuthorizationDashboard />)}
 
         {activeTab === 'sentinel' && (
           <AiCodeSentinelManagement

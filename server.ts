@@ -18,6 +18,7 @@ import { initializeEconomicOperatingSystem } from './src/lib/economic-operating-
 import { initializeBusinessModel } from './src/lib/business-model';
 import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-discovery';
 import { initializeGlorifierMediator } from './src/lib/glorifier-mediator';
+import { getPostgresPool } from './src/lib/db/postgres';
 import { 
   getScientistFleet, 
   getInternetIssues, 

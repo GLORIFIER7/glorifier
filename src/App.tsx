@@ -394,45 +394,9 @@ export default function App() {
     });
   };
 
-  // Batch clear settlement
-  const handleTriggerSimulatedUsage = (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
-    const payoutMap = {
-      'Per-Query': 0.057,
-      'Data Shapley': 0.338,
-      'Cohort Subscription': 1.250,
-      'Proof Attestation': 12.000
-    };
-    const payout = payoutMap[model] || 0.100;
-
-    const newEvent: UsageTelemetryEvent = {
-      id: `telemetry-${Date.now()}`,
-      timestamp: 'Just now',
-      grantId: 'grant-01',
-      recipientOrg: model === 'Data Shapley' ? 'Anthropic AI Foundation Models Lab' : 'Stanford Quantitative Economics & Market Lab',
-      dataCategory: 'ecommerce',
-      eventType: model === 'Data Shapley' ? 'fl_gradient_update' : 'dp_query_laplace',
-      queryUnits: 1,
-      compensationUsd: payout,
-      calculationModel: model,
-      zkProofHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
-      epsilonConsumed: model === 'Per-Query' ? 0.02 : 0
-    };
-
-    setTelemetryEvents(prev => [newEvent, ...prev.slice(0, 15)]);
-    setStats(s => ({
-      ...s,
-      pendingSettlementUsd: s.pendingSettlementUsd + payout
-    }));
-
-    void persistAppState({ telemetryEvents: [newEvent] });
-    if (currentUser) recordTelemetryEvent(currentUser.uid, newEvent).catch(console.error);
-  };
-
-  // Batch clear settlement
+  // Batch settlement changes are controlled by the authoritative revenue ledger.
   const handleClearSettlement = () => {
-    void recordGovernedAction('settlement-clear-request', {
-      reason: 'Settlement state cannot be cleared locally; authoritative ledger controls settlement.'
-    });
+    void recordGovernedAction('settlement-clear-request', { reason: 'Authoritative ledger controls settlement state.' });
   };
 
   // Accounts handlers
@@ -582,103 +546,7 @@ export default function App() {
 
         {activeTab === 'scientists' && (
           <AiScientistFleetConsole
-            onAddEarnings={(amount, desc) => {
-              setStats(s => ({
-                ...s,
-                pendingSettlementUsd: s.pendingSettlementUsd + amount
-              }));
-              const newTx: CompensationTransaction = {
-                id: `tx-scientist-${Date.now()}`,
-                timestamp: 'Just now',
-                buyerName: '24/7 AI Scientist Fleet Yield Vault',
-                category: 'developer',
-                amountUsd: amount,
-                privacyTier: 'differential-privacy',
-                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
-                status: 'settled'
-              };
-              setTransactions(t => { const next = [newTx, ...t]; void persistAppState({ transactions: next }); return next; });
-            }}
-            onOpenWithdrawModal={() => setIsWithdrawOpen(true)}
-          />
-        )}
-
-        {activeTab === 'sentinel' && (
-          <AiCodeSentinelManagement
-            errors={sentinelErrors}
-            sentinelState={sentinelState}
-            onUpdateError={handleUpdateSentinelError}
-            onDeleteError={handleDeleteSentinelError}
-            onCreateError={handleCreateSentinelError}
-            onAutoFixError={handleAutoFixSentinelError}
-            onToggleMonitoring={(enabled) => { setSentinelState(s => ({ ...s, isMonitoringActive: enabled })); void persistAppState({ sentinelState: { ...sentinelState, isMonitoringActive: enabled } }); }}
-            onToggleAutoHeal={(enabled) => { setSentinelState(s => ({ ...s, autoHealEnabled: enabled })); void persistAppState({ sentinelState: { ...sentinelState, autoHealEnabled: enabled } }); }}
-            onOpenCoWorkingStudio={() => setActiveTab('gpt_cowork')}
-          />
-        )}
-
-        {activeTab === 'accounts' && (
-          <InternetAccountsFederation
-            accounts={accounts}
-            onUpdateAccount={handleUpdateAccount}
-            onAuthenticateAll={handleAuthenticateAllAccounts}
-            onBatchAction={handleBatchAccountAction}
-          />
-        )}
-
-        {activeTab === 'control' && (
-          <DataControlDashboard
-            grants={grants}
-            onRevokeGrant={handleRevokeGrant}
-            onUpdateGrantPermissions={handleUpdateGrantPermissions}
-          />
-        )}
-
-        {activeTab === 'gmail' && (
-          <GmailGovernanceTab
-            currentUser={currentUser}
-            onLogin={handleLogin}
-            onAddEarnings={(amount, desc) => {
-              setStats(s => ({
-                ...s,
-                pendingSettlementUsd: s.pendingSettlementUsd + amount
-              }));
-              const newTx: CompensationTransaction = {
-                id: `tx-gmail-${Date.now()}`,
-                timestamp: 'Just now',
-                buyerName: 'Verified Research Consortia',
-                category: 'email',
-                amountUsd: amount,
-                privacyTier: 'differential-privacy',
-                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
-                status: 'settled'
-              };
-              setTransactions(t => { const next = [newTx, ...t]; void persistAppState({ transactions: next }); return next; });
-            }}
-          />
-        )}
-
-        {activeTab === 'drive' && (
-          <DriveGovernanceTab
-            currentUser={currentUser}
-            onLogin={handleLogin}
-            onAddEarnings={(amount, desc) => {
-              setStats(s => ({
-                ...s,
-                pendingSettlementUsd: s.pendingSettlementUsd + amount
-              }));
-              const newTx: CompensationTransaction = {
-                id: `tx-drive-${Date.now()}`,
-                timestamp: 'Just now',
-                buyerName: 'Secure Cloud Analytics Group',
-                category: 'drive',
-                amountUsd: amount,
-                privacyTier: 'differential-privacy',
-                txHash: '0x' + Math.random().toString(16).substring(2, 6) + '...' + Math.random().toString(16).substring(2, 6),
-                status: 'settled'
-              };
-              setTransactions(t => { const next = [newTx, ...t]; void persistAppState({ transactions: next }); return next; });
-            }}
+            onAddEarnings={(amount, desc) => { void recordEstimatedOpportunity('drive-governance-yield-observation', amount, desc); }}
           />
         )}
 

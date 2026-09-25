@@ -51,7 +51,7 @@ import { initializeEnterpriseArchitectureScientist, getEnterpriseArchitectureSci
 import { initializeBusinessIntelligenceScientist, getBusinessIntelligenceScientistPolicy, recordBusinessIntelligenceObservation, recordBusinessIntelligenceSignal, registerBusinessIntelligenceWatch, getBusinessIntelligenceSnapshot, registerBusinessIntelligenceEntity, defineBusinessIntelligenceMetric, getGlobalBusinessIntelligenceArchitecture, runBusinessIntelligenceHealthCheck } from './src/lib/business-intelligence-scientist';
 import { initializeAwsIntelligence, getAwsIntelligencePolicy, recordAwsAccount, recordAwsResource, recordAwsFinding, recordAwsCostObservation, getAwsIntelligenceSnapshot } from './src/lib/aws-intelligence';
 import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
-import { initializePayoutRegistry, createPayoutRequest, listPayoutRequests } from './src/lib/payouts';
+import { initializePayoutRegistry, createPayoutRequest, listPayoutRequests, getAvailablePayoutBalance } from './src/lib/payouts';
 import { initializeRevenueLedger } from './src/lib/revenue/engine';
 
 dotenv.config();
@@ -3128,6 +3128,16 @@ app.post('/api/payouts/request', async (req: Request, res: Response) => {
     res.status(result.status === 'blocked' ? 409 : 202).json({ ok: true, ...result });
   } catch (error: any) {
     res.status(400).json({ ok: false, error: error?.message || 'Payout request failed' });
+  }
+});
+
+app.get('/api/payouts/available', async (req: Request, res: Response) => {
+  try {
+    const userReference = String(req.query.userReference || req.headers['x-user-reference'] || 'anonymous');
+    const balance = await getAvailablePayoutBalance(userReference);
+    res.json({ ok: true, balance });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: error?.message || 'Verified payout balance unavailable' });
   }
 });
 

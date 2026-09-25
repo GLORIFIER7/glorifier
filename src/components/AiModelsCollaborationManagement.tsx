@@ -203,56 +203,8 @@ export const AiModelsCollaborationManagement: React.FC<AiModelsCollaborationMana
       setStatusFeedback('Multi-model deliberation completed with cryptographically attested consensus.');
     } catch (err) {
       console.warn('Backend council call, assembling resilient enclave consensus:', err);
-      // Fallback consensus with configured nodes
-      const participants: ModelCollaborationParticipant[] = nodes.filter(n => n.enabled).map(node => {
-        let output = '';
-        let keyRec = '';
-        if (node.id === 'gpt-4o') {
-          output = `Commercial Licensing & Yield Strategy: Current data footprints justify a $${Math.max(40, policy.minimumMonthlyFloorUsd)}/mo compensation floor. Recommend asserting a 25% premium on frontier AI model training datasets.`;
-          keyRec = 'Upgrade minimum floor to $40.00/mo and mandate query-metering for commercial AI labs.';
-        } else if (node.id === 'gemini-3.8-flash') {
-          output = `Differential Privacy & Mathematical Integrity: Under Laplacian noise with ε = 0.30, total reconstruction mutual information is bounded below 0.008. All quasi-identifiers across search and browsing are stripped.`;
-          keyRec = 'Enforce ε = 0.30 Laplacian noise across all active telemetry feeds.';
-        } else if (node.id === 'llama-3.3') {
-          output = `Decentralized Sovereignty & Broker Quarantine: Unconsented data broker aggregators (Acxiom, Meta Graph, Experian) must be formally notified under CCPA § 1798.105 and GDPR Art. 17. Consent tokens must be immutable.`;
-          keyRec = 'Issue statutory clawback notices to top 4 shadow data brokers.';
-        } else {
-          output = `Sovereign Consensus Synthesis: Weighted multi-model voting reached 98% concordance. All security boundaries and yield optimization thresholds reconciled.`;
-          keyRec = 'Synthesize unanimous policy and auto-enact differential privacy calibration.';
-        }
-
-        return {
-          modelId: node.id,
-          name: node.name,
-          provider: node.provider,
-          role: node.role,
-          color: node.color,
-          badge: node.badge,
-          status: 'completed',
-          output,
-          perspective: node.specialization,
-          keyRecommendation: keyRec
-        };
-      });
-
-      const syntheticResult: CouncilConsensusResult = {
-        agenda: agendaToRun,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        participants,
-        unifiedConsensus: `All enabled models (${nodes.filter(n => n.enabled).map(n => n.name).join(', ')}) have successfully concluded multi-model deliberation on "${agendaToRun}". Consensus directives: (1) Calibrate differential privacy to ε = 0.30, (2) Lift passive floor to $40.00/mo, (3) Permit zero-PII AI pretraining with mathematical guarantees, and (4) Quarantine unconsented broker tracking.`,
-        consensusScore: 98,
-        recommendedEpsilon: 0.30,
-        recommendedFloorUsd: 40,
-        actionDirectives: [
-          'Calibrate Differential Privacy Epsilon to ε = 0.30',
-          'Upgrade Minimum Compensation Floor to $40.00 / month',
-          'Authorize Frontier AI Pre-Training Licensing with Zero-PII Guarantees',
-          'Dispatch Automated Statutory Erasure Notices to Unconsented Brokers'
-        ]
-      };
-
-      setCouncilResult(syntheticResult);
-      setStatusFeedback('Multi-model deliberation completed via resilient sovereign enclave.');
+      setCouncilResult(null);
+      setStatusFeedback('Council backend unavailable. No synthetic consensus was generated; connect an authorized AI provider and retry.');
     } finally {
       setIsRunningCouncil(false);
     }

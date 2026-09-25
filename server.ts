@@ -658,10 +658,10 @@ Provide your specialized perspective.`;
           role: 'Commercial Valuation & Strategic Negotiation',
           color: 'emerald',
           badge: 'OpenAI Frontier',
-          status: 'completed' as const,
-          output: gptText,
-          perspective: 'Maximizing data yield, contract terms, and counter-offers',
-          keyRecommendation: 'Elevate floor to $40/mo and demand 25% premium on AI pretraining datasets.'
+          status: gptText ? 'completed' as const : 'unavailable' as const,
+          output: gptText || 'No verified OpenAI response.',
+          perspective: 'Live OpenAI provider response only',
+          keyRecommendation: gptText ? 'See live provider output; no recommendation is independently asserted.' : 'Unavailable.'
         },
         {
           modelId: 'gemini-3.8-flash',
@@ -718,7 +718,8 @@ Provide your specialized perspective.`;
       consensusScore: null,
       recommendedEpsilon: null,
       recommendedFloorUsd: null,
-      actionDirectives: [];
+      actionDirectives: []
+    };
 
     res.json(councilResult);
   } catch (err: any) {

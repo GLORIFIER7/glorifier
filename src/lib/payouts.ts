@@ -82,6 +82,8 @@ export async function createPayoutRequest(input: PayoutRequest) {
     actor: input.actor || 'human-owner'
   });
 
+  if (governance.status === 'blocked') throw new Error('Payout request was blocked by governance; no funds were reserved.');
+
   const id = `payout-${crypto.randomUUID()}`;
   await db.query(
     `INSERT INTO payout_requests
@@ -93,7 +95,7 @@ export async function createPayoutRequest(input: PayoutRequest) {
       amountMinor,
       input.method,
       input.destination,
-      governance.status === 'blocked' ? 'failed' : 'pending',
+      'pending',
       governance.id
     ]
   );

@@ -3086,6 +3086,7 @@ app.post('/api/marketplace/transactions/:id/invoice', async (req: Request,res: R
 app.post('/api/marketplace/transactions/:id/payment-evidence', async (req: Request,res: Response)=>{
   try {
     const result=await recordMarketplacePaymentEvidence({transactionId:req.params.id,source:String(req.body?.source||''),externalRef:String(req.body?.externalRef||''),amount:req.body?.amount==null?null:Number(req.body.amount),currency:req.body?.currency||null,payloadHash:req.body?.payloadHash||null,details:req.body?.details||{},qualifiesForVerification:req.body?.qualifiesForVerification===true,actor:String(req.body?.actor||'human-owner')});
+    if (!result) throw new Error('Marketplace payment evidence was not recorded');
     res.status(201).json({ok:true,...result,economicTruth:result.transaction.status==='verified'?'VERIFIED':'EVIDENCE-BACKED'});
   } catch(error:any){res.status(400).json({ok:false,error:error?.message||'Marketplace payment evidence failed'});}
 });

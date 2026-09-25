@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Activity, CheckCircle2, CircleAlert, ExternalLink, Globe2, LockKeyhole, RefreshCw } from 'lucide-react';
 import { IntelligenceHub } from './IntelligenceHub';
+import { MediatorDashboard } from './MediatorDashboard';
 
 type CollaborationProvider = { id: string; name: string; category: string; capabilities: string[]; status: string; authorized: boolean; requiresHumanApproval: boolean; connectionId: string | null; scopes: string[]; };
 
@@ -75,6 +76,8 @@ export const IntegrationControl: React.FC = () => {
 
   return (
     <section className="space-y-10">
+      <MediatorDashboard />
+      <div className="border-t border-slate-800 pt-8" />
       <IntelligenceHub />
       <div className="border-t border-slate-800 pt-8" />
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

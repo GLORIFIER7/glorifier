@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
+import { MediatorDashboard } from './MediatorDashboard';
 
 interface HeaderProps {
   activeTab: string;
@@ -32,28 +33,25 @@ export const Header: React.FC<HeaderProps> = ({
   const primary = [
     { id: 'overview', label: 'Overview', icon: Layers },
     { id: 'ai_ceo', label: 'AI CEO', icon: BrainCircuit },
-    { id: 'global_collaboration', label: 'Mediator', icon: Network },
-    { id: 'integrations', label: 'Intelligence', icon: Globe2 },
+    { id: 'mediator', label: 'Mediator', icon: Network },
+    { id: 'integrations', label: 'Intelligence Hub', icon: Globe2 },
+    { id: 'global_collaboration', label: 'Global Collaboration', icon: Users },
   ];
 
   const more = [
-    { id: 'gpt_cowork', label: 'GPT Co-Work', icon: Sparkles },
-    { id: 'ai_collaboration', label: 'AI Models', icon: Users },
+    { id: 'discovery', label: '24/7 Discovery', icon: Search },
+    { id: 'ai_collaboration', label: 'AI Models / Providers', icon: Users },
     { id: 'sentinel', label: 'Code Sentinel', icon: Bot },
     { id: 'compute', label: 'Compute', icon: Cpu },
-    { id: 'accounts', label: 'Accounts', icon: Globe },
-    { id: 'control', label: 'Data Control', icon: SlidersHorizontal },
-    { id: 'footprints', label: 'Footprints', icon: Database },
-    { id: 'privacy_lab', label: 'Privacy Lab', icon: Lock },
-    { id: 'gmail', label: 'Gmail', icon: Mail },
-    { id: 'drive', label: 'Drive', icon: HardDrive },
-    { id: 'marketplace', label: 'Marketplace', icon: Scale, badge: pendingOffersCount || undefined },
+    { id: 'accounts', label: 'Accounts & Data Control', icon: Database },
+    { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount || undefined },
     { id: 'compensation', label: 'Compensation', icon: Coins },
     { id: 'monetization_sprint', label: 'Monetization', icon: BadgeDollarSign },
     { id: 'compliance', label: 'Compliance', icon: ShieldAlert },
-    { id: 'broker', label: 'AI Broker', icon: Sparkles },
-    { id: 'patent', label: 'Patent & IP', icon: Scale },
+    { id: 'patent', label: 'Patent/IP', icon: FileText },
     { id: 'exposures', label: 'Clawback Audit', icon: FileText },
+    { id: 'revenue_verified', label: 'Revenue / Verified Earnings', icon: Wallet },
+    { id: 'connections', label: 'Connection & Authorization', icon: Lock },
   ];
 
   const activeMore = more.some(item => item.id === activeTab);

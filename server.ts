@@ -13,7 +13,7 @@ import { initializeConnectionRegistry, registerConnection, listConnections, getC
 import { ensureGlobalProviderConnections, getGlobalCollaborationStatus, recordGlobalCollaboration } from './src/lib/global-collaboration';
 import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/lib/global-sync';
 import { listRegisteredAgents, synchronizeRegisteredAgents } from './src/lib/agent-registry';
-import { initializeRevenueLedger } from './src/lib/revenue/engine';
+import { initializeRevenueLedger, getRevenueSummary, listRevenueEvents } from './src/lib/revenue/engine';
 import { initializeEconomicOperatingSystem } from './src/lib/economic-operating-system';
 import { initializeBusinessModel } from './src/lib/business-model';
 import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-discovery';
@@ -211,6 +211,15 @@ app.post('/api/brand-monitor/scan', async (req: Request, res: Response) => {
   } catch (error: any) {
     res.status(500).json({ error: 'Brand monitor scan failed', details: error?.message });
   }
+});
+
+app.get('/api/economic-os/verified-revenue', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+    const [revenue, summary] = await Promise.all([listRevenueEvents(limit), getRevenueSummary()]);
+    res.json({ ok: true, generatedAt: new Date().toISOString(), revenue, summary, truth: 'verified',
+      evidenceRule: 'Only qualifying externally evidenced settlement events with authoritative ledger records are included.' });
+  } catch (error: any) { return apiError(res, 503, 'Verified revenue unavailable', error); }
 });
 
 app.get('/api/data-status', (_req: Request, res: Response) => {

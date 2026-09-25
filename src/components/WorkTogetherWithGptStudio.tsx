@@ -153,7 +153,6 @@ export const WorkTogetherWithGptStudio: React.FC<WorkTogetherWithGptStudioProps>
         const data = await res.json();
         setIs247Enabled(data.enabled);
         setApplySuccessNotice(data.enabled ? '24/7 GPT Co-Working Autopilot RESUMED' : '24/7 GPT Co-Working Autopilot PAUSED');
-        setTimeout(() => setApplySuccessNotice(null), 3000);
       }
     } catch (err) {
       console.warn('Failed to toggle 24/7 co-working:', err);
@@ -178,7 +177,6 @@ export const WorkTogetherWithGptStudio: React.FC<WorkTogetherWithGptStudioProps>
           setRecent247Deliverables(prev => [data.deliverable, ...prev.slice(0, 9)]);
         }
         setApplySuccessNotice('24/7 Immediate Dual-Consensus cycle completed! All checks passed.');
-        setTimeout(() => setApplySuccessNotice(null), 3500);
       }
     } catch (err) {
       console.warn('Failed to trigger 24/7 cycle:', err);
@@ -203,12 +201,8 @@ export async function executeMultiModelFailover<T>(
   opts: { maxRetries?: number; timeoutMs?: number } = {}
 ): Promise<T> {
   const timeoutMs = opts.timeoutMs ?? 4500;
-  const timeoutPromise = new Promise<never>((_, reject) => 
-    setTimeout(() => reject(new Error('UPSTREAM_TIMEOUT_503')), timeoutMs)
-  );
-
   try {
-    return await Promise.race([primaryExec(), timeoutPromise]);
+    return await primaryExec();
   } catch (err: any) {
     console.warn('[GPT-4o Circuit Breaker] Upstream degraded, auto-routing to Gemini Flash-Lite enclave:', err.message);
     return await fallbackExec();
@@ -251,7 +245,6 @@ export async function sovereignPairEngine(task: string) {
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 2500);
   };
 
   const handleDownloadArtifact = (session: CoWorkingSession) => {
@@ -296,7 +289,6 @@ ${session.geminiPeerReview}
       autoNegotiateHighBids: true
     });
     setApplySuccessNotice('Consensus directives applied! Global floor updated to $40/mo and ε calibrated to 0.30.');
-    setTimeout(() => setApplySuccessNotice(null), 4000);
   };
 
   const handleRunCoWorking = async (overridePrompt?: string, overrideCode?: string) => {
@@ -337,50 +329,9 @@ ${session.geminiPeerReview}
       setSessions(prev => [newSession, ...prev]);
       setUserPrompt('');
     } catch (err) {
-      console.warn('Backend co-working error, generating resilient local joint consensus:', err);
-      const fallbackSession: CoWorkingSession = {
-        id: `session-fallback-${Date.now()}`,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        userGoal: promptToRun,
-        domain,
-        gptContribution: `### OpenAI GPT-4o Proposal
-\`\`\`typescript
-// Collaborative Solution for: ${promptToRun}
-export const collaborativeSolution = {
-  task: "${promptToRun}",
-  status: "OPTIMAL",
-  monetizationFloorUsd: 40.0,
-  epsilonBoundary: 0.30,
-  execute: () => {
-    console.info("Executing joint consensus pipeline");
-    return true;
-  }
-};
-\`\`\`
-**Implementation Notes:**
-- Multi-threaded peer verification ensures zero dropped requests.
-- Integrated circuit breaker isolates API failures without crashing the UI.`,
-        geminiPeerReview: `### Google Gemini 3.8 Flash Peer Review
-- **Differential Privacy & Security:** Bounded by Laplacian distribution with parameter $b = \\Delta f / 0.30$.
-- **Edge Case Analysis:** 100% verified. Re-identification probability $P \\le 0.0004$.
-- **Consensus:** Fully approved alongside GPT-4o.`,
-        jointArtifact: `### Joint Co-Authored Solution (OpenAI GPT-4o & Google Gemini 3.8 Flash)
-**Task:** ${promptToRun}  
-**Status:** Validated 100% Agreement  
-
-\`\`\`typescript
-// Joint Verified Implementation
-export async function runSovereignConsensus() {
-  const floor = 40.0;
-  const epsilon = 0.30;
-  return { floor, epsilon, certified: true };
-}
-\`\`\``,
-        consensusScore: 100
-      };
-      setSessions(prev => [fallbackSession, ...prev]);
-      setUserPrompt('');
-    } finally {
+      console.warn('Backend co-working request failed:', err);
+      setApplySuccessNotice('Co-working backend unavailable. No synthetic session was generated.');
+        } finally {
       setIsLoading(false);
     }
   };

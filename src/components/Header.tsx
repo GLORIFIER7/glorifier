@@ -78,31 +78,31 @@ export const Header: React.FC<HeaderProps> = ({
   ];
 
   return (
-    <header className="sticky top-0 z-40 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
+    <header className="sticky top-0 z-40 bg-[#090909] border-b border-slate-800">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Platform Name */}
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 p-0.5 shadow-lg shadow-emerald-950/50 flex items-center justify-center">
-              <div className="w-full h-full bg-slate-950 rounded-[10px] flex items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <div className="w-9 h-9 rounded-sm border border-slate-700 bg-[#111] flex items-center justify-center">
+              <div className="w-full h-full bg-[#090909] rounded-sm flex items-center justify-center">
+                <ShieldCheck className="w-4 h-4 text-emerald-300" />
               </div>
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base font-bold tracking-tight text-white flex items-center gap-1.5">
-                  DataSovereign <span className="text-xs px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">AI AGENT</span>
+                  GLORIFIER <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-transparent text-emerald-300 border border-slate-700 font-mono">AI CONTROL PLANE</span>
                 </h1>
               </div>
               <p className="text-xs text-slate-400 hidden sm:block">
-                Personal Data Governance & Fair Compensation Network
+                Provider-Neutral Intelligence Orchestration
               </p>
             </div>
           </div>
 
           {/* Center Status Indicators */}
           <div className="hidden lg:flex items-center gap-4 text-xs font-medium">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-transparent border border-slate-800 text-slate-300">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
               <span>Broker Active:</span>
               <span className="text-emerald-400 font-semibold capitalize">{policy.brokerMode.replace('-', ' ')}</span>
@@ -124,10 +124,10 @@ export const Header: React.FC<HeaderProps> = ({
             <div 
               onClick={onOpenWithdraw}
               id="wallet-payout-button"
-              className="group cursor-pointer flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-850 border border-slate-800 hover:border-emerald-500/40 transition-all shadow-sm"
+              className="group cursor-pointer flex items-center gap-2.5 px-3 py-1.5 rounded-sm bg-transparent hover:bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition-colors"
               title="Click to claim or withdraw funds"
             >
-              <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+              <div className="w-7 h-7 rounded-sm bg-transparent text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
                 <Wallet className="w-4 h-4" />
               </div>
               <div className="text-left hidden sm:block">
@@ -140,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
 
             {currentUser ? (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800">
+              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-transparent border border-slate-800">
                 <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-semibold text-xs border border-emerald-500/30">
                   {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
                 </div>
@@ -159,7 +159,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 onClick={onLogin}
                 id="google-signin-btn"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-sm bg-slate-900 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5 text-emerald-400" />
                 <span>Sign in</span>
@@ -169,7 +169,7 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onOpenWithdraw}
               id="withdraw-cta-btn"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-500/20 transition-colors"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-sm bg-emerald-300 hover:bg-emerald-200 text-slate-950 transition-colors"
             >
               Withdraw
             </button>
@@ -186,16 +186,16 @@ export const Header: React.FC<HeaderProps> = ({
                 key={tab.id}
                 id={`tab-btn-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg whitespace-nowrap transition-all ${
+                className={`flex items-center gap-2 px-3 py-2 text-[11px] font-semibold rounded-sm whitespace-nowrap transition-all ${
                   isActive
-                    ? 'bg-slate-800 text-emerald-400 shadow-sm border border-slate-700/80'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
+                    ? 'bg-transparent text-emerald-300 border-b border-emerald-300'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
                 }`}
               >
                 <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
                 <span>{tab.label}</span>
                 {tab.badge && (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="px-1.5 py-0.5 rounded-sm text-[9px] font-medium bg-transparent text-slate-500 border border-slate-800">
                     {tab.badge}
                   </span>
                 )}

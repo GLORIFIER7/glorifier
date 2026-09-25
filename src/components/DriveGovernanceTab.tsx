@@ -114,7 +114,6 @@ export const DriveGovernanceTab: React.FC<DriveGovernanceTabProps> = ({
       }
       setDeleteConfirmTarget(null);
       setDeleteSuccess(`Successfully deleted "${targetName}" from Google Drive.`);
-      setTimeout(() => setDeleteSuccess(null), 5000);
     } catch (err: any) {
       setError(`Failed to delete file: ${err.message}`);
     } finally {
@@ -153,7 +152,6 @@ export const DriveGovernanceTab: React.FC<DriveGovernanceTabProps> = ({
       );
 
       setExportSuccessLink({ name: result.name, link: result.webViewLink });
-      setTimeout(() => setExportSuccessLink(null), 10000);
       
       // Refresh list
       fetchDriveFiles();

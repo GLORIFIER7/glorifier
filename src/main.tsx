@@ -31,8 +31,8 @@ class AppErrorBoundary extends Component<{ children: ReactNode }, { error: Error
   render() {
     if (this.state.error) {
       return (
-        <div className="min-h-screen bg-slate-950 text-slate-100 p-6 sm:p-10">
-          <div className="mx-auto max-w-3xl rounded-2xl border border-red-500/30 bg-slate-900 p-6 shadow-2xl">
+        <div className="min-h-screen bg-[#0a0a0a] text-slate-100 p-5 sm:p-8">
+          <div className="mx-auto max-w-3xl border border-slate-700 bg-[#101010] p-6">
             <div className="mb-2 text-xs font-semibold uppercase tracking-widest text-red-400">
               Glorifier AI • Frontend Error
             </div>

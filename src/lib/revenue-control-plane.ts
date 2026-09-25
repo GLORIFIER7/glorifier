@@ -114,8 +114,17 @@ export async function governRevenueAction(input: RevenueGovernanceRequest) {
     requester: input.actor || 'human-owner'
   });
   const evidenceStatus = cycle.evidence.status;
-  const blocked = cycle.stage === 'blocked' || (consequential && evidenceStatus !== 'recorded');
-  const status = blocked ? 'blocked' : 'approval-required';
+  const autonomousPayoutRequest =
+    input.actor === 'ai-ceo-autonomous' &&
+    input.capability === 'move.funds' &&
+    actionType === 'propose' &&
+    input.amount != null &&
+    evidenceRefs.includes('neon:verified-revenue-ledger') &&
+    evidenceRefs.includes('neon:verified-available-balance') &&
+    evidenceStatus === 'recorded';
+
+  const blocked = cycle.stage === 'blocked' || (consequential && !autonomousPayoutRequest && evidenceStatus !== 'recorded');
+  const status = blocked ? 'blocked' : (autonomousPayoutRequest ? 'autonomous-approved' : 'approval-required');
   const id = `rgev-${crypto.randomUUID()}`;
   await getPostgresPool().query(
     `INSERT INTO glorifier_revenue_governance_events
@@ -136,8 +145,9 @@ export async function governRevenueAction(input: RevenueGovernanceRequest) {
     evidenceStatus,
     estimatedValueLabel: 'NOT VERIFIED',
     verifiedRevenue: false,
-    humanApprovalRequired: true,
+    humanApprovalRequired: !autonomousPayoutRequest,
     executionEnabled: false,
+    autonomousRoutine: autonomousPayoutRequest,
     consequentialAction: consequential,
     cycle
   };

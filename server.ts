@@ -8,7 +8,7 @@ import OpenAI from 'openai';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles, initializeModelTrustRegistry, listModelTrust, getModelTrust, setModelTrustStatus, recordModelSecurityEvent } from './src/lib/ai';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
-import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask, routeAgentCapability, orchestrationPolicy } from './src/lib/agent-runtime';
+import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask, routeAgentCapability, orchestrationPolicy, evaluateAgentCapability } from './src/lib/agent-runtime';
 import { listCapabilityPolicies } from './src/lib/capability-authorization';
 import { addBrandTerm, listBrandTerms, listBrandObservations, listBrandAlerts, recordBrandObservation, classifyBrandMatch } from './src/lib/brand-monitor';
 import { initializeConnectionRegistry, registerConnection, listConnections, getConnection, recordConnectionEvent, requestConnectionApproval, verifyConnection } from './src/lib/connection-registry';

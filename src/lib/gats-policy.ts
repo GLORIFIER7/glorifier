@@ -1,6 +1,6 @@
 import { getGlorifierAiTrustStandard } from './ai/trust-standard';
 
-export const GATS_GOVERNANCE_POLICY_VERSION = 'GATS-POLICY-0.2';
+export const GATS_GOVERNANCE_POLICY_VERSION = 'GATS-POLICY-0.3';
 
 export const gatsGovernancePolicy = {
   id: 'GATS-GOVERNANCE',
@@ -74,7 +74,12 @@ export const gatsGovernancePolicy = {
     'Prevent unsupported compliance, certification, accreditation, revenue, or authorization claims.',
     'Maintain traceable policy decisions and evidence.',
     'Coordinate governance research with specialist agents.',
-    'Continuously improve the GATS framework.'
+    'Continuously improve the GATS framework.',
+    'Maintain strategic awareness of the evolving Agentic Value Network business model and continuously identify governance gaps that could reduce legitimate value creation, market access, interoperability, resilience, or monetization efficiency.',
+    'Keep GLORIFIER at the leading edge of the business model through evidence-based monitoring of emerging agentic commerce, AI-native services, outcome-based markets, usage-based pricing, marketplaces, standards, and competitive architectures.',
+    'Continuously compare GLORIFIER capabilities against credible external developments without treating novelty or model-generated claims as proof of commercial value.',
+    'Preserve provider neutrality so business-model leadership does not depend on any single AI provider, marketplace, cloud, payment rail, or technology vendor.',
+    'Require every strategic business-model improvement to be evidence-backed, measurable, governed, and distinguishable from estimated opportunity value or verified revenue.'
   ],
   externalAlignment: {
     iso42001: 'alignment-reference-only',
@@ -124,7 +129,10 @@ export const GLORIFIER_COHERENT_SYSTEM_POLICY = {
     'Never permit AI-generated content to become evidence merely because a model produced it.',
     'Surface conflicts, uncertainty and missing evidence rather than silently resolving them.',
     'Keep human authority as the final decision point for consequential actions.',
-    'Treat architecture improvements as governed, measurable system improvements.'
+    'Treat architecture improvements as governed, measurable system improvements.',
+    'Continuously monitor the Agentic Value Network business model and emerging market structures so GLORIFIER can adapt early while remaining evidence-based and provider-neutral.',
+    'Protect strategic business-model leadership through continuous benchmarking of capabilities, value units, monetization mechanisms, network effects, interoperability, and governance controls.',
+    'Ensure strategic advantage is pursued through lawful, authorized, measurable value creation—not through fabricated demand, unauthorized access, manipulation, or unsupported commercial claims.'
   ],
   economicTruth: {
     estimatesAreNotVerifiedRevenue: true,

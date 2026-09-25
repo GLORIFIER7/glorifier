@@ -22,6 +22,12 @@ import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { IntegrationControl } from './components/IntegrationControl';
 import { AICeoControl } from './components/AICeoControl';
 import { AiScientistFleetConsole } from './components/AiScientistFleetConsole';
+import { MediatorDashboard } from './components/MediatorDashboard';
+import { OpportunityDiscoveryDashboard } from './components/OpportunityDiscoveryDashboard';
+import { RevenueVerifiedDashboard } from './components/RevenueVerifiedDashboard';
+import { ConnectionAuthorizationDashboard } from './components/ConnectionAuthorizationDashboard';
+import { GlobalCollaborationDashboard } from './components/GlobalCollaborationDashboard';
+
 import { 
   initialStats, 
   initialFootprints, 
@@ -525,6 +531,12 @@ export default function App() {
 
       {/* Main View Container */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {activeTab === 'mediator' && <MediatorDashboard />}
+        {activeTab === 'discovery' && <OpportunityDiscoveryDashboard />}
+        {activeTab === 'revenue_verified' && <RevenueVerifiedDashboard />}
+        {activeTab === 'connections' && <ConnectionAuthorizationDashboard />}
+        {activeTab === 'global_collaboration' && <GlobalCollaborationDashboard />}
+
         {activeTab === 'overview' && (
           <OverviewTab
             stats={stats}

@@ -1,0 +1,17 @@
+{
+  "version":"1.0",
+  "default":"deny",
+  "capabilities": [
+    {"id":"read.repository","risk":"low","approval":false},
+    {"id":"analyze.code","risk":"low","approval":false},
+    {"id":"create.branch","risk":"medium","approval":false},
+    {"id":"create.pull_request","risk":"medium","approval":false},
+    {"id":"run.ci","risk":"medium","approval":false},
+    {"id":"deploy.staging","risk":"high","approval":true},
+    {"id":"deploy.production","risk":"critical","approval":true},
+    {"id":"change.credentials","risk":"critical","approval":true},
+    {"id":"move.funds","risk":"critical","approval":true},
+    {"id":"change.ownership","risk":"critical","approval":true},
+    {"id":"delete.resource","risk":"critical","approval":true}
+  ]
+}

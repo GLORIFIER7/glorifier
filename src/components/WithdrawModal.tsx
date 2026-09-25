@@ -108,7 +108,10 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   userReference = 'anonymous'
 }) => {
   const [amount, setAmount] = useState<number>(Math.max(0, Number(stats.totalEarnedUsd) || 0));
-  const [payoutCategory, setPayoutCategory] = useState<'crypto' | 'fiat'>('crypto');
+  type PayoutMethod = 'crypto' | 'gcash' | 'binance' | 'fiat';
+  const [payoutCategory, setPayoutCategory] = useState<PayoutMethod>('crypto');
+  const [gcashAccount, setGcashAccount] = useState('');
+  const [binanceAccount, setBinanceAccount] = useState('');
 
   // Connected Wallets State
   const [connectedWallets, setConnectedWallets] = useState<VerifiedWallet[]>(() => {
@@ -198,6 +201,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   };
 
   const isCurrentAddressValid = () => {
+    if (payoutCategory === 'gcash') return /^09\\d{9}$/.test(gcashAccount.replace(/\\s|-/g, ''));
+    if (payoutCategory === 'binance') return binanceAccount.trim().length >= 4;
     if (payoutCategory === 'fiat') return fiatAccount.trim().length > 3;
     if (!walletAddress.trim()) return false;
     const chain = getActiveAddressChain();
@@ -310,9 +315,15 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
       return;
     }
     if (!isCurrentAddressValid()) {
-      setPayoutError(payoutCategory === 'crypto'
-        ? 'Select or enter a valid destination address.'
-        : 'Enter a valid payout account or provider destination.');
+      setPayoutError(
+        payoutCategory === 'crypto'
+          ? 'Select or enter a valid destination address.'
+          : payoutCategory === 'gcash'
+            ? 'Enter a valid GCash mobile number (09XXXXXXXXX).'
+            : payoutCategory === 'binance'
+              ? 'Enter a valid Binance Pay ID, Binance UID, or approved account identifier.'
+              : 'Enter a valid payout account or provider destination.'
+      );
       return;
     }
 
@@ -321,8 +332,18 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     try {
       const method = payoutCategory === 'crypto'
         ? `stablecoin_${selectedToken.toLowerCase()}_${selectedNetwork.toLowerCase()}`
-        : fiatMethod;
-      const destination = payoutCategory === 'crypto' ? walletAddress : fiatAccount;
+        : payoutCategory === 'gcash'
+          ? 'gcash'
+          : payoutCategory === 'binance'
+            ? 'binance'
+            : fiatMethod;
+      const destination = payoutCategory === 'crypto'
+        ? walletAddress
+        : payoutCategory === 'gcash'
+          ? gcashAccount.replace(/\\s|-/g, '')
+          : payoutCategory === 'binance'
+            ? binanceAccount.trim()
+            : fiatAccount;
       const res = await authenticatedFetch('/api/payouts/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -337,7 +358,13 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
         txHash: data.payoutRequestId,
         amountUsd: amount,
         tokenSymbol: payoutCategory === 'crypto' ? selectedToken : 'USD',
-        network: payoutCategory === 'crypto' ? selectedNetwork : (fiatMethod === 'stripe_connect' ? 'Stripe Connect' : 'ACH'),
+        network: payoutCategory === 'crypto'
+          ? selectedNetwork
+          : payoutCategory === 'gcash'
+            ? 'GCash'
+            : payoutCategory === 'binance'
+              ? 'Binance'
+              : (fiatMethod === 'stripe_connect' ? 'Stripe Connect' : 'ACH'),
         destination,
         timestamp: new Date().toLocaleString(),
         isCrypto: payoutCategory === 'crypto'
@@ -449,22 +476,22 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1.5">Payout Method</label>
               <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setPayoutCategory('crypto')}
-                  className={`p-3 rounded-xl border text-left ${payoutCategory === 'crypto' ? 'bg-emerald-500/10 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
-                >
-                  <div className="text-xs font-bold">Crypto</div>
-                  <div className="text-[10px] mt-1 text-slate-500">USDC / USDT / DAI / PYUSD</div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPayoutCategory('fiat')}
-                  className={`p-3 rounded-xl border text-left ${payoutCategory === 'fiat' ? 'bg-cyan-500/10 border-cyan-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
-                >
-                  <div className="text-xs font-bold">Fiat</div>
-                  <div className="text-[10px] mt-1 text-slate-500">Bank / payment provider</div>
-                </button>
+                {([
+                  ['crypto', 'Crypto', 'USDC / USDT / DAI / PYUSD'],
+                  ['gcash', 'GCash', 'Philippines mobile payout'],
+                  ['binance', 'Binance', 'Binance Pay / UID'],
+                  ['fiat', 'Bank / Fiat', 'Bank / payment provider']
+                ] as const).map(([id, label, description]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setPayoutCategory(id)}
+                    className={`p-3 rounded-xl border text-left transition-colors ${payoutCategory === id ? 'bg-emerald-500/10 border-emerald-500 text-white' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                  >
+                    <div className="text-xs font-bold">{label}</div>
+                    <div className="text-[10px] mt-1 text-slate-500">{description}</div>
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -525,6 +552,31 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   placeholder="Wallet address"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                 />
+              </div>
+            ) : payoutCategory === 'gcash' ? (
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">GCash Number</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  value={gcashAccount}
+                  onChange={(e) => setGcashAccount(e.target.value)}
+                  placeholder="09XXXXXXXXX"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-[10px] text-slate-500 mt-1.5">Payout remains pending until the payment provider confirms settlement.</p>
+              </div>
+            ) : payoutCategory === 'binance' ? (
+              <div>
+                <label className="text-xs font-semibold text-slate-300 block mb-1.5">Binance Pay ID / UID</label>
+                <input
+                  type="text"
+                  value={binanceAccount}
+                  onChange={(e) => setBinanceAccount(e.target.value)}
+                  placeholder="Enter Binance Pay ID or UID"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
+                />
+                <p className="text-[10px] text-slate-500 mt-1.5">Use an account identifier you control. Settlement is not confirmed by this request alone.</p>
               </div>
             ) : (
               <div>

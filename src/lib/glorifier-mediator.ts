@@ -92,6 +92,29 @@ export async function initializeGlorifierMediator() {
   `);
 }
 
+
+export async function ensureCoreMediatorNodes() {
+  await initializeGlorifierMediator();
+  const nodes: Array<Omit<MediatorNode,'id'>> = [
+    { nodeType:'ai_provider', provider:'OpenAI', capability:'model-inference', status:'configured', authorizationRequired:true },
+    { nodeType:'ai_provider', provider:'Google Gemini', capability:'model-inference', status:'configured', authorizationRequired:true },
+    { nodeType:'ai_provider', provider:'Meta', capability:'model-inference', status:'discovered', authorizationRequired:true },
+    { nodeType:'ai_provider', provider:'Anthropic', capability:'model-inference', status:'discovered', authorizationRequired:true },
+    { nodeType:'specialist', provider:'GLORIFIER Specialist Council', capability:'domain-analysis', status:'configured', authorizationRequired:true },
+    { nodeType:'demand_source', provider:'GitHub', capability:'bounty-and-work-discovery', status:'configured', authorizationRequired:true },
+    { nodeType:'demand_source', provider:'Public Web Intelligence', capability:'opportunity-discovery', status:'configured', authorizationRequired:true },
+    { nodeType:'marketplace', provider:'GLORIFIER Marketplace', capability:'offers-and-bids', status:'configured', authorizationRequired:true },
+    { nodeType:'marketplace', provider:'External Marketplaces', capability:'authorized-market-access', status:'discovered', authorizationRequired:true },
+    { nodeType:'execution_connector', provider:'GitHub Actions', capability:'governed-code-execution', status:'configured', authorizationRequired:true },
+    { nodeType:'execution_connector', provider:'Railway/Vercel', capability:'application-deployment', status:'configured', authorizationRequired:true },
+    { nodeType:'settlement_rail', provider:'Authorized Payment Providers', capability:'payment-settlement', status:'discovered', authorizationRequired:true },
+    { nodeType:'settlement_rail', provider:'Binance', capability:'public-asset-observation', status:'discovered', authorizationRequired:true },
+    { nodeType:'evidence_system', provider:'GLORIFIER Evidence Layer', capability:'provenance-and-verification', status:'configured', authorizationRequired:false },
+    { nodeType:'revenue_ledger', provider:'Neon', capability:'authoritative-verified-revenue', status:'configured', authorizationRequired:true }
+  ];
+  for (const node of nodes) await registerMediatorNode(node);
+}
+
 export async function registerMediatorNode(input: Omit<MediatorNode, 'id'> & { id?: string }) {
   await initializeGlorifierMediator();
   const id = input.id || `mediator-${crypto.randomUUID()}`;

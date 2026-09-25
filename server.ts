@@ -637,15 +637,15 @@ Provide your specialized perspective.`;
 
     const [gptRes, geminiRes] = await Promise.allSettled([gptPromise, geminiPromise]);
 
-    const gptText = (gptRes.status === 'fulfilled' && gptRes.value.text)
-      ? gptRes.value.text
-      : `Commercial Market Valuation: Current consumer and developer telemetry should be valued at a baseline of $215.30/mo. Counter-negotiate incoming enterprise buyer bids by +25% on datasets with verified zero-identifiability.`;
-
-    const geminiText = (geminiRes.status === 'fulfilled' && geminiRes.value.text)
-      ? geminiRes.value.text
-      : `Differential Privacy & Telemetry Bounds: Enforcing ε = 0.30 via Laplace noise perturbation maintains strict mathematical bounds (e^0.30 ≈ 1.35 max information leakage). Quasi-identifiers across search and browsing streams are permanently unlinked.`;
-
-    const llamaText = `Decentralized Autonomy & Open Weights Audit: Prohibit single-vendor telemetry capture. Ensure data licensing contracts include cryptographic zero-knowledge attestation, preventing downstream syndication by broker conglomerates (Acxiom, Meta, Google).`;
+    const gptText = gptRes.status === 'fulfilled' && gptRes.value.text ? gptRes.value.text : '';
+    const geminiText = geminiRes.status === 'fulfilled' && geminiRes.value.text ? geminiRes.value.text : '';
+    const llamaText = 'No live Meta/Llama provider was executed for this council request.';
+    if (!gptText && !geminiText) {
+      return res.status(503).json({
+        error: 'No verified AI provider response is currently available.',
+        providerStatus: 'OpenAI and Gemini returned no verified response; no synthetic council output was generated.'
+      });
+    }
 
     const councilResult = {
       agenda: topic,
@@ -670,10 +670,10 @@ Provide your specialized perspective.`;
           role: 'Differential Privacy & Cryptographic Verification',
           color: 'teal',
           badge: 'Google Multimodal',
-          status: 'completed' as const,
-          output: geminiText,
-          perspective: 'Mathematical entropy, Laplacian perturbation, and quasi-identifier elimination',
-          keyRecommendation: 'Enforce global ε = 0.30 with k-anonymity (k ≥ 50) verified cohorts.'
+          status: geminiText ? 'completed' as const : 'unavailable' as const,
+          output: geminiText || 'No verified Gemini response.',
+          perspective: 'Live Gemini provider response only',
+          keyRecommendation: geminiText ? 'See live provider output; no recommendation is independently asserted.' : 'Unavailable.'
         },
         {
           modelId: 'llama-3.3',
@@ -682,10 +682,10 @@ Provide your specialized perspective.`;
           role: 'Decentralized Sovereignty & Anti-Monopoly Audit',
           color: 'cyan',
           badge: 'Open Weights',
-          status: 'completed' as const,
+          status: 'unavailable' as const,
           output: llamaText,
-          perspective: 'Eliminating corporate shadow-broker lock-in and enforcing statutory clawbacks',
-          keyRecommendation: 'Dispatch statutory erasure notices to third-party ad brokers immediately.'
+          perspective: 'No live Meta/Llama execution was performed.',
+          keyRecommendation: 'Unavailable.'
         },
         {
           modelId: 'patent-attorney-scientist',
@@ -694,10 +694,10 @@ Provide your specialized perspective.`;
           role: 'Patent Prosecution, Claim Engineering & Scientific Enablement',
           color: 'purple',
           badge: 'USPTO / AI Scientist',
-          status: 'completed' as const,
-          output: `IP & Scientific Patent Audit: The platform's dynamic 503 circuit-breaking, differential privacy Laplace transformation (Y ~ Lap(Δf / ε)), and closed-loop self-healing code sentinel satisfy 35 U.S.C. § 101 under Enfish and Berkheimer. Data licensing consent tokens and SHA-256 evidence chains establish an unassailable defensive patent moat against Big Tech encumbrances.`,
-          perspective: 'Securing patent rights, Alice 101 technological defenses, and mathematical enablement',
-          keyRecommendation: 'File continuation-in-part applications on autonomous multi-model failover and preserve trade secret protections on synthetic twin generators.'
+          status: 'unavailable' as const,
+          output: 'No live patent-attorney model execution was performed for this request.',
+          perspective: 'Requires a verified specialist provider response.',
+          keyRecommendation: 'Unavailable.'
         },
         {
           modelId: 'compliance-scientist',
@@ -706,25 +706,19 @@ Provide your specialized perspective.`;
           role: 'Chief Compliance Officer & Regulatory Data Privacy Scientist',
           color: 'amber',
           badge: 'CIPP / Privacy Ph.D.',
-          status: 'completed' as const,
-          output: `Regulatory Compliance & Scientific Privacy Audit: Formal verification under GDPR Articles 17 & 25 and CCPA § 1798.105 confirms zero unconsented PII leakage. The Laplace perturbation scale (b = Δf / ε) satisfies HIPAA Expert Determination standards with re-identification probability P ≤ 0.0004. The autonomous multi-model failover circuit breaker is classified as Class 1 Minimal Risk under the EU AI Act (Regulation 2024/1689). Automated statutory clawback demands against shadow ad brokers are legally grounded and enforceable.`,
-          perspective: 'Enforcing GDPR, CCPA/CPRA, EU AI Act conformity, and mathematical privacy leakage guarantees',
-          keyRecommendation: 'Dispatch automated statutory clawback demands with cryptographic SHA-256 timestamp hashes to all unauthorized broker endpoints.'
+          status: 'unavailable' as const,
+          output: 'No live compliance-scientist model execution was performed for this request.',
+          perspective: 'Requires a verified specialist provider response.',
+          keyRecommendation: 'Unavailable.'
         }
       ],
-      unifiedConsensus: `All four frontier artificial intelligence models, the Patent Attorney Scientist, and the Compliance AI Scientist unanimously endorse a unified sovereign stance: (1) Maintain strict differential privacy with ε = 0.30, (2) License de-identified developer & e-commerce telemetry for vetted frontier AI pretraining at an upgraded $40/mo floor, (3) Sever all tracking connections and execute statutory clawback expungements under GDPR Art. 17 / CCPA § 1798.105 against commercial ad-broker syndicates, (4) File USPTO Claims 1–20 to defend sovereign technological architecture, and (5) Maintain EU AI Act Class 1 compliance certification.`,
-      consensusScore: 100,
-      recommendedEpsilon: 0.30,
-      recommendedFloorUsd: 40,
-      actionDirectives: [
-        'Calibrate Differential Privacy Epsilon to ε = 0.30',
-        'Upgrade Minimum Compensation Floor to $40.00 / month',
-        'Authorize Frontier AI Pre-Training Licensing with Zero-PII Guarantees',
-        'Dispatch Automated CCPA & GDPR Statutory Clawback Notices with Cryptographic Hashes',
-        'File 20 USPTO Claims to Secure Defensive Patent Moat for Autonomous Orchestration',
-        'Affirm EU AI Act (Reg. 2024/1689) Class 1 Transparency & Conformity Certification'
-      ]
-    };
+      unifiedConsensus: gptText && geminiText
+        ? 'Two live provider responses were received. GLORIFIER does not assert agreement or a unified directive without an explicit reconciliation step.'
+        : 'No consensus is asserted.',
+      consensusScore: null,
+      recommendedEpsilon: null,
+      recommendedFloorUsd: null,
+      actionDirectives: [];
 
     res.json(councilResult);
   } catch (err: any) {

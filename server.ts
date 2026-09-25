@@ -2766,6 +2766,10 @@ app.get('/api/intelligence/status', async (_req: Request, res: Response) => {
 // AI-TO-AI RUNTIME
 // The backend is the product runtime; the frontend is an optional observer.
 // ============================================================================
+app.get('/api/governance/capabilities', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: 'default-deny-for-privileged-actions', capabilities: require('./src/lib/capability-authorization').listCapabilityPolicies() });
+});
+
 app.get('/api/agents', (_req: Request, res: Response) => {
   res.json(agentManifest());
 });
@@ -2867,7 +2871,8 @@ app.post('/api/agents/tasks', async (req: Request, res: Response) => {
   const { capability, objective, input, requester = 'human-owner', connectionId } = req.body || {};
   if (!capability || !objective) return res.status(400).json({ ok: false, error: 'capability and objective are required' });
 
-  let approvalRequired = false;
+  const capabilityDecision = evaluateAgentCapability(String(capability), req.body?.humanApproved === true);
+  let approvalRequired = capabilityDecision.requiresHumanApproval || !capabilityDecision.allowed;
   if (connectionId) {
     const connection = await getConnection(String(connectionId));
     if (!connection) return res.status(404).json({ ok: false, error: 'Requested connection not found' });

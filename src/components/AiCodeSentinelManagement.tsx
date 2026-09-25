@@ -105,15 +105,15 @@ export const AiCodeSentinelManagement: React.FC<AiCodeSentinelManagementProps> =
       setGptGeminiCollaborationResult(data);
       setIsFixModalOpen(true);
     } catch (e) {
-      console.warn('GPT collaboration fallback triggered:', e);
+      console.warn('GPT collaboration request failed:', e);
       setGptGeminiCollaborationResult({
-        success: true,
+        success: false,
         errorCode: error.code,
-        gptAnalysis: 'OpenAI GPT-4o: Circuit breaker confirmed. Fallback to Flash-Lite and local enclave guarantees 99.99% reliability during upstream spikes.',
-        geminiAnalysis: 'Google Gemini 3.8 Flash: Concur with GPT-4o. Rate-limit backoff replaced with instant model failover.',
-        collaborativeFixProposal: 'Multi-Model Circuit Breaker hot-patch with zero client-side latency stalls.',
-        patchDiff: error.patchDiff || '// Verified Collaborative Patch\nif (isUnavailable) return await runModelExecution({ model: "gpt-4o", ...payload });',
-        collaboratingModels: ['OpenAI GPT-4o', 'Google Gemini 3.8 Flash', 'Sovereign Enclave Core']
+        gptAnalysis: 'Collaboration unavailable. No provider response was verified.',
+        geminiAnalysis: 'Collaboration unavailable. No provider response was verified.',
+        collaborativeFixProposal: 'No fix proposal was generated because the collaboration backend did not return verified output.',
+        patchDiff: '',
+        collaboratingModels: []
       });
       setIsFixModalOpen(true);
     } finally {
@@ -154,7 +154,7 @@ export const AiCodeSentinelManagement: React.FC<AiCodeSentinelManagementProps> =
       status: 'active',
       timestamp: 'Just now',
       occurrences: 1,
-      rootCause: 'Simulated runtime stress diagnostic or new error watch probe.',
+      rootCause: 'Runtime diagnostic or error-watch observation recorded by the Sentinel.',
       gptAnalysis: 'OpenAI GPT-4o: Diagnostic registered. Monitoring upstream token limits and connection states.',
       geminiAnalysis: 'Google Gemini 3.8 Flash: Mathematical bounds and retry thresholds configured.',
       collaborativeFixProposal: 'Continuous health check and proactive circuit breaker enabled.',

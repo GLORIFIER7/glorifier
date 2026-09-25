@@ -54,6 +54,7 @@ import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, re
 import { initializePayoutRegistry, createPayoutRequest, listPayoutRequests, getAvailablePayoutBalance } from './src/lib/payouts';
 import { initializeRevenueLedger } from './src/lib/revenue/engine';
 import { initializeAutonomousGrowth, runAutonomousGrowthCycle, getAutonomousGrowthStatus, getAutonomousGrowthPolicy } from './src/lib/autonomous-growth';
+import { initializeCryptographicTrustGateway, requestCryptographicOperation, listCryptographicTrustOperations, getCryptographicTrustPolicy } from './src/lib/cryptographic-trust-gateway';
 
 dotenv.config();
 
@@ -180,6 +181,49 @@ app.post('/api/connections/:id/approval', async (req: Request, res: Response) =>
     );
     res.status(201).json({ ok: true, approval, humanApprovalRequired: true });
   } catch (error: any) { res.status(400).json({ error: 'Unable to request approval', details: error?.message }); }
+});
+
+// ============================================================================
+// GLORIFIER CRYPTOGRAPHIC TRUST & WALLET GATEWAY
+// Private keys never enter the AI context, Neon ledger, frontend, or repository.
+// Wallet balances are assets, not revenue; provider confirmation is required for settlement.
+// ============================================================================
+app.get('/api/crypto/trust/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getCryptographicTrustPolicy() });
+});
+
+app.get('/api/crypto/trust/operations', async (req: Request, res: Response) => {
+  try {
+    const limit = Math.min(500, Math.max(1, Number(req.query.limit || 100)));
+    res.json({ ok: true, operations: await listCryptographicTrustOperations(limit) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: error?.message || 'Cryptographic trust operations unavailable' });
+  }
+});
+
+app.post('/api/crypto/trust/operations', async (req: Request, res: Response) => {
+  try {
+    const operation = String(req.body?.operation || '').trim() as any;
+    const requester = String(req.body?.requester || 'ai-ceo').trim();
+    if (!operation) return res.status(400).json({ ok: false, error: 'operation is required' });
+    const result = await requestCryptographicOperation({
+      operation,
+      requester,
+      connectionId: req.body?.connectionId ? String(req.body.connectionId) : null,
+      keyRef: req.body?.keyRef ? String(req.body.keyRef) : null,
+      walletRef: req.body?.walletRef ? String(req.body.walletRef) : null,
+      network: req.body?.network || null,
+      payload: req.body?.payload == null ? null : String(req.body.payload),
+      signature: req.body?.signature == null ? null : String(req.body.signature),
+      publicKey: req.body?.publicKey == null ? null : String(req.body.publicKey),
+      algorithm: req.body?.algorithm == null ? null : String(req.body.algorithm),
+      humanApproved: req.body?.humanApproved === true,
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : []
+    });
+    res.status(result.status === 'approval-required' ? 202 : 200).json({ ok: true, ...result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Cryptographic trust operation failed' });
+  }
 });
 
 // Governed Linux runtime registry. This manages metadata and approvals; it does not execute arbitrary host commands.

@@ -3541,7 +3541,7 @@ app.post('/api/opportunities/github-bounties/:id/stage', async (req: Request, re
 });
 app.post('/api/opportunities/github-bounties/:id/settle', async (req: Request, res: Response) => {
   try {
-    const result=await recordVerifiedBountyPayout({ id:req.params.id, amount:Number(req.body?.amount), currency:String(req.body?.currency||'USD'), paymentReference:String(req.body?.paymentReference||''), evidenceUrl:String(req.body?.evidenceUrl||''), actor:String(req.body?.actor||'human-owner') });
+    const result=await recordVerifiedBountyPayout({ id:req.params.id, userReference:String(req.body?.userReference||'').trim(), amount:Number(req.body?.amount), currency:String(req.body?.currency||'USD'), paymentReference:String(req.body?.paymentReference||''), evidenceUrl:String(req.body?.evidenceUrl||''), actor:String(req.body?.actor||'human-owner') });
     res.status(201).json({ ok:true, result, ledgerBoundary:'VERIFIED_REVENUE_ONLY' });
   } catch(error:any) { res.status(400).json({ ok:false, error:'Bounty settlement rejected', details:error?.message }); }
 });

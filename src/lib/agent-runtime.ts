@@ -71,7 +71,15 @@ export function listAgentCards() { return agents; }
 
 export function routeAgentCapability(capability: string) {
   const normalized = capability.trim().toLowerCase();
-  return { capability: normalized, specialists: capabilityOwners[normalized] || [], fallback: 'ai-ceo', humanApprovalDefault: true };
+  const policy = getCapabilityPolicy(normalized);
+  return {
+    capability: normalized,
+    specialists: capabilityOwners[normalized] || [],
+    fallback: 'ai-ceo',
+    humanApprovalDefault: policy?.requiresHumanApproval ?? true,
+    risk: policy?.risk ?? 'high',
+    governed: Boolean(policy)
+  };
 }
 
 export function orchestrationPolicy() {
@@ -94,7 +102,6 @@ export function evaluateAgentCapability(capability: string, humanApproved = fals
     return { allowed: false, requiresHumanApproval: true, reason: 'human_approval_required' as const, policy };
   }
   return { allowed: true, requiresHumanApproval: policy.requiresHumanApproval, reason: 'policy_allowed' as const, policy };
-}
 }
 
 export function createAgentTask(input: Pick<AgentTask, 'capability'|'objective'|'input'|'requester'|'connectionId'|'approvalRequired'>) {

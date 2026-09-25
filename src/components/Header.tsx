@@ -55,26 +55,32 @@ export const Header: React.FC<HeaderProps> = ({
   onLogout
 }) => {
   const tabs = [
-    { id: 'overview', label: 'Overview & Yield', icon: Layers },
-    { id: 'scientists', label: '24/7 AI Scientist Fleet', icon: Atom, badge: '24/7 Earn' },
-    { id: 'sentinel', label: '24/7 AI Code Sentinel', icon: Bot, badge: '24/7 Auto' },
-    { id: 'gpt_cowork', label: 'Work Together with GPT', icon: Sparkles, badge: 'Interactive Pair' },
-    { id: 'accounts', label: 'Internet Accounts', icon: Globe, badge: 'All Web' },
-    { id: 'ai_collaboration', label: 'AI Models Council', icon: Users, badge: 'All AI' },
-    { id: 'control', label: 'Data Control Dashboard', icon: SlidersHorizontal },
-    { id: 'gmail', label: 'Gmail Footprint', icon: Mail, badge: currentUser ? 'Connected' : 'Auth Required' },
-    { id: 'drive', label: 'Google Drive', icon: HardDrive, badge: currentUser ? 'Connected' : 'Auth Required' },
-    { id: 'compensation', label: 'Compensation Engine', icon: Coins },
-    { id: 'privacy_lab', label: 'Privacy Tech Lab (PETs)', icon: Lock },
-    { id: 'footprints', label: 'Footprint Tiers', icon: Database },
-    { id: 'broker', label: 'AI Broker & Strategy', icon: Sparkles },
+    { id: 'overview', label: 'Overview', icon: Layers },
+    { id: 'ai_ceo', label: 'AI CEO', icon: BrainCircuit },
+    { id: 'mediator', label: 'Mediator', icon: ShieldCheck },
+    { id: 'integrations', label: 'Intelligence Hub', icon: Globe2 },
+    { id: 'global_collaboration', label: 'Global Collaboration', icon: Users },
+    { id: 'discovery', label: '24/7 Discovery', icon: Zap },
+    { id: 'ai_collaboration', label: 'AI Models / Providers', icon: Sparkles },
+    { id: 'sentinel', label: 'Code Sentinel', icon: Bot },
+    { id: 'compute', label: 'Compute', icon: Cpu },
+    { id: 'accounts', label: 'Accounts & Data Control', icon: Globe },
     { id: 'marketplace', label: 'Marketplace & Bids', icon: Scale, badge: pendingOffersCount > 0 ? pendingOffersCount : undefined },
-    { id: 'patent', label: 'Patent & IP Disclosure', icon: Scale, badge: 'AI Attorney Scientist' },
-    { id: 'compute', label: 'Independent Compute', icon: Cpu, badge: 'Provider-Neutral' },
-    { id: 'ai_ceo', label: 'AI CEO Command', icon: BrainCircuit, badge: 'Human Authority' },
-    { id: 'integrations', label: 'Intelligence Hub', icon: Globe2, badge: 'Global Reports' },
-    { id: 'compliance', label: 'Compliance AI Scientist', icon: ShieldAlert, badge: 'GDPR / AI Act' },
-    { id: 'exposures', label: 'Clawback Audit', icon: FileText },
+    { id: 'compensation', label: 'Compensation', icon: Coins },
+    { id: 'monetization_sprint', label: 'Monetization', icon: ArrowUpRight },
+    { id: 'compliance', label: 'Compliance', icon: ShieldAlert },
+    { id: 'patent', label: 'Patent / IP', icon: FileText },
+    { id: 'exposures', label: 'Clawback Audit', icon: ShieldAlert },
+    { id: 'revenue_verified', label: 'Verified Earnings', icon: Wallet },
+    { id: 'connections', label: 'Connections / Authorization', icon: Lock },
+    { id: 'gpt_cowork', label: 'GPT Co-Work', icon: Sparkles },
+    { id: 'scientists', label: 'AI Scientist Fleet', icon: Atom },
+    { id: 'control', label: 'Data Control', icon: SlidersHorizontal },
+    { id: 'gmail', label: 'Gmail', icon: Mail, badge: currentUser ? 'Connected' : 'Auth Required' },
+    { id: 'drive', label: 'Drive', icon: HardDrive, badge: currentUser ? 'Connected' : 'Auth Required' },
+    { id: 'privacy_lab', label: 'Privacy Lab', icon: Lock },
+    { id: 'footprints', label: 'Footprints', icon: Database },
+    { id: 'broker', label: 'AI Broker', icon: Sparkles },
   ];
 
   return (
@@ -107,15 +113,15 @@ export const Header: React.FC<HeaderProps> = ({
               <span>Broker Active:</span>
               <span className="text-emerald-400 font-semibold capitalize">{policy.brokerMode.replace('-', ' ')}</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-sm bg-transparent border border-slate-800 text-slate-300">
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
               <span>AI Engine:</span>
               <span className="text-emerald-300 font-mono text-[11px] font-semibold uppercase">{policy.aiModel || 'GPT-4o'}</span>
             </div>
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-slate-300">
               <Cloud className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Cloud DB:</span>
-              <span className="text-cyan-300 font-mono text-[11px]">asia-southeast1</span>
+              <span>System:</span>
+              <span className="text-cyan-300 font-mono text-[11px]">Provider-neutral</span>
             </div>
           </div>
 

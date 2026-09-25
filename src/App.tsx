@@ -394,10 +394,7 @@ export default function App() {
     });
   };
 
-  // Batch settlement changes are controlled by the authoritative revenue ledger.
-  const handleClearSettlement = () => {
-    void recordGovernedAction('settlement-clear-request', { reason: 'Authoritative ledger controls settlement state.' });
-  };
+  // Batch clear settlement
 
   // Accounts handlers
   const handleUpdateAccount = (updated: InternetAccount) => {
@@ -546,6 +543,53 @@ export default function App() {
 
         {activeTab === 'scientists' && (
           <AiScientistFleetConsole
+            onAddEarnings={(amount, desc) => { void recordEstimatedOpportunity('scientist-fleet-yield-observation', amount, desc); }}
+          />
+        )}
+
+        {activeTab === 'sentinel' && (
+          <AiCodeSentinelManagement
+            errors={sentinelErrors}
+            sentinelState={sentinelState}
+            onUpdateError={handleUpdateSentinelError}
+            onDeleteError={handleDeleteSentinelError}
+            onCreateError={handleCreateSentinelError}
+            onAutoFixError={handleAutoFixSentinelError}
+            onToggleMonitoring={(enabled) => { setSentinelState(s => ({ ...s, isMonitoringActive: enabled })); void persistAppState({ sentinelState: { ...sentinelState, isMonitoringActive: enabled } }); }}
+            onToggleAutoHeal={(enabled) => { setSentinelState(s => ({ ...s, autoHealEnabled: enabled })); void persistAppState({ sentinelState: { ...sentinelState, autoHealEnabled: enabled } }); }}
+            onOpenCoWorkingStudio={() => setActiveTab('gpt_cowork')}
+          />
+        )}
+
+        {activeTab === 'accounts' && (
+          <InternetAccountsFederation
+            accounts={accounts}
+            onUpdateAccount={handleUpdateAccount}
+            onAuthenticateAll={handleAuthenticateAllAccounts}
+            onBatchAction={handleBatchAccountAction}
+          />
+        )}
+
+        {activeTab === 'control' && (
+          <DataControlDashboard
+            grants={grants}
+            onRevokeGrant={handleRevokeGrant}
+            onUpdateGrantPermissions={handleUpdateGrantPermissions}
+          />
+        )}
+
+        {activeTab === 'gmail' && (
+          <GmailGovernanceTab
+            currentUser={currentUser}
+            onLogin={handleLogin}
+            onAddEarnings={(amount, desc) => { void recordEstimatedOpportunity('gmail-governance-yield-observation', amount, desc); }}
+          />
+        )}
+
+        {activeTab === 'drive' && (
+          <DriveGovernanceTab
+            currentUser={currentUser}
+            onLogin={handleLogin}
             onAddEarnings={(amount, desc) => { void recordEstimatedOpportunity('drive-governance-yield-observation', amount, desc); }}
           />
         )}

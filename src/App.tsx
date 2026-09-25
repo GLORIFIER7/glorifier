@@ -177,6 +177,37 @@ export default function App() {
     }
   };
 
+  const recordGovernedAction = async (action: string, details: Record<string, unknown>, evidence: unknown[] = []) => {
+    if (!currentUser) return null;
+    try {
+      const response = await fetch('/api/governed-actions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userReference: currentUser.uid,
+          action,
+          actor: 'human-owner',
+          details,
+          evidence
+        })
+      });
+      if (!response.ok) throw new Error(`Governed action HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Governed action recording failed:', error);
+      return null;
+    }
+  };
+
+  const recordEstimatedOpportunity = async (action: string, amountUsd: number, description: string) => {
+    const result = await recordGovernedAction(action, {
+      description,
+      estimatedAmountUsd: amountUsd,
+      economicTruth: { verified: false, estimatesAreNotRevenue: true }
+    });
+    return result;
+  };
+
   // Toggle footprint monetization
   const handleToggleFootprint = (id: string) => {
     setFootprints(prev => {
@@ -202,6 +233,7 @@ export default function App() {
         monthlyPacingUsd: totalComp
       }));
       void persistAppState({ footprints: next });
+      void recordGovernedAction('footprint-monetization-policy-change', { footprintId: id, enabled: next.find(f => f.id === id)?.isMonetized === true });
 
       return next;
     });
@@ -219,6 +251,7 @@ export default function App() {
         return f;
       });
       void persistAppState({ footprints: next });
+      void recordGovernedAction('footprint-privacy-policy-change', { footprintId: id, privacyTier: tier, epsilon });
       return next;
     });
   };
@@ -270,6 +303,7 @@ export default function App() {
 
       if (currentUser) {
         saveUserPolicy(currentUser.uid, updated).catch(console.error);
+        void recordGovernedAction('monetization-policy-change', { policy: updated });
       }
 
       return updated;
@@ -313,30 +347,23 @@ export default function App() {
     });
   };
 
-  // Dispatch clawback notice to data broker
+  // External clawback delivery requires an authorized provider integration.
   const handleDispatchClawback = (expId: string) => {
-    setExposures(prev => {
-      const next = prev.map(exp => exp.id === expId ? {
-        ...exp,
-        status: 'clawback_sent' as const,
-        actionTimestamp: `Clawback statutory order dispatched today (${new Date().toLocaleDateString()})`
-      } : exp);
-      void persistAppState({ exposures: next });
-      return next;
+    void recordGovernedAction('statutory-clawback-request', {
+      exposureId: expId,
+      executionStatus: 'pending_authorized_integration'
     });
-
-    setStats(s => ({
-      ...s,
-      privacyShieldIndex: Math.min(100, s.privacyShieldIndex + 2)
-    }));
   };
 
-  // Handle successful payout claim
+  // A payout success callback is only allowed to update state after an authoritative
+  // payout provider has returned qualifying settlement evidence.
   const handleWithdrawSuccess = (amount: number, method: string, txHash: string) => {
-    setStats(s => ({
-      ...s,
-      totalEarnedUsd: Math.max(0, s.totalEarnedUsd - amount)
-    }));
+    void recordGovernedAction('payout-settlement-callback', {
+      amount,
+      method,
+      txHash,
+      note: 'UI callback recorded for audit; authoritative payout ledger remains source of truth.'
+    }, [{ type: 'external-reference', ref: txHash }]);
   };
 
   // Handle grant revocation
@@ -346,10 +373,7 @@ export default function App() {
       void persistAppState({ grants: next });
       return next;
     });
-    setStats(s => ({
-      ...s,
-      privacyShieldIndex: Math.min(100, s.privacyShieldIndex + 3)
-    }));
+    void recordGovernedAction('data-grant-revocation', { grantId });
   };
 
   // Handle grant permission update
@@ -357,11 +381,20 @@ export default function App() {
     setGrants(prev => {
       const next = prev.map(g => g.id === grantId ? { ...g, sharedFields: updatedFields } : g);
       void persistAppState({ grants: next });
+      void recordGovernedAction('data-grant-permission-change', { grantId, sharedFields: updatedFields });
       return next;
     });
   };
 
-  // Trigger simulated telemetry usage event
+  // Telemetry must originate from an observed provider event, never from a UI simulator.
+  const handleTriggerSimulatedUsage = async (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
+    await recordGovernedAction('telemetry-simulation-blocked', {
+      model,
+      reason: 'Synthetic usage events cannot create earnings or settlement records.'
+    });
+  };
+
+  // Batch clear settlement
   const handleTriggerSimulatedUsage = (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => {
     const payoutMap = {
       'Per-Query': 0.057,
@@ -397,15 +430,14 @@ export default function App() {
 
   // Batch clear settlement
   const handleClearSettlement = () => {
-    setStats(s => ({
-      ...s,
-      pendingSettlementUsd: 0
-    }));
+    void recordGovernedAction('settlement-clear-request', {
+      reason: 'Settlement state cannot be cleared locally; authoritative ledger controls settlement.'
+    });
   };
 
   // Accounts handlers
   const handleUpdateAccount = (updated: InternetAccount) => {
-    setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
+    void recordGovernedAction('internet-account-local-change', { accountId: updated.id, requestedState: updated });
   };
 
   const handleAuthenticateAllAccounts = async () => {
@@ -415,19 +447,17 @@ export default function App() {
       const registry = await response.json();
       const authorizedIds = new Set((registry.connections || []).filter((x: any) => x.status === 'authorized').map((x: any) => x.id));
       setAccounts(prev => prev.map(a => authorizedIds.has(a.id) ? ({ ...a, authStatus: 'authenticated', syncStatus: 'synced', lastAttestedAt: 'Just now' }) : a));
+      void recordGovernedAction('account-authentication-sync', { authorizedConnectionIds: Array.from(authorizedIds) });
     } catch (error) {
       console.error('Account authentication sync failed:', error);
     }
   };
 
   const handleBatchAccountAction = (action: 'shield_all' | 'sync_all' | 'purge_all') => {
-    if (action === 'shield_all') {
-      setAccounts(prev => prev.map(a => ({ ...a, differentialPrivacyShield: true })));
-    } else if (action === 'sync_all') {
-      setAccounts(prev => prev.map(a => ({ ...a, autoSyncTelemetry: true, syncStatus: 'synced' })));
-    } else if (action === 'purge_all') {
-      void fetch('/api/connections', { method: 'GET', cache: 'no-store' }).catch(() => undefined);
-    }
+    void recordGovernedAction('internet-account-batch-action', {
+      action,
+      executionStatus: action === 'purge_all' ? 'pending_authorized_integration' : 'recorded'
+    });
   };
 
   // Sentinel Bot handlers (CRUD on errors)
@@ -443,6 +473,7 @@ export default function App() {
   };
 
   const handleDeleteSentinelError = async (errorId: string) => {
+    void recordGovernedAction('sentinel-error-delete', { errorId });
     setSentinelErrors(prev => prev.filter(e => e.id !== errorId));
     setSentinelState(prev => ({
       ...prev,
@@ -493,41 +524,23 @@ export default function App() {
   };
 
   const handleAutoFixSentinelError = async (errorId: string) => {
-    setSentinelErrors(prev => prev.map(e => {
-      if (e.id === errorId) {
-        return {
-          ...e,
-          status: 'resolved',
-          autoFixedAt: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        };
-      }
-      return e;
-    }));
-
-    setSentinelState(prev => ({
-      ...prev,
-      resolvedTotalCount: prev.resolvedTotalCount + 1,
-      healthScore: Math.min(100, prev.healthScore + 3),
-      sentinelLogs: [
-        {
-          id: `log-${Date.now()}`,
-          timestamp: new Date().toLocaleTimeString(),
-          action: 'AUTO_FIX',
-          details: `Autonomous fix hot-patch verified and applied to [${errorId}] via GPT-4o + Gemini consensus.`,
-          errorId,
-          model: 'Dual-Consensus-Healer'
-        },
-        ...prev.sentinelLogs
-      ]
-    }));
-
-    try {
-      await fetch('/api/sentinel/crud', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'autofix', errorId })
-      });
-    } catch {}
+    const response = await fetch('/api/sentinel/crud', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'autofix', errorId, assignedBot: 'Dual-Consensus-Healer' })
+    });
+    const data = await response.json().catch(() => ({}));
+    void recordGovernedAction('sentinel-autofix-request', {
+      errorId,
+      status: data.status || 'pending_authorization',
+      executed: data.executed === true
+    });
+    if (!data.executed) return;
+    setSentinelErrors(prev => prev.map(e => e.id === errorId ? {
+      ...e,
+      status: 'resolved',
+      autoFixedAt: new Date().toISOString()
+    } : e));
   };
 
   const pendingOffersCount = offers.filter(o => o.status === 'PENDING').length;

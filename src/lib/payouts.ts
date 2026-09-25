@@ -198,7 +198,7 @@ async function initializeRevenueLedgerForPayoutRead() {
   );
   await initializePayoutRegistry();
 }
-\nexport async function listPayoutRequests(userReference?: string) {
+export async function listPayoutRequests(userReference?: string) {
   await initializePayoutRegistry();
   const result = await getPostgresPool().query(
     'SELECT id,amount_minor,currency,method,destination,status,governance_event_id,external_reference,created_at,updated_at FROM payout_requests WHERE user_reference=$1 ORDER BY created_at DESC LIMIT 100',

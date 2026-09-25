@@ -90,6 +90,19 @@ export default function App() {
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [inspectingFootprint, setInspectingFootprint] = useState<DataFootprintSource | null>(null);
 
+  const persistAppState = async (state: Record<string, unknown>) => {
+    if (!currentUser) return;
+    try {
+      await fetch('/api/app-state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userReference: currentUser.uid, state })
+      });
+    } catch (error) {
+      console.error('Command Center state persistence failed:', error);
+    }
+  };
+
   // Initialize Firebase Auth listener and test Firestore connection
   useEffect(() => {
     testFirestoreConnection();
@@ -107,31 +120,44 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Sync with Firestore when user is logged in
+  // Load authoritative Command Center state from Railway/Neon after authentication.
   useEffect(() => {
     if (!currentUser) return;
-
-    // Listen to remote policy updates
-    const unsubPolicy = subscribeToUserPolicy(currentUser.uid, (remotePolicy) => {
-      if (remotePolicy) {
-        setPolicy(remotePolicy);
+    let cancelled = false;
+    const loadCommandCenterState = async () => {
+      try {
+        const response = await fetch(`/api/app-state?userReference=${encodeURIComponent(currentUser.uid)}`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('Unable to load Command Center state');
+        const payload = await response.json();
+        const remote = payload.state;
+        if (cancelled || !remote) return;
+        if (remote.policy) setPolicy(remote.policy);
+        if (Array.isArray(remote.offers) && remote.offers.length) setOffers(remote.offers);
+        if (Array.isArray(remote.grants) && remote.grants.length) setGrants(remote.grants);
+        if (Array.isArray(remote.telemetryEvents)) setTelemetryEvents(remote.telemetryEvents);
+        if (Array.isArray(remote.transactions)) setTransactions(remote.transactions);
+        if (Array.isArray(remote.footprints) && remote.footprints.length) setFootprints(remote.footprints);
+        if (Array.isArray(remote.exposures)) setExposures(remote.exposures);
+        if (remote.stats) setStats(prev => ({ ...prev, ...remote.stats }));
+      } catch (error) {
+        console.error('Command Center state load failed:', error);
       }
-    });
-
-    // Listen to remote grants updates
-    const unsubGrants = subscribeToUserGrants(currentUser.uid, (remoteGrants) => {
-      if (remoteGrants && remoteGrants.length > 0) {
-        setGrants(remoteGrants);
-      }
-    });
-
-    // Save current policy initially to ensure remote existence
-    saveUserPolicy(currentUser.uid, policy).catch(console.error);
-
-    return () => {
-      unsubPolicy();
-      unsubGrants();
     };
+    void loadCommandCenterState();
+    return () => { cancelled = true; };
+  }, [currentUser]);
+
+  // Keep the existing Firestore policy/grant compatibility layer, but no longer treat
+  // local React state as the authoritative Command Center store.
+  useEffect(() => {
+    if (!currentUser) return;
+    const unsubPolicy = subscribeToUserPolicy(currentUser.uid, (remotePolicy) => {
+      if (remotePolicy) setPolicy(remotePolicy);
+    });
+    const unsubGrants = subscribeToUserGrants(currentUser.uid, (remoteGrants) => {
+      if (remoteGrants && remoteGrants.length) setGrants(remoteGrants);
+    });
+    return () => { unsubPolicy(); unsubGrants(); };
   }, [currentUser]);
 
   const handleLogin = async () => {
@@ -174,6 +200,7 @@ export default function App() {
         activeDataStreamsCount: activeCount,
         monthlyPacingUsd: totalComp
       }));
+      void persistAppState({ footprints: next });
 
       return next;
     });
@@ -181,20 +208,18 @@ export default function App() {
 
   // Update privacy tier & epsilon
   const handleUpdatePrivacyTier = (id: string, tier: PrivacyTier, epsilon: number) => {
-    setFootprints(prev => prev.map(f => {
-      if (f.id === id) {
-        // Higher epsilon gives higher buyer yield, lower epsilon slightly lower
-        const multiplier = epsilon < 0.25 ? 0.65 : epsilon < 0.6 ? 0.8 : 0.95;
-        const adjustedComp = f.isMonetized ? Math.round(f.marketMonthlyValueUsd * multiplier) : 0;
-        return {
-          ...f,
-          privacyTier: tier,
-          privacyEpsilon: epsilon,
-          userMonthlyCompUsd: adjustedComp
-        };
-      }
-      return f;
-    }));
+    setFootprints(prev => {
+      const next = prev.map(f => {
+        if (f.id === id) {
+          const multiplier = epsilon < 0.25 ? 0.65 : epsilon < 0.6 ? 0.8 : 0.95;
+          const adjustedComp = f.isMonetized ? Math.round(f.marketMonthlyValueUsd * multiplier) : 0;
+          return { ...f, privacyTier: tier, privacyEpsilon: epsilon, userMonthlyCompUsd: adjustedComp };
+        }
+        return f;
+      });
+      void persistAppState({ footprints: next });
+      return next;
+    });
   };
 
   // Update policy with dynamic shield calculation
@@ -252,12 +277,11 @@ export default function App() {
 
   // Accept offer
   const handleAcceptOffer = (offerId: string) => {
-    setOffers(prev => prev.map(o => {
-      if (o.id === offerId) {
-        return { ...o, status: 'ACCEPTED' as const };
-      }
-      return o;
-    }));
+    setOffers(prev => {
+      const next = prev.map(o => o.id === offerId ? { ...o, status: 'ACCEPTED' as const } : o);
+      void persistAppState({ offers: next });
+      return next;
+    });
 
     const accepted = offers.find(o => o.id === offerId);
     if (accepted) {
@@ -272,40 +296,33 @@ export default function App() {
 
   // Reject offer
   const handleRejectOffer = (offerId: string) => {
-    setOffers(prev => prev.map(o => {
-      if (o.id === offerId) {
-        return { ...o, status: 'REJECTED' as const };
-      }
-      return o;
-    }));
+    setOffers(prev => {
+      const next = prev.map(o => o.id === offerId ? { ...o, status: 'REJECTED' as const } : o);
+      void persistAppState({ offers: next });
+      return next;
+    });
   };
 
   // Counter offer
   const handleCounterOffer = (offerId: string, counterAmount: number) => {
-    setOffers(prev => prev.map(o => {
-      if (o.id === offerId) {
-        return {
-          ...o,
-          status: 'COUNTERED' as const,
-          counterOfferAmount: counterAmount
-        };
-      }
-      return o;
-    }));
+    setOffers(prev => {
+      const next = prev.map(o => o.id === offerId ? { ...o, status: 'COUNTERED' as const, counterOfferAmount: counterAmount } : o);
+      void persistAppState({ offers: next });
+      return next;
+    });
   };
 
   // Dispatch clawback notice to data broker
   const handleDispatchClawback = (expId: string) => {
-    setExposures(prev => prev.map(exp => {
-      if (exp.id === expId) {
-        return {
-          ...exp,
-          status: 'clawback_sent' as const,
-          actionTimestamp: `Clawback statutory order dispatched today (${new Date().toLocaleDateString()})`
-        };
-      }
-      return exp;
-    }));
+    setExposures(prev => {
+      const next = prev.map(exp => exp.id === expId ? {
+        ...exp,
+        status: 'clawback_sent' as const,
+        actionTimestamp: `Clawback statutory order dispatched today (${new Date().toLocaleDateString()})`
+      } : exp);
+      void persistAppState({ exposures: next });
+      return next;
+    });
 
     setStats(s => ({
       ...s,
@@ -323,16 +340,11 @@ export default function App() {
 
   // Handle grant revocation
   const handleRevokeGrant = (grantId: string) => {
-    setGrants(prev => prev.map(g => {
-      if (g.id === grantId) {
-        return {
-          ...g,
-          status: 'revoked' as const,
-          ttlHoursRemaining: 0
-        };
-      }
-      return g;
-    }));
+    setGrants(prev => {
+      const next = prev.map(g => g.id === grantId ? { ...g, status: 'revoked' as const, ttlHoursRemaining: 0 } : g);
+      void persistAppState({ grants: next });
+      return next;
+    });
     setStats(s => ({
       ...s,
       privacyShieldIndex: Math.min(100, s.privacyShieldIndex + 3)
@@ -341,15 +353,11 @@ export default function App() {
 
   // Handle grant permission update
   const handleUpdateGrantPermissions = (grantId: string, updatedFields: string[]) => {
-    setGrants(prev => prev.map(g => {
-      if (g.id === grantId) {
-        return {
-          ...g,
-          sharedFields: updatedFields
-        };
-      }
-      return g;
-    }));
+    setGrants(prev => {
+      const next = prev.map(g => g.id === grantId ? { ...g, sharedFields: updatedFields } : g);
+      void persistAppState({ grants: next });
+      return next;
+    });
   };
 
   // Trigger simulated telemetry usage event
@@ -382,9 +390,8 @@ export default function App() {
       pendingSettlementUsd: s.pendingSettlementUsd + payout
     }));
 
-    if (currentUser) {
-      recordTelemetryEvent(currentUser.uid, newEvent).catch(console.error);
-    }
+    void persistAppState({ telemetryEvents: [newEvent] });
+    if (currentUser) recordTelemetryEvent(currentUser.uid, newEvent).catch(console.error);
   };
 
   // Batch clear settlement
@@ -400,14 +407,16 @@ export default function App() {
     setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
   };
 
-  const handleAuthenticateAllAccounts = () => {
-    setAccounts(prev => prev.map(a => ({
-      ...a,
-      authStatus: 'authenticated',
-      tokenExpiresInDays: 30,
-      syncStatus: 'synced',
-      lastAttestedAt: 'Just now'
-    })));
+  const handleAuthenticateAllAccounts = async () => {
+    try {
+      const response = await fetch('/api/connections', { cache: 'no-store' });
+      if (!response.ok) throw new Error('Connection registry unavailable');
+      const registry = await response.json();
+      const authorizedIds = new Set((registry.connections || []).filter((x: any) => x.status === 'authorized').map((x: any) => x.id));
+      setAccounts(prev => prev.map(a => authorizedIds.has(a.id) ? ({ ...a, authStatus: 'authenticated', syncStatus: 'synced', lastAttestedAt: 'Just now' }) : a));
+    } catch (error) {
+      console.error('Account authentication sync failed:', error);
+    }
   };
 
   const handleBatchAccountAction = (action: 'shield_all' | 'sync_all' | 'purge_all') => {
@@ -416,7 +425,7 @@ export default function App() {
     } else if (action === 'sync_all') {
       setAccounts(prev => prev.map(a => ({ ...a, autoSyncTelemetry: true, syncStatus: 'synced' })));
     } else if (action === 'purge_all') {
-      alert('Statutory CCPA/GDPR erasure command dispatched across all 10 federated internet accounts.');
+      void fetch('/api/connections', { method: 'GET', cache: 'no-store' }).catch(() => undefined);
     }
   };
 

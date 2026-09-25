@@ -225,6 +225,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
     setIsVerifyingNewWallet(true);
 
+    // Wallet destinations remain session-scoped until real provider ownership attestation exists.
     // Adding an address is not cryptographic ownership verification.
     // Keep it unverified until a real provider/wallet attestation is implemented.
     const created: VerifiedWallet = {

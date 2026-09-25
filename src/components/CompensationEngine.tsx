@@ -22,14 +22,14 @@ import { UsageTelemetryEvent, DataCategoryType } from '../types';
 
 interface CompensationEngineProps {
   telemetryEvents: UsageTelemetryEvent[];
-  onTriggerSimulatedUsage: (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => void;
+  onPreviewUsage: (model: 'Per-Query' | 'Data Shapley' | 'Cohort Subscription' | 'Proof Attestation') => void;
   onClearSettlement: () => void;
   totalPendingUsd: number;
 }
 
 export const CompensationEngine: React.FC<CompensationEngineProps> = ({
   telemetryEvents,
-  onTriggerSimulatedUsage,
+  onPreviewUsage,
   onClearSettlement,
   totalPendingUsd
 }) => {
@@ -204,10 +204,10 @@ export const CompensationEngine: React.FC<CompensationEngineProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => onTriggerSimulatedUsage('Data Shapley')}
+                onClick={() => onPreviewUsage('Data Shapley')}
                 className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors flex items-center gap-1.5"
               >
-                <Play className="w-3.5 h-3.5" /> Simulate Payout
+                <Play className="w-3.5 h-3.5" /> Preview Payout Calculation
               </button>
             </div>
           </div>
@@ -321,10 +321,10 @@ export const CompensationEngine: React.FC<CompensationEngineProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => onTriggerSimulatedUsage('Per-Query')}
+                onClick={() => onPreviewUsage('Per-Query')}
                 className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors flex items-center gap-1.5"
               >
-                <Play className="w-3.5 h-3.5" /> Execute Query Test
+                <Play className="w-3.5 h-3.5" /> Preview Query Economics
               </button>
             </div>
           </div>
@@ -387,10 +387,10 @@ export const CompensationEngine: React.FC<CompensationEngineProps> = ({
                 </div>
               </div>
               <button
-                onClick={() => onTriggerSimulatedUsage('Cohort Subscription')}
+                onClick={() => onPreviewUsage('Cohort Subscription')}
                 className="px-3.5 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-colors flex items-center gap-1.5"
               >
-                <Play className="w-3.5 h-3.5" /> Trigger Payout Pulse
+                <Play className="w-3.5 h-3.5" /> Preview Cohort Economics
               </button>
             </div>
           </div>

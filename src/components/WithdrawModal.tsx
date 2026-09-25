@@ -228,23 +228,21 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     // Adding an address is not cryptographic ownership verification.
     // Keep it unverified until a real provider/wallet attestation is implemented.
     const created: VerifiedWallet = {
-        id: `w-${newWalletChain.toLowerCase()}-${Date.now()}`,
-        chain: newWalletChain,
-        name: newWalletName.trim(),
-        address: newWalletAddress.trim(),
-        isVerified: false,
-        verificationMethod: 'Pending real ownership attestation',
-        addedAt: new Date().toISOString()
-      };
+      id: `w-${newWalletChain.toLowerCase()}-${Date.now()}`,
+      chain: newWalletChain,
+      name: newWalletName.trim(),
+      address: newWalletAddress.trim(),
+      isVerified: false,
+      verificationMethod: 'Pending real ownership attestation',
+      addedAt: new Date().toISOString()
+    };
 
-      setConnectedWallets(prev => [created, ...prev]);
-
-      setNewWalletName('');
-      setNewWalletAddress('');
-      setIsVerifyingNewWallet(false);
-      setShowAddWalletForm(false);
-      setAddWalletError(null);
-    }, 650);
+    setConnectedWallets(prev => [created, ...prev]);
+    setNewWalletName('');
+    setNewWalletAddress('');
+    setIsVerifyingNewWallet(false);
+    setShowAddWalletForm(false);
+    setAddWalletError(null);
   };
 
   const handleCopyAddress = (id: string, addr: string, e: React.MouseEvent) => {

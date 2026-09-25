@@ -59,6 +59,7 @@ import { initializeUniversalAssetIntelligence, getUniversalAssetIntelligenceSnap
 import { initialize24x7OpportunityDiscovery, run24x7OpportunityDiscoveryCycle, get24x7OpportunityDiscoveryStatus, get24x7OpportunityDiscoveryPolicy } from './src/lib/24x7-opportunity-discovery';
 import { discoverGithubBounties, listGithubBountyOpportunities, advanceGithubBountyStage, recordVerifiedBountyPayout, getGithubBountyPipelinePolicy } from './src/lib/github-bounty-pipeline';
 import { runGlobalCollaborationCycle, getGlobalCollaborationPolicy } from './src/lib/global-collaboration-orchestrator';
+import { initializeGlorifierMediator, ensureCoreMediatorNodes, getGlorifierMediatorPolicy, listMediatorNodes, buildGlorifierMediatorSnapshot, registerMediatorNode } from './src/lib/glorifier-mediator';
 import { getGlobalResolutionStatus, listGlobalResolutionCases } from './src/lib/global-resolution-engine';
 
 dotenv.config();
@@ -96,6 +97,7 @@ void Promise.allSettled([
   initializeCryptographicTrustGateway(),
   initializeUniversalAssetIntelligence(),
   initialize24x7OpportunityDiscovery()
+  ,initializeGlorifierMediator()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
@@ -3541,6 +3543,42 @@ app.post('/api/opportunities/github-bounties/:id/stage', async (req: Request, re
   try { res.status(200).json({ ok:true, result:await advanceGithubBountyStage({ id:req.params.id, stage:String(req.body?.stage) as any, actor:String(req.body?.actor||'human-owner'), evidenceRefs:Array.isArray(req.body?.evidenceRefs)?req.body.evidenceRefs.map(String):[] }) }); }
   catch (error:any) { res.status(400).json({ ok:false, error:'Bounty stage transition rejected', details:error?.message }); }
 });
+// ============================================================================
+// GLORIFIER MEDIATOR — TOP-LEVEL CROSS-SYSTEM ARCHITECTURE
+// ============================================================================
+app.get('/api/mediator/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getGlorifierMediatorPolicy() });
+});
+
+app.get('/api/mediator/nodes', async (req: Request, res: Response) => {
+  try {
+    const type = req.query.type ? String(req.query.type) as any : undefined;
+    res.json({ ok: true, nodes: await listMediatorNodes(type) });
+  } catch (error: any) {
+    res.status(503).json({ ok:false, error:error?.message || 'Mediator nodes unavailable' });
+  }
+});
+
+app.get('/api/mediator/snapshot', async (_req: Request, res: Response) => {
+  try { res.json({ ok:true, snapshot:await buildGlorifierMediatorSnapshot() }); }
+  catch (error: any) { res.status(503).json({ ok:false, error:error?.message || 'Mediator snapshot unavailable' }); }
+});
+
+app.post('/api/mediator/nodes', async (req: Request, res: Response) => {
+  try {
+    const node = await registerMediatorNode({
+      nodeType: req.body?.nodeType,
+      provider: String(req.body?.provider || '').trim(),
+      capability: String(req.body?.capability || '').trim(),
+      status: req.body?.status || 'discovered',
+      connectionId: req.body?.connectionId || null,
+      authorizationRequired: req.body?.authorizationRequired !== false,
+      metadata: req.body?.metadata && typeof req.body.metadata === 'object' ? req.body.metadata : {}
+    });
+    res.status(201).json({ ok:true, node });
+  } catch (error: any) { res.status(400).json({ ok:false, error:error?.message || 'Mediator node registration failed' }); }
+});
+
 // ============================================================================
 // GLOBAL COLLABORATION CONTROL PLANE
 // Operational API for the application dashboard. Read endpoints expose state;

@@ -234,6 +234,8 @@ async function collectObservedInputs() {
     db.query(`SELECT * FROM glorifier_valuation_comparables ORDER BY observed_at DESC`)
   ]);
 
+  const comparableRows = comparables.rows as any[];
+
   const productSignals =
     Number(workUnits.rows[0]?.executions || 0) > 0 ? 25 : 0;
   const integrationSignals = Number(connections.rows[0]?.authorized || 0) > 0 ? 20 : 0;
@@ -259,15 +261,15 @@ async function collectObservedInputs() {
     claimableAssets: Number(claimables.rows[0]?.count || 0),
     companyAssetValue: Number(companyEvidence.rows[0]?.company_asset_value || 0),
     productMaturityScore: maturityScore,
-    comparables: comparables.map(mapComparable)
+    comparables: comparableRows.map((c: any) => mapComparable(c))
   };
 }
 
 export async function calculateGlorifierValuation() {
   await initializeValuationEngine();
   const inputs = await collectObservedInputs();
-  const comps = inputs.comparables.filter(c => c.currency === 'USD' && c.evidenceStatus !== 'not_verified' && Number(c.valuation) > 0);
-  const comparableValues = comps.map(c => Number(c.valuation));
+  const comps = inputs.comparables.filter((c: any) => c.currency === 'USD' && c.evidenceStatus !== 'not_verified' && Number(c.valuation) > 0);
+  const comparableValues = comps.map((c: any) => Number(c.valuation));
   const benchmarkMedian = median(comparableValues);
   const benchmarkLow = percentile(comparableValues, 0.25);
   const benchmarkHigh = percentile(comparableValues, 0.75);
@@ -292,8 +294,8 @@ export async function calculateGlorifierValuation() {
     limitations.push('No qualifying USD comparable valuations have been recorded.');
   }
 
-  const revenueComps = comps.filter(c => c.revenue != null && Number(c.revenue) > 0);
-  const multiples = revenueComps.map(c => Number(c.valuation) / Number(c.revenue)).filter(x => Number.isFinite(x) && x > 0);
+  const revenueComps = comps.filter((c: any) => c.revenue != null && Number(c.revenue) > 0);
+  const multiples = revenueComps.map((c: any) => Number(c.valuation) / Number(c.revenue)).filter((x: number) => Number.isFinite(x) && x > 0);
   if (inputs.verifiedRevenue > 0 && multiples.length) {
     const revenueMultiple = median(multiples);
     methods.revenueMultiple = {

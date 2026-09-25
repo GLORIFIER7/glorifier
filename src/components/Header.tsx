@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ShieldCheck, Wallet, Sparkles, Layers, Bot, Globe, Users, SlidersHorizontal,
+  ShieldCheck, Wallet, Sparkles, Layers, Bot, Globe, Users, SlidersHorizontal, Search,
   Mail, HardDrive, Coins, Lock, Database, Scale, Cpu, BrainCircuit, BadgeDollarSign,
   Network, Globe2, ShieldAlert, FileText, LogIn, LogOut, User as UserIcon,
   ChevronDown, Menu, X, Activity

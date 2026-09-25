@@ -464,7 +464,7 @@ async function runModelExecution({
 
         if (gptText && geminiText) {
           return {
-            text: `[Dual-Consensus Verified (GPT-4o & Gemini 3.8 Flash)]:\n\n${gptText}\n\n---\n*Cross-Validation Note (Gemini Enclave)*: Cryptographic differential privacy boundaries and valuation parameters confirmed across both model checkpoints.`,
+            text: `[Dual-Provider Responses (GPT-4o & Gemini 3.8 Flash)]:\n\n${gptText}\n\n---\n*Provider separation note*: Two live provider responses were received. GLORIFIER does not assert agreement or cross-validation unless an explicit reconciliation step verifies it.`,
             modelUsed: 'consensus (gpt-4o + gemini-3.8-flash)',
             provider: 'Hybrid Sovereign Consensus'
           };
@@ -547,18 +547,66 @@ app.get('/api/runtime-verification', async (req: Request, res: Response) => {
     const dbStarted = Date.now();
     await pool.query('SELECT 1');
     checks.database = { ok: true, latencyMs: Date.now() - dbStarted };
+
     await initializeAppState();
     checks.appState = { ok: true, tablesInitialized: true };
     await initializeVerifiedOutcomes();
     checks.evidence = { ok: true, verificationStoreInitialized: true };
+
     const userReference = String(req.query.userReference || '').trim();
     if (userReference) {
       const state = await readAppState(userReference);
-      checks.governance = { ok: true, userReferencePresent: true, governanceEvents: Array.isArray((state as any)?.governanceEvents) ? (state as any).governanceEvents.length : 0 };
+      checks.persistence = {
+        ok: true,
+        userReferencePresent: true,
+        governanceEvents: Array.isArray((state as any)?.governanceEvents) ? (state as any).governanceEvents.length : 0,
+        source: 'neon-postgresql'
+      };
     } else {
-      checks.governance = { ok: true, userReferencePresent: false, note: 'Pass userReference to inspect persisted governance state.' };
+      checks.persistence = {
+        ok: true,
+        userReferencePresent: false,
+        note: 'Pass userReference to inspect persisted app state.'
+      };
     }
-    res.json({ ok: true, status: 'verified', runtime: 'railway-backend', persistence: 'neon-postgresql', consequentialExecution: 'requires-authorized-integration-and-human-approval', checks, responseTimeMs: Date.now() - startedAt, timestamp: new Date().toISOString() });
+
+    const probeAi = String(req.query.probeAi || '').toLowerCase() === 'true';
+    if (probeAi) {
+      const probe = await runModelExecution({
+        model: 'gemini-3.8-flash',
+        systemPrompt: 'You are performing a GLORIFIER runtime verification. Return exactly: GLORIFIER_RUNTIME_PROBE_OK',
+        userPrompt: 'Runtime probe. Do not provide analysis or claims.',
+        temperature: 0
+      });
+      checks.ai = {
+        ok: Boolean(probe.text),
+        executed: Boolean(probe.text),
+        provider: probe.provider,
+        model: probe.modelUsed,
+        response: probe.text ? probe.text.slice(0, 200) : null
+      };
+      if (!probe.text) {
+        throw new Error('No verified AI/provider/compute response was available for the runtime probe');
+      }
+    } else {
+      checks.ai = {
+        ok: false,
+        executed: false,
+        note: 'Pass probeAi=true to execute a real provider/compute probe; no synthetic response is used.'
+      };
+    }
+
+    const overallVerified = checks.database && checks.appState && checks.evidence && (!probeAi || (checks.ai as any)?.ok);
+    res.status(overallVerified ? 200 : 503).json({
+      ok: overallVerified,
+      status: overallVerified ? 'verified' : 'degraded',
+      runtime: 'railway-backend',
+      persistence: 'neon-postgresql',
+      consequentialExecution: 'requires-authorized-integration-and-human-approval',
+      checks,
+      responseTimeMs: Date.now() - startedAt,
+      timestamp: new Date().toISOString()
+    });
   } catch (error) {
     checks.failure = { message: error instanceof Error ? error.message : String(error) };
     res.status(503).json({ ok: false, status: 'degraded', checks, responseTimeMs: Date.now() - startedAt, timestamp: new Date().toISOString() });
@@ -569,43 +617,43 @@ app.get('/api/ai/config', (req: Request, res: Response) => {
   res.json({
     openAiConfigured: !!process.env.OPENAI_API_KEY,
     geminiConfigured: !!process.env.GEMINI_API_KEY,
-    defaultModel: 'gpt-4o',
+    defaultModel: process.env.GEMINI_API_KEY ? 'gemini-3.8-flash' : 'gpt-4o',
     availableModels: [
       { 
         id: 'gpt-4o', 
         name: 'GPT-4o (OpenAI)', 
         provider: 'OpenAI', 
-        description: 'Flagship frontier model for data valuation, contract negotiation & legal clawbacks',
-        isDefault: true,
-        status: process.env.OPENAI_API_KEY ? 'Live API Connected' : 'Enclave Ready'
+        description: 'OpenAI provider; availability is verified only by successful runtime execution.',
+        isDefault: !process.env.GEMINI_API_KEY,
+        status: process.env.OPENAI_API_KEY ? 'Configured; execution unverified' : 'Not configured'
       },
       { 
         id: 'gpt-4o-mini', 
         name: 'GPT-4o mini (OpenAI)', 
         provider: 'OpenAI', 
         description: 'Ultra-fast, cost-efficient GPT model for high-frequency telemetry screening',
-        status: process.env.OPENAI_API_KEY ? 'Live API Connected' : 'Enclave Ready'
+        status: process.env.OPENAI_API_KEY ? 'Configured; execution unverified' : 'Not configured'
       },
       { 
         id: 'gemini-3.8-flash', 
         name: 'Gemini 3.8 Flash (Google)', 
         provider: 'Google DeepMind', 
-        description: 'Low-latency multi-modal intelligence with large context window',
-        status: process.env.GEMINI_API_KEY ? 'Live API Connected' : 'Ready'
+        description: 'Gemini provider; availability is verified only by successful runtime execution.',
+        status: process.env.GEMINI_API_KEY ? 'Configured; execution unverified' : 'Not configured'
       },
       { 
         id: 'consensus', 
         name: 'Dual-Consensus (GPT-4o + Gemini)', 
         provider: 'Hybrid Enclave', 
         description: 'Cross-model verification for high-value data offers and risk audits',
-        status: 'Active Multi-Model'
+        status: 'Runtime verification required'
       },
       { 
         id: 'all-models', 
         name: 'All-AI Model Council (GPT-4o + Gemini + Meta LLaMA)', 
         provider: 'Multi-Model Enclave Council', 
         description: 'Collaborative assembly of OpenAI, Google DeepMind, and open-weights sovereign models',
-        status: 'Active Multi-Model Council'
+        status: 'Runtime verification required'
       }
     ]
   });

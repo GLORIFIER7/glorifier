@@ -96,8 +96,8 @@ void Promise.allSettled([
   initializeAutonomousGrowth(),
   initializeCryptographicTrustGateway(),
   initializeUniversalAssetIntelligence(),
-  initialize24x7OpportunityDiscovery()
-  ,initializeGlorifierMediator()
+  initialize24x7OpportunityDiscovery(),
+  initializeGlorifierMediator()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
@@ -109,6 +109,7 @@ void Promise.allSettled([
     return;
   }
   try {
+    await ensureCoreMediatorNodes();
     await ensureGlobalProviderConnections();
     await ensureCoreAssetIntegrations();
   } catch (error: any) {

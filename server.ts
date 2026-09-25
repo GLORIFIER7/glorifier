@@ -53,6 +53,7 @@ import { initializeAwsIntelligence, getAwsIntelligencePolicy, recordAwsAccount, 
 import { initializeEconomicOperatingSystem, getEconomicOperatingSystemPolicy, recordEconomicPricing, listEconomicPricing, meterEconomicWork, recordCustomerLifecycle, recordDataProduct, recordAgentProduct, createCommercialContract, createCommercialInvoice, recordPaymentEvidence, recordCustomerRoiEvidence, listEconomicOperatingSnapshot } from './src/lib/economic-operating-system';
 import { initializePayoutRegistry, createPayoutRequest, listPayoutRequests, getAvailablePayoutBalance } from './src/lib/payouts';
 import { initializeRevenueLedger } from './src/lib/revenue/engine';
+import { initializeAutonomousGrowth, runAutonomousGrowthCycle, getAutonomousGrowthStatus, getAutonomousGrowthPolicy } from './src/lib/autonomous-growth';
 
 dotenv.config();
 
@@ -84,7 +85,8 @@ void Promise.allSettled([
   initializeAwsIntelligence(),
   initializeBusinessIntelligenceScientist(),
   initializeEnterpriseArchitectureScientist(),
-  initializeRevenueControlPlane()
+  initializeRevenueControlPlane(),
+  initializeAutonomousGrowth()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
@@ -3161,6 +3163,27 @@ app.get('/api/payouts', async (_req: Request, res: Response) => {
   }
 });
 
+app.get('/api/growth/status', async (_req: Request, res: Response) => {
+  try {
+    res.json({
+      ok: true,
+      policy: getAutonomousGrowthPolicy(),
+      actions: await getAutonomousGrowthStatus(getPayoutOwnerReference())
+    });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: error?.message || 'Autonomous growth status unavailable' });
+  }
+});
+
+app.post('/api/growth/cycle', async (_req: Request, res: Response) => {
+  try {
+    const result = await runAutonomousGrowthCycle(getPayoutOwnerReference());
+    res.status(202).json({ ok: true, ...result });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: error?.message || 'Autonomous growth cycle failed' });
+  }
+});
+
 // ============================================================================
 // GLORIFIER REVENUE CONTROL PLANE
 // Common governance boundary across every value-creation and monetization machine.
@@ -3384,6 +3407,12 @@ async function startServer() {
 
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Personal Data Monetization Server running on http://0.0.0.0:${PORT}`);
+    const intervalMs = Math.max(60000, Number(process.env.GLORIFIER_AUTO_GROWTH_INTERVAL_MS) || 600000);
+    const run = () => runAutonomousGrowthCycle(getPayoutOwnerReference())
+      .then(result => console.log('[GLORIFIER] autonomous growth cycle', result.actions))
+      .catch(error => console.warn('[GLORIFIER] autonomous growth cycle deferred:', error?.message || String(error)));
+    setTimeout(run, 15000);
+    setInterval(run, intervalMs);
   });
 }
 

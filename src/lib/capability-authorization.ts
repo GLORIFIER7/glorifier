@@ -18,7 +18,18 @@ const POLICIES: Record<string, CapabilityPolicy> = {
   'change.credentials': { id: 'change.credentials', risk: 'critical', requiresHumanApproval: true, reversible: false },
   'move.funds': { id: 'move.funds', risk: 'critical', requiresHumanApproval: true, reversible: false },
   'change.ownership': { id: 'change.ownership', risk: 'critical', requiresHumanApproval: true, reversible: false },
-  'delete.resource': { id: 'delete.resource', risk: 'critical', requiresHumanApproval: true, reversible: false }
+  'delete.resource': { id: 'delete.resource', risk: 'critical', requiresHumanApproval: true, reversible: false },
+  'crypto.hash': { id: 'crypto.hash', risk: 'low', requiresHumanApproval: false, reversible: true },
+  'crypto.verify': { id: 'crypto.verify', risk: 'low', requiresHumanApproval: false, reversible: true },
+  'crypto.sign': { id: 'crypto.sign', risk: 'critical', requiresHumanApproval: true, reversible: false },
+  'crypto.encrypt': { id: 'crypto.encrypt', risk: 'high', requiresHumanApproval: true, reversible: true },
+  'crypto.decrypt': { id: 'crypto.decrypt', risk: 'critical', requiresHumanApproval: true, reversible: true },
+  'wallet.read': { id: 'wallet.read', risk: 'medium', requiresHumanApproval: false, reversible: true },
+  'wallet.derive_address': { id: 'wallet.derive_address', risk: 'high', requiresHumanApproval: true, reversible: true },
+  'wallet.verify': { id: 'wallet.verify', risk: 'low', requiresHumanApproval: false, reversible: true },
+  'wallet.sign': { id: 'wallet.sign', risk: 'critical', requiresHumanApproval: true, reversible: false },
+  'wallet.prepare_transfer': { id: 'wallet.prepare_transfer', risk: 'critical', requiresHumanApproval: true, reversible: true },
+  'wallet.broadcast': { id: 'wallet.broadcast', risk: 'critical', requiresHumanApproval: true, reversible: false }
 };
 
 export function getCapabilityPolicy(capability: string): CapabilityPolicy | null {

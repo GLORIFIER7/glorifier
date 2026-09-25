@@ -535,7 +535,7 @@ export default function App() {
         {activeTab === 'mediator' && <MediatorDashboard />}
         {activeTab === 'discovery' && <OpportunityDiscoveryDashboard />}
         {activeTab === 'revenue_verified' && <RevenueVerifiedDashboard />}
-        {activeTab === 'monetization_sprint' && <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} userReference={currentUser?.uid || 'anonymous'} />
+        {activeTab === 'monetization_sprint' && <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} userReference={currentUser?.uid || 'anonymous'} />}
         {activeTab === 'connections' && <ConnectionAuthorizationDashboard />}
         {activeTab === 'global_collaboration' && <GlobalCollaborationDashboard />}
 

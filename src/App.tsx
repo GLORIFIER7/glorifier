@@ -64,7 +64,7 @@ import {
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('gpt_cowork');
+  const [activeTab, setActiveTab] = useState<string>('overview');
   const [stats, setStats] = useState(initialStats);
   const [footprints, setFootprints] = useState<DataFootprintSource[]>(initialFootprints);
   const [offers, setOffers] = useState<BuyerOffer[]>(initialBuyerOffers);
@@ -377,7 +377,6 @@ export default function App() {
     setTelemetryEvents(prev => [newEvent, ...prev.slice(0, 15)]);
     setStats(s => ({
       ...s,
-      totalEarnedUsd: s.totalEarnedUsd + payout,
       pendingSettlementUsd: s.pendingSettlementUsd + payout
     }));
 
@@ -556,7 +555,6 @@ export default function App() {
             onAddEarnings={(amount, desc) => {
               setStats(s => ({
                 ...s,
-                totalEarnedUsd: s.totalEarnedUsd + amount,
                 pendingSettlementUsd: s.pendingSettlementUsd + amount
               }));
               const newTx: CompensationTransaction = {
@@ -613,7 +611,6 @@ export default function App() {
             onAddEarnings={(amount, desc) => {
               setStats(s => ({
                 ...s,
-                totalEarnedUsd: s.totalEarnedUsd + amount,
                 pendingSettlementUsd: s.pendingSettlementUsd + amount
               }));
               const newTx: CompensationTransaction = {
@@ -638,7 +635,6 @@ export default function App() {
             onAddEarnings={(amount, desc) => {
               setStats(s => ({
                 ...s,
-                totalEarnedUsd: s.totalEarnedUsd + amount,
                 pendingSettlementUsd: s.pendingSettlementUsd + amount
               }));
               const newTx: CompensationTransaction = {
@@ -777,7 +773,7 @@ export default function App() {
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950/60 py-4 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
-          <span>Personal Data Monetization Platform &bull; Autonomous AI Data Governance</span>
+          <span>GLORIFIER AI &bull; Provider-Neutral Intelligence Orchestration</span>
           <div className="flex items-center gap-4 font-mono text-[11px]">
             <span>ZK-Attestation: Active</span>
             <span>Differential Privacy: \u03b5={policy.globalEpsilon}</span>

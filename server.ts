@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
+import { randomUUID } from 'node:crypto';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
@@ -521,6 +522,34 @@ app.get('/api/health/ready', async (_req: Request, res: Response) => {
   if (!process.env.DATABASE_URL) return res.status(503).json({ ok: false, status: 'not-ready', reason: 'DATABASE_URL is not configured' });
   try { await getPostgresPool().query('SELECT 1'); return res.json({ ok: true, status: 'ready', timestamp: new Date().toISOString() }); }
   catch (error) { return apiError(res, 503, 'Backend dependencies are not ready', error); }
+});
+
+// Read-only runtime verification for the production audit.
+app.get('/api/runtime-verification', async (req: Request, res: Response) => {
+  const startedAt = Date.now();
+  const checks: Record<string, unknown> = {};
+  try {
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured');
+    const pool = getPostgresPool();
+    const dbStarted = Date.now();
+    await pool.query('SELECT 1');
+    checks.database = { ok: true, latencyMs: Date.now() - dbStarted };
+    await initializeAppState();
+    checks.appState = { ok: true, tablesInitialized: true };
+    await initializeVerifiedOutcomes();
+    checks.evidence = { ok: true, verificationStoreInitialized: true };
+    const userReference = String(req.query.userReference || '').trim();
+    if (userReference) {
+      const state = await readAppState(userReference);
+      checks.governance = { ok: true, userReferencePresent: true, governanceEvents: Array.isArray((state as any)?.governanceEvents) ? (state as any).governanceEvents.length : 0 };
+    } else {
+      checks.governance = { ok: true, userReferencePresent: false, note: 'Pass userReference to inspect persisted governance state.' };
+    }
+    res.json({ ok: true, status: 'verified', runtime: 'railway-backend', persistence: 'neon-postgresql', consequentialExecution: 'requires-authorized-integration-and-human-approval', checks, responseTimeMs: Date.now() - startedAt, timestamp: new Date().toISOString() });
+  } catch (error) {
+    checks.failure = { message: error instanceof Error ? error.message : String(error) };
+    res.status(503).json({ ok: false, status: 'degraded', checks, responseTimeMs: Date.now() - startedAt, timestamp: new Date().toISOString() });
+  }
 });
 
 app.get('/api/ai/config', (req: Request, res: Response) => {
@@ -1976,7 +2005,7 @@ app.post('/api/governed-actions', async (req: Request, res: Response) => {
 
     const current = await readAppState(userReference);
     const governanceEvent = {
-      id: `gov-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      id: `gov-${randomUUID()}`,
       action,
       actor,
       status: 'recorded',

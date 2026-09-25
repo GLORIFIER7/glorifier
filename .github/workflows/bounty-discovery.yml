@@ -1,0 +1,21 @@
+name: GLORIFIER Bounty Opportunity Discovery
+
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Record discovery policy
+        run: |
+          echo "DISCOVER -> VERIFY FUNDING -> VERIFY ELIGIBILITY -> CLAIM -> SOLVE -> PR/REPORT -> ACCEPTANCE -> VERIFY PAYOUT -> SETTLE"
+          echo "No advertised bounty is revenue until canonical payment evidence exists."
+      - name: Public GitHub bounty signal scan
+        run: |
+          gh api --method GET search/issues -f q='is:issue is:open (bounty OR reward OR paid OR funded) -label:spam' -f per_page=30 --jq '.items[] | [.repository_url, .number, .title, .html_url] | @tsv' | tee bounty-signals.tsv

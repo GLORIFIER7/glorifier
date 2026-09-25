@@ -43,6 +43,7 @@ import { initializeVerifiedOutcomes, recordVerifiedOutcome, verifyOutcome, dispu
 import { initializeSalesforceArchitecture, getSalesforceRefinedArchitecture, runSalesforceArchitectureHealthCheck } from './src/lib/salesforce-architecture';
 import { getAssetsScientistPolicy, buildAssetAssessment } from './src/lib/assets-scientist';
 import { initializeRevenueControlPlane, getRevenueControlPlanePolicy, governRevenueAction, listRevenueGovernanceEvents, buildRevenueControlPlaneSnapshot } from './src/lib/revenue-control-plane';
+import { getMonetizationSprintSnapshot, listMonetizationSprintOpportunities, createMonetizationOpportunity, addMonetizationEvidence, advanceMonetizationOpportunity } from './src/lib/monetization-sprint';
 import { initializeSocialIntegrations, getSocialIntegrationStatus, buildSocialAuthorization, completeSocialCallback } from './src/lib/social-integrations';
 import { initializeValuationEngine, recordValuationEvidence, listValuationEvidence, recordValuationComparable, listValuationComparables, calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 import { buildFinanceScientistReport, compareCapitalScenarios } from './src/lib/finance-intelligence';
@@ -3141,6 +3142,60 @@ app.get('/api/payouts', async (req: Request, res: Response) => {
 // GLORIFIER REVENUE CONTROL PLANE
 // Common governance boundary across every value-creation and monetization machine.
 // ============================================================================
+app.get('/api/monetization/sprint', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, sprint: await getMonetizationSprintSnapshot() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Monetization sprint unavailable' }); }
+});
+
+app.get('/api/monetization/opportunities', async (req: Request, res: Response) => {
+  try { res.json({ ok: true, opportunities: await listMonetizationSprintOpportunities(Number(req.query.limit || 100)) }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Monetization opportunities unavailable' }); }
+});
+
+app.post('/api/monetization/opportunities', async (req: Request, res: Response) => {
+  try {
+    const opportunity = await createMonetizationOpportunity({
+      title: req.body?.title,
+      scientistId: req.body?.scientistId,
+      estimatedAmountUsd: req.body?.estimatedAmountUsd == null ? null : Number(req.body.estimatedAmountUsd),
+      buyerReference: req.body?.buyerReference || null,
+      deliverable: req.body?.deliverable || null,
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs : [],
+    });
+    res.status(201).json({ ok: true, opportunity });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Opportunity creation failed' }); }
+});
+
+app.post('/api/monetization/opportunities/:id/evidence', async (req: Request, res: Response) => {
+  try {
+    const evidence = await addMonetizationEvidence({
+      opportunityId: String(req.params.id),
+      evidenceType: String(req.body?.evidenceType || 'source'),
+      sourceRef: String(req.body?.sourceRef || ''),
+      status: req.body?.status,
+      notes: req.body?.notes || null,
+    });
+    res.status(201).json({ ok: true, evidence });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Evidence recording failed' }); }
+});
+
+app.post('/api/monetization/opportunities/:id/advance', async (req: Request, res: Response) => {
+  try {
+    const result = await advanceMonetizationOpportunity({
+      opportunityId: String(req.params.id),
+      stage: req.body?.stage,
+      actor: req.body?.actor || 'human-owner',
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs : [],
+      buyerReference: req.body?.buyerReference || null,
+      deliverable: req.body?.deliverable || null,
+      payoutRail: req.body?.payoutRail || null,
+      revenueEventRef: req.body?.revenueEventRef || null,
+      settlementRef: req.body?.settlementRef || null,
+    });
+    res.json({ ok: true, ...result });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Opportunity stage transition failed' }); }
+});
+
 app.get('/api/revenue/control-plane', async (_req: Request, res: Response) => {
   try { res.json({ ok: true, snapshot: await buildRevenueControlPlaneSnapshot() }); }
   catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Revenue control plane unavailable' }); }

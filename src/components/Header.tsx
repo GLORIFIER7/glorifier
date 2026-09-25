@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
+import { AuthPanel } from './AuthPanel';
 
 interface HeaderProps {
   activeTab: string;
@@ -39,8 +40,6 @@ interface HeaderProps {
   onOpenWithdraw: () => void;
   pendingOffersCount: number;
   currentUser: User | null;
-  onLogin: () => void;
-  onLogout: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -51,8 +50,6 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenWithdraw,
   pendingOffersCount,
   currentUser,
-  onLogin,
-  onLogout
 }) => {
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Layers },
@@ -100,32 +97,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right: Wallet Balance & Cashout & Auth */}
           <div className="flex items-center gap-3">
-            {currentUser ? (
-              <div className="flex items-center gap-2 px-2.5 py-1.5 rounded-sm bg-transparent border border-slate-800">
-                <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center text-emerald-400 font-semibold text-xs border border-emerald-500/30">
-                  {currentUser.displayName ? currentUser.displayName[0].toUpperCase() : <UserIcon className="w-3.5 h-3.5" />}
-                </div>
-                <span className="text-xs text-slate-300 hidden md:inline max-w-[120px] truncate">
-                  {currentUser.displayName || currentUser.email}
-                </span>
-                <button
-                  onClick={onLogout}
-                  title="Sign out"
-                  className="text-slate-400 hover:text-rose-400 p-1 transition-colors"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={onLogin}
-                id="google-signin-btn"
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-sm bg-slate-900 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-sm transition-colors"
-              >
-                <LogIn className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Sign in</span>
-              </button>
-            )}
+            <AuthPanel currentUser={currentUser} />
 
           </div>
         </div>

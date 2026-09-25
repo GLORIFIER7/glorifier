@@ -21,6 +21,7 @@ import { WorkTogetherWithGptStudio } from './components/WorkTogetherWithGptStudi
 import { IndependentComputeLayer } from './components/IndependentComputeLayer';
 import { IntegrationControl } from './components/IntegrationControl';
 import { AICeoControl } from './components/AICeoControl';
+import { MonetizationSprint } from './components/MonetizationSprint';
 import { 
   initialStats, 
   initialFootprints, 
@@ -703,6 +704,10 @@ export default function App() {
 
         {activeTab === 'compute' && (
           <IndependentComputeLayer />
+        )}
+
+        {activeTab === 'monetization_sprint' && (
+          <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} />
         )}
 
         {activeTab === 'ai_ceo' && (

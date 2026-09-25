@@ -707,7 +707,7 @@ export default function App() {
         )}
 
         {activeTab === 'monetization_sprint' && (
-          <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} />
+          <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} userReference={currentUser?.uid || 'anonymous'} />
         )}
 
         {activeTab === 'ai_ceo' && (

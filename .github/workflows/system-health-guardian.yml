@@ -1,0 +1,78 @@
+name: GLORIFIER AI 24/7 System Health Guardian
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: glorifier-health-guardian
+  cancel-in-progress: true
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm install --no-audit --no-fund
+
+      - name: Local integrity check
+        id: integrity
+        continue-on-error: true
+        run: |
+          npm run lint
+          npm run build
+
+      - name: Production health check
+        id: health
+        continue-on-error: true
+        env:
+          GLORIFIER_HEALTH_URL: https://glorifier-artificial-intelligence-production.up.railway.app/api/health
+        run: |
+          curl --fail --silent --show-error --max-time 20 "$GLORIFIER_HEALTH_URL"
+          echo
+
+      - name: Run bounded self-healing
+        if: steps.integrity.outcome == 'failure'
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_BASE_URL: ${{ vars.OPENAI_BASE_URL }}
+          OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          META_API_KEY: ${{ secrets.META_API_KEY }}
+          META_BASE_URL: ${{ vars.META_BASE_URL }}
+          META_MODEL: ${{ vars.META_MODEL }}
+        run: node scripts/self-healing-agent.mjs
+
+      - name: Report health state
+        if: always()
+        run: |
+          echo "Local integrity: ${{ steps.integrity.outcome }}"
+          echo "Production health: ${{ steps.health.outcome }}"
+          if [ "${{ steps.integrity.outcome }}" != "success" ]; then
+            echo "::error::GLORIFIER local integrity check failed."
+          fi
+          if [ "${{ steps.health.outcome }}" != "success" ]; then
+            echo "::warning::Production health endpoint is unavailable or unhealthy."
+          fi
+          if [ "${{ steps.integrity.outcome }}" != "success" ]; then
+            exit 1
+          fi

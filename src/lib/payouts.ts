@@ -115,7 +115,90 @@ export async function createPayoutRequest(input: PayoutRequest) {
   };
 }
 
-export async function listPayoutRequests(userReference?: string) {
+
+
+export type PayoutBalance = {
+  userReference: string;
+  currency: 'USD';
+  verifiedPaidMinor: number;
+  refundsMinor: number;
+  disputesMinor: number;
+  pendingPayoutMinor: number;
+  processingPayoutMinor: number;
+  paidPayoutMinor: number;
+  availableMinor: number;
+  availableUsd: number;
+  economicTruth: 'VERIFIED AVAILABLE' | 'NO VERIFIED FUNDS AVAILABLE';
+};
+
+export async function getAvailablePayoutBalance(userReference?: string): Promise<PayoutBalance> {
+  const safeReference = safeUser(userReference);
+  await initializeRevenueLedgerForPayoutRead();
+  const db = getPostgresPool();
+  const [revenue, payouts] = await Promise.all([
+    db.query(
+      `SELECT
+        COALESCE(SUM(CASE WHEN status='paid' THEN amount_minor ELSE 0 END),0)::bigint AS verified_paid_minor,
+        COALESCE(SUM(CASE WHEN status='refunded' THEN amount_minor ELSE 0 END),0)::bigint AS refunds_minor,
+        COALESCE(SUM(CASE WHEN status='disputed' THEN amount_minor ELSE 0 END),0)::bigint AS disputes_minor
+       FROM revenue_ledger
+       WHERE user_reference=$1 AND currency='USD'`,
+      [safeReference]
+    ),
+    db.query(
+      `SELECT
+        COALESCE(SUM(CASE WHEN status='pending' THEN amount_minor ELSE 0 END),0)::bigint AS pending_minor,
+        COALESCE(SUM(CASE WHEN status='processing' THEN amount_minor ELSE 0 END),0)::bigint AS processing_minor,
+        COALESCE(SUM(CASE WHEN status='paid' THEN amount_minor ELSE 0 END),0)::bigint AS paid_payout_minor
+       FROM payout_requests
+       WHERE user_reference=$1 AND currency='USD'`,
+      [safeReference]
+    )
+  ]);
+
+  const verifiedPaidMinor = Number(revenue.rows[0]?.verified_paid_minor || 0);
+  const refundsMinor = Number(revenue.rows[0]?.refunds_minor || 0);
+  const disputesMinor = Number(revenue.rows[0]?.disputes_minor || 0);
+  const pendingPayoutMinor = Number(payouts.rows[0]?.pending_minor || 0);
+  const processingPayoutMinor = Number(payouts.rows[0]?.processing_minor || 0);
+  const paidPayoutMinor = Number(payouts.rows[0]?.paid_payout_minor || 0);
+  const availableMinor = Math.max(0, verifiedPaidMinor - refundsMinor - disputesMinor - pendingPayoutMinor - processingPayoutMinor - paidPayoutMinor);
+
+  return {
+    userReference: safeReference,
+    currency: 'USD',
+    verifiedPaidMinor,
+    refundsMinor,
+    disputesMinor,
+    pendingPayoutMinor,
+    processingPayoutMinor,
+    paidPayoutMinor,
+    availableMinor,
+    availableUsd: availableMinor / 100,
+    economicTruth: availableMinor > 0 ? 'VERIFIED AVAILABLE' : 'NO VERIFIED FUNDS AVAILABLE'
+  };
+}
+
+async function initializeRevenueLedgerForPayoutRead() {
+  await getPostgresPool().query(
+    `CREATE TABLE IF NOT EXISTS revenue_ledger (
+      id BIGSERIAL PRIMARY KEY,
+      event_id TEXT NOT NULL UNIQUE,
+      provider TEXT NOT NULL,
+      provider_transaction_id TEXT,
+      customer_reference TEXT,
+      user_reference TEXT NOT NULL,
+      currency CHAR(3) NOT NULL,
+      amount_minor BIGINT NOT NULL,
+      status TEXT NOT NULL CHECK (status IN ('paid','refunded','disputed','voided')),
+      occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb
+    )`
+  );
+  await initializePayoutRegistry();
+}
+\nexport async function listPayoutRequests(userReference?: string) {
   await initializePayoutRegistry();
   const result = await getPostgresPool().query(
     'SELECT id,amount_minor,currency,method,destination,status,governance_event_id,external_reference,created_at,updated_at FROM payout_requests WHERE user_reference=$1 ORDER BY created_at DESC LIMIT 100',

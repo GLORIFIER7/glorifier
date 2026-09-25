@@ -52,12 +52,26 @@ export const MONETIZATION_SCIENTISTS: MonetizationScientist[] = [
 ];
 
 export async function initializeMonetizationSprint() {
+  // This table is shared with the legacy Monetization Engine. Never recreate it
+  // with a different schema: migrate additive sprint fields in place instead.
   await getPostgresPool().query(`
     CREATE TABLE IF NOT EXISTS monetization_opportunities (
       id TEXT PRIMARY KEY,
+      source TEXT NOT NULL DEFAULT '7-day-monetization-sprint',
       title TEXT NOT NULL,
-      scientist_id TEXT NOT NULL,
-      stage TEXT NOT NULL,
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'discovered',
+      estimated_value NUMERIC,
+      currency TEXT,
+      probability NUMERIC DEFAULT 0,
+      expected_value NUMERIC,
+      customer_ref TEXT,
+      evidence_ref TEXT,
+      next_action TEXT,
+      requires_human_approval BOOLEAN NOT NULL DEFAULT TRUE,
+      metadata JSONB NOT NULL DEFAULT '{}',
+      scientist_id TEXT NOT NULL DEFAULT 'business-intelligence-scientist',
+      stage TEXT NOT NULL DEFAULT 'observed',
       estimated_amount_minor BIGINT,
       buyer_reference TEXT,
       deliverable TEXT,
@@ -69,6 +83,41 @@ export async function initializeMonetizationSprint() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
+
+    ALTER TABLE monetization_opportunities
+      ADD COLUMN IF NOT EXISTS scientist_id TEXT,
+      ADD COLUMN IF NOT EXISTS stage TEXT,
+      ADD COLUMN IF NOT EXISTS estimated_amount_minor BIGINT,
+      ADD COLUMN IF NOT EXISTS buyer_reference TEXT,
+      ADD COLUMN IF NOT EXISTS deliverable TEXT,
+      ADD COLUMN IF NOT EXISTS evidence_refs JSONB,
+      ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
+      ADD COLUMN IF NOT EXISTS revenue_event_ref TEXT,
+      ADD COLUMN IF NOT EXISTS settlement_ref TEXT,
+      ADD COLUMN IF NOT EXISTS payout_rail TEXT;
+
+    UPDATE monetization_opportunities
+      SET scientist_id=COALESCE(NULLIF(scientist_id,''),'business-intelligence-scientist'),
+          stage=COALESCE(NULLIF(stage,''),CASE
+            WHEN status='paid' THEN 'revenue_verified'
+            WHEN status='contracted' THEN 'accepted'
+            WHEN status='qualified' THEN 'qualified'
+            WHEN status='proposed' THEN 'offer_ready'
+            WHEN status='negotiation' THEN 'offer_ready'
+            ELSE 'observed'
+          END),
+          evidence_refs=COALESCE(evidence_refs,'[]'::jsonb),
+          updated_at=NOW()
+      WHERE scientist_id IS NULL OR scientist_id='' OR stage IS NULL OR stage='' OR evidence_refs IS NULL;
+
+    ALTER TABLE monetization_opportunities
+      ALTER COLUMN scientist_id SET DEFAULT 'business-intelligence-scientist',
+      ALTER COLUMN scientist_id SET NOT NULL,
+      ALTER COLUMN stage SET DEFAULT 'observed',
+      ALTER COLUMN stage SET NOT NULL,
+      ALTER COLUMN evidence_refs SET DEFAULT '[]'::jsonb,
+      ALTER COLUMN evidence_refs SET NOT NULL;
+
     CREATE INDEX IF NOT EXISTS monetization_opportunities_stage_idx
       ON monetization_opportunities(stage, updated_at DESC);
 
@@ -84,6 +133,22 @@ export async function initializeMonetizationSprint() {
     CREATE INDEX IF NOT EXISTS monetization_evidence_opportunity_idx
       ON monetization_evidence(opportunity_id, created_at DESC);
   `);
+}
+
+function stageToLegacyStatus(stage: MonetizationStage): string {
+  switch (stage) {
+    case 'qualified': return 'qualified';
+    case 'buyer_targeted':
+    case 'deliverable_ready':
+    case 'offer_ready': return 'proposed';
+    case 'accepted': return 'contracted';
+    case 'revenue_verified':
+    case 'settlement_confirmed':
+    case 'payout_ready': return 'paid';
+    case 'closed': return 'paid';
+    case 'blocked': return 'rejected';
+    default: return 'discovered';
+  }
 }
 
 function mapOpportunity(row: any): MonetizationOpportunity {
@@ -134,11 +199,11 @@ export async function createMonetizationOpportunity(input: {
   const evidenceRefs = Array.isArray(input.evidenceRefs) ? input.evidenceRefs.map(String).filter(Boolean).slice(0, 50) : [];
   const result = await getPostgresPool().query(
     `INSERT INTO monetization_opportunities
-      (id,title,scientist_id,stage,estimated_amount_minor,buyer_reference,deliverable,evidence_refs)
-     VALUES ($1,$2,$3,'observed',$4,$5,$6,$7)
+      (id,source,title,status,scientist_id,stage,estimated_value,estimated_amount_minor,buyer_reference,customer_ref,deliverable,evidence_refs,requires_human_approval)
+     VALUES ($1,'7-day-monetization-sprint',$2,'discovered',$3,'observed',$4,$5,$6,$6,$7,$8,TRUE)
      RETURNING *`,
     [
-      id, title, scientistId,
+      id, title, scientistId, estimate == null ? null : estimate,
       estimate == null ? null : Math.round(estimate * 100),
       input.buyerReference ? String(input.buyerReference).slice(0, 300) : null,
       input.deliverable ? String(input.deliverable).slice(0, 2000) : null,
@@ -232,6 +297,7 @@ export async function advanceMonetizationOpportunity(input: {
   const next = await getPostgresPool().query(
     `UPDATE monetization_opportunities
      SET stage=$2,
+         status=$9,
          buyer_reference=COALESCE($3,buyer_reference),
          deliverable=COALESCE($4,deliverable),
          payout_rail=COALESCE($5,payout_rail),
@@ -245,7 +311,8 @@ export async function advanceMonetizationOpportunity(input: {
     [
       input.opportunityId, input.stage,
       input.buyerReference ?? null, input.deliverable ?? null, input.payoutRail ?? null,
-      input.revenueEventRef ?? null, input.settlementRef ?? null, JSON.stringify(refs)
+      input.revenueEventRef ?? null, input.settlementRef ?? null, JSON.stringify(refs),
+      stageToLegacyStatus(input.stage)
     ]
   );
   return { opportunity: mapOpportunity(next.rows[0]), governance };

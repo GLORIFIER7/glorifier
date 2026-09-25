@@ -264,7 +264,7 @@ export const FootprintManager: React.FC<FootprintManagerProps> = ({
                         {[
                           { id: 'differential-privacy', label: 'Differential Privacy (ε)', desc: 'Laplacian mathematical noise injection' },
                           { id: 'zero-knowledge', label: 'Zero-Knowledge Proof', desc: 'Attest facts without revealing values' },
-                          { id: 'synthetic-twin', label: 'Synthetic Twin AI', desc: 'Generative AI counterpart simulation' },
+                          { id: 'privacy-twin', label: 'Privacy Twin AI', desc: 'Abstract privacy-preserving counterpart model' },
                           { id: 'k-anonymity', label: 'k-Anonymity (k=50)', desc: 'Grouped into indistinguishable cohorts' },
                         ].map((tierOption) => (
                           <div

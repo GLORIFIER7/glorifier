@@ -106,7 +106,6 @@ export const GmailGovernanceTab: React.FC<GmailGovernanceTabProps> = ({
       setSendSuccess(true);
       setComposeOpen(false);
       setRecipient('');
-      setTimeout(() => setSendSuccess(false), 5000);
     } catch (err: any) {
       setError(`Failed to send email: ${err.message}`);
     } finally {

@@ -527,7 +527,7 @@ export default function App() {
   const pendingOffersCount = offers.filter(o => o.status === 'PENDING').length;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/30 selection:text-emerald-200">
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500/20 selection:text-emerald-200">
       {/* Platform Navigation Header */}
       <Header
         activeTab={activeTab}
@@ -542,7 +542,7 @@ export default function App() {
       />
 
       {/* Main View Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-5 lg:px-6 py-4 sm:py-5">
         {activeTab === 'overview' && (
           <OverviewTab
             stats={stats}
@@ -765,7 +765,7 @@ export default function App() {
       )}
 
       {/* Footer */}
-      <footer className="border-t border-slate-900 bg-slate-950/60 py-4 text-center text-xs text-slate-500">
+      <footer className="border-t border-slate-900 py-3 text-center text-[10px] text-slate-600">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>Personal Data Monetization Platform &bull; Autonomous AI Data Governance</span>
           <div className="flex items-center gap-4 font-mono text-[11px]">

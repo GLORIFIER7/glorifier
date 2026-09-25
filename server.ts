@@ -19,6 +19,8 @@ import { initializeBusinessModel } from './src/lib/business-model';
 import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-discovery';
 import { initializeGlorifierMediator } from './src/lib/glorifier-mediator';
 import { getPostgresPool } from './src/lib/db/postgres';
+import { initializeAppState, readAppState, upsertState } from './src/lib/db/app-state';
+
 import { 
   getScientistFleet, 
   getInternetIssues, 
@@ -1957,6 +1959,26 @@ app.post('/api/scientists/monetization/claim', (_req: Request, res: Response) =>
 });
 
 // Unknown API routes must remain JSON. This prevents the SPA fallback from masquerading as an API response.
+app.get('/api/app-state', async (req: Request, res: Response) => {
+  try {
+    await initializeAppState();
+    const state = await readAppState(String(req.query.userReference || 'anonymous'));
+    res.json({ ok: true, state });
+  } catch (error) {
+    apiError(res, 500, error instanceof Error ? error.message : 'Unable to read app state');
+  }
+});
+
+app.put('/api/app-state', async (req: Request, res: Response) => {
+  try {
+    const userReference = String(req.body?.userReference || 'anonymous');
+    const state = await upsertState(userReference, req.body?.state || {});
+    res.json({ ok: true, state });
+  } catch (error) {
+    apiError(res, 500, error instanceof Error ? error.message : 'Unable to persist app state');
+  }
+});
+
 app.use('/api', (_req: Request, res: Response) => { apiError(res, 404, 'API endpoint not found'); });
 
 async function initializeBackend() {

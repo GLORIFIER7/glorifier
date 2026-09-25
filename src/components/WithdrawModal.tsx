@@ -69,35 +69,8 @@ const NETWORKS: { id: CryptoNetwork; name: string; speed: string; gasSubsidy: st
   { id: 'Bitcoin', name: 'BTC Lightning Relay', speed: '~2 sec', gasSubsidy: 'Provider-dependent fee', chain: 'BTC' }
 ];
 
-const DEFAULT_VERIFIED_WALLETS: VerifiedWallet[] = [
-  {
-    id: 'w-eth-primary',
-    chain: 'ETH',
-    name: 'MetaMask - Primary Vault',
-    address: '0x71C5687b372480302E9B41d5F58eE5f242Ec33a9',
-    isVerified: true,
-    verificationMethod: 'EIP-712 Signature Attested',
-    addedAt: 'Verified Sovereign Enclave'
-  },
-  {
-    id: 'w-sol-primary',
-    chain: 'SOL',
-    name: 'Phantom - Sol Enclave',
-    address: '7XhM9pYqK3sL8nQ2vR6wE5tU1zC4jB8aD7fG6hJ5kL4',
-    isVerified: true,
-    verificationMethod: 'Ed25519 Hardware Proof',
-    addedAt: 'Verified Sovereign Enclave'
-  },
-  {
-    id: 'w-btc-primary',
-    chain: 'BTC',
-    name: 'Trezor Cold - Bitcoin SegWit',
-    address: 'bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh',
-    isVerified: true,
-    verificationMethod: 'BIP-84 PSBT Cryptographic Proof',
-    addedAt: 'Verified Sovereign Enclave'
-  }
-];
+const DEFAULT_VERIFIED_WALLETS: VerifiedWallet[] = [];
+
 
 export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   stats,
@@ -124,6 +97,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     } catch {
       // ignore
     }
+    // Never seed the UI with example or unverified financial destinations.
     return DEFAULT_VERIFIED_WALLETS;
   });
 
@@ -140,17 +114,13 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   // Crypto Configuration
   const [selectedToken, setSelectedToken] = useState<StablecoinType>('USDC');
   const [selectedNetwork, setSelectedNetwork] = useState<CryptoNetwork>('Base');
-  const [walletAddress, setWalletAddress] = useState<string>(
-    DEFAULT_VERIFIED_WALLETS[0].address
-  );
-  const [connectedWalletName, setConnectedWalletName] = useState<string | null>(
-    DEFAULT_VERIFIED_WALLETS[0].name
-  );
+  const [walletAddress, setWalletAddress] = useState<string>('');
+  const [connectedWalletName, setConnectedWalletName] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Fiat Configuration
   const [fiatMethod, setFiatMethod] = useState<'stripe_connect' | 'direct_ach'>('stripe_connect');
-  const [fiatAccount, setFiatAccount] = useState<string>('Account ending in 4092');
+  const [fiatAccount, setFiatAccount] = useState<string>('');
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [payoutError, setPayoutError] = useState<string | null>(null);
@@ -275,25 +245,21 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
     setIsVerifyingNewWallet(true);
 
+    // Adding an address is not cryptographic ownership verification.
+    // Keep it unverified until a real provider/wallet attestation is implemented.
     setTimeout(() => {
-      let method = 'ECDSA Signature Attested';
-      if (newWalletChain === 'SOL') method = 'Ed25519 Cryptographic Proof';
-      if (newWalletChain === 'BTC') method = 'BIP-84 PSBT Cryptographic Proof';
-
       const created: VerifiedWallet = {
         id: `w-${newWalletChain.toLowerCase()}-${Date.now()}`,
         chain: newWalletChain,
         name: newWalletName.trim(),
         address: newWalletAddress.trim(),
-        isVerified: true,
-        verificationMethod: method,
-        addedAt: 'Verified via Sovereign Protocol'
+        isVerified: false,
+        verificationMethod: 'Pending real ownership attestation',
+        addedAt: new Date().toISOString()
       };
 
       setConnectedWallets(prev => [created, ...prev]);
-      handleSelectWallet(created);
 
-      // Reset form
       setNewWalletName('');
       setNewWalletAddress('');
       setIsVerifyingNewWallet(false);
@@ -498,7 +464,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             {payoutCategory === 'crypto' ? (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Wallet</label>
+                  <label className="text-xs font-semibold text-slate-300 block mb-1.5">Verified Wallet</label>
                   <select
                     value={walletAddress}
                     onChange={(e) => {
@@ -512,7 +478,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     }}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs text-white focus:outline-none focus:border-emerald-500"
                   >
-                    {connectedWallets.map(w => (
+                    {connectedWallets.filter(w => w.isVerified).map(w => (
                       <option key={w.id} value={w.address}>{w.name} • {w.chain}</option>
                     ))}
                   </select>
@@ -564,7 +530,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   placeholder="09XXXXXXXXX"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                 />
-                <p className="text-[10px] text-slate-500 mt-1.5">Payout remains pending until the payment provider confirms settlement.</p>
+                <p className="text-[10px] text-slate-500 mt-1.5">Request only. Provider confirmation is required before Neon can record settlement.</p>
               </div>
             ) : payoutCategory === 'binance' ? (
               <div>
@@ -576,7 +542,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   placeholder="Enter Binance Pay ID or UID"
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-3 text-xs font-mono text-white focus:outline-none focus:border-emerald-500"
                 />
-                <p className="text-[10px] text-slate-500 mt-1.5">Use an account identifier you control. Settlement is not confirmed by this request alone.</p>
+                <p className="text-[10px] text-slate-500 mt-1.5">Request only. Provider confirmation is required before Neon can record settlement.</p>
               </div>
             ) : (
               <div>

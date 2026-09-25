@@ -20,7 +20,7 @@ function configuredSources(): DiscoverySource[] {
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_SOURCES;
-    return parsed.map((x: any, i: number) => ({ id: String(x.id || 'custom-' + i), name: String(x.name || x.id || 'Custom Source ' + (i + 1)), url: String(x.url || ''), category: String(x.category || 'other'), enabled: x.enabled !== false })).filter((x: DiscoverySource) => /^https?:\\/\\//i.test(x.url));
+    return parsed.map((x: any, i: number) => ({ id: String(x.id || 'custom-' + i), name: String(x.name || x.id || 'Custom Source ' + (i + 1)), url: String(x.url || ''), category: String(x.category || 'other'), enabled: x.enabled !== false })).filter((x: DiscoverySource) => /^https?:\/\//i.test(x.url));
   } catch { return DEFAULT_SOURCES; }
 }
 

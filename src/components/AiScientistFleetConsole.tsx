@@ -99,7 +99,6 @@ export const AiScientistFleetConsole: React.FC<AiScientistFleetConsoleProps> = (
 
   const showBannerMessage = (msg: string) => {
     setActionSuccessMessage(msg);
-    setTimeout(() => setActionSuccessMessage(null), 6000);
   };
 
   // Toggle 24/7 background running

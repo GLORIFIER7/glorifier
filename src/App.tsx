@@ -533,8 +533,6 @@ export default function App() {
         onOpenWithdraw={() => setIsWithdrawOpen(true)}
         pendingOffersCount={pendingOffersCount}
         currentUser={currentUser}
-        onLogin={handleLogin}
-        onLogout={handleLogout}
       />
 
       {/* Main View Container */}

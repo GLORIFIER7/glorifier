@@ -112,3 +112,6 @@ High-risk actions remain governed, including:
 Repository: https://github.com/GLORIFIER7/glorifier-artificial-intelligence
 
 **GLORIFIER — provider-neutral AI orchestration, evidence, asset intelligence, and economic truth.**
+
+
+<!-- Deployment validation: 2026-09-25 -->

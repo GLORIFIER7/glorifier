@@ -27,7 +27,7 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
   const load = async () => {
     setLoading(true);
     try {
-      const [sprintResponse, revenueResponse] = await Promise.all([
+      const [sprintResponse, revenueResponse, payoutResponse] = await Promise.all([
         fetch('/api/monetization/sprint'),
         fetch('/api/revenue/control-plane'),
         fetch('/api/payouts?userReference=' + encodeURIComponent(userReference)),
@@ -44,7 +44,7 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
     } finally { setLoading(false); }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [userReference]);
 
   const verified = Number(controlPlane?.economicTruth?.verifiedRevenue ?? 0);
   const estimated = Number(snapshot?.estimatedPipelineUsd ?? controlPlane?.machines?.monetization?.estimatedPipeline ?? 0);

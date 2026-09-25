@@ -41,6 +41,7 @@ export const InternetAccountsFederation: React.FC<InternetAccountsFederationProp
 }) => {
   const [selectedAccount, setSelectedAccount] = useState<InternetAccount | null>(accounts[0] || null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [actionState, setActionState] = useState('');
   const [filterCategory, setFilterCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -68,20 +69,8 @@ export const InternetAccountsFederation: React.FC<InternetAccountsFederationProp
     if (selectedAccount?.id === acc.id) setSelectedAccount(updated);
   };
 
-  const handleTriggerAuth = (acc: InternetAccount) => {
-    setIsAuthenticating(true);
-    setTimeout(() => {
-      const updated: InternetAccount = {
-        ...acc,
-        status: 'authenticated',
-        connected: true,
-        lastSync: 'Just now',
-        apiHealth: 'optimal'
-      };
-      onUpdateAccount(updated);
-      if (selectedAccount?.id === acc.id) setSelectedAccount(updated);
-      setIsAuthenticating(false);
-    }, 600);
+  const handleTriggerAuth = () => {
+    setActionState('Credential re-attestation is not executable until an authorized provider integration exists.');
   };
 
   const filteredAccounts = accounts.filter(acc => {
@@ -337,8 +326,7 @@ export const InternetAccountsFederation: React.FC<InternetAccountsFederationProp
 
                 <div className="pt-2">
                   <button
-                    onClick={() => handleTriggerAuth(selectedAccount)}
-                    disabled={isAuthenticating}
+                    onClick={handleTriggerAuth}
                     className="w-full py-2 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-700 flex items-center justify-center gap-1.5 transition-colors"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isAuthenticating ? 'animate-spin text-indigo-400' : ''}`} />
@@ -434,25 +422,19 @@ export const InternetAccountsFederation: React.FC<InternetAccountsFederationProp
 
               {/* Statutory Action Trigger */}
               <div className="pt-2">
-                <button
-                  onClick={async () => {
-  try {
-    const response = await fetch('/api/compliance/erasure', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ connectionId: selectedAccount.id, provider: selectedAccount.provider, requestedAt: new Date().toISOString() })
-    });
-    if (!response.ok) throw new Error('Erasure request was not accepted by the compliance backend');
-    setActionState(`Erasure request recorded for ${selectedAccount.provider}`);
-  } catch (error) {
-    setActionState(error instanceof Error ? error.message : 'Erasure request failed');
-  }
-}}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-800 hover:bg-rose-950/40 text-slate-300 hover:text-rose-300 border border-slate-700 hover:border-rose-500/30 flex items-center justify-center gap-2 transition-colors"
-                >
-                  <ShieldAlert className="w-4 h-4 text-rose-400" />
-                  <span>Send Erasure Demand to {selectedAccount.provider}</span>
-                </button>
+                <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-3.5 space-y-2">
+  <div className="flex items-center gap-2 text-amber-300 text-xs font-bold">
+    <ShieldAlert className="w-4 h-4" />
+    <span>Statutory Erasure: Not Executable</span>
+  </div>
+  <p className="text-[11px] text-slate-400 leading-relaxed">
+    No authorized provider integration is currently available to send or execute an external erasure demand for this account. GLORIFIER will not simulate deletion, claim delivery, or mark the request completed.
+  </p>
+  <button type="button" disabled aria-disabled="true" title="Not executable until an authorized integration exists" className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold bg-slate-900 text-slate-500 border border-slate-800 flex items-center justify-center gap-2 cursor-not-allowed">
+    <ShieldAlert className="w-4 h-4" />
+    <span>Not Executable — Authorized Integration Required</span>
+  </button>
+</div>
               </div>
             </div>
           ) : (

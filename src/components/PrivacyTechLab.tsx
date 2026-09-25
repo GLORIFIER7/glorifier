@@ -30,8 +30,10 @@ export const PrivacyTechLab: React.FC = () => {
   const handleSimulateLaplace = () => {
     // Laplace mechanism: sample from Laplace(0, scale) where scale = sensitivity / epsilon
     const scale = dpSensitivity / dpEpsilon;
-    const u = Math.random() - 0.5;
-    const noise = -scale * Math.sign(u) * Math.log(1 - 2 * Math.abs(u));
+    // Deterministic preview value derived from the configured inputs.
+    // This is a mathematical preview, not a claim of cryptographic randomness.
+    const normalized = ((Math.round(dpTrueAge * 100) + Math.round(dpEpsilon * 1000) + Math.round(dpSensitivity * 100)) % 1000) / 1000 - 0.5;
+    const noise = -scale * Math.sign(normalized || 0.25) * Math.log(1 - 2 * Math.abs(normalized || 0.25));
     const perturbed = parseFloat((dpTrueAge + noise).toFixed(2));
     setDpPerturbedResult(perturbed);
     setDpNoiseHistory(prev => [perturbed, ...prev.slice(0, 5)]);
@@ -48,14 +50,12 @@ export const PrivacyTechLab: React.FC = () => {
   const [fheIsComputing, setFheIsComputing] = useState(false);
 
   const handleRunFhe = () => {
-    setFheIsComputing(true);
-    setTimeout(() => {
-      const result = fheOperation === 'add' ? fhePlainA + fhePlainB : fhePlainA * fhePlainB;
-      const cipherHex = '0x' + Math.random().toString(16).substring(2, 10) + '...' + Math.random().toString(16).substring(2, 6);
-      setFheResultCipher(cipherHex);
-      setFheDecrypted(result);
-      setFheIsComputing(false);
-    }, 600);
+    const result = fheOperation === 'add' ? fhePlainA + fhePlainB : fhePlainA * fhePlainB;
+    const seed = Math.abs(fhePlainA * 31 + fhePlainB * 17 + (fheOperation === 'add' ? 7 : 13));
+    const cipherHex = '0x' + seed.toString(16).padStart(8, '0').slice(-8) + '...' + (seed * 97).toString(16).padStart(4, '0').slice(-4);
+    setFheResultCipher(cipherHex);
+    setFheDecrypted(result);
+    setFheIsComputing(false);
   };
 
   // 3. Federated Learning Simulator State
@@ -71,17 +71,17 @@ export const PrivacyTechLab: React.FC = () => {
   ]);
 
   const handleTrainFlRound = () => {
-    setFlIsTraining(true);
-    setTimeout(() => {
-      setFlEpoch(e => e + 1);
-      setFlLocalLoss(l => parseFloat((Math.max(0.01, l * 0.88)).toFixed(4)));
-      setFlGradientNorm(g => parseFloat((Math.max(0.002, g * 0.92)).toFixed(4)));
-      setFlStepsLog(prev => [
-        `Round #${flEpoch + 1}: Global model broadcast received -> Local fine-tune completed (Loss: ${(flLocalLoss * 0.88).toFixed(4)})`,
-        ...prev.slice(0, 4)
-      ]);
-      setFlIsTraining(false);
-    }, 700);
+    const nextEpoch = flEpoch + 1;
+    const nextLoss = parseFloat((Math.max(0.01, flLocalLoss * 0.88)).toFixed(4));
+    const nextGradient = parseFloat((Math.max(0.002, flGradientNorm * 0.92)).toFixed(4));
+    setFlEpoch(nextEpoch);
+    setFlLocalLoss(nextLoss);
+    setFlGradientNorm(nextGradient);
+    setFlStepsLog(prev => [
+      `Round #${nextEpoch}: Local training preview computed (Loss: ${nextLoss.toFixed(4)})`,
+      ...prev.slice(0, 4)
+    ]);
+    setFlIsTraining(false);
   };
 
   // 4. Zero-Knowledge Proof Simulator State
@@ -93,13 +93,12 @@ export const PrivacyTechLab: React.FC = () => {
   const [zkpIsGenerating, setZkpIsGenerating] = useState<boolean>(false);
 
   const handleGenerateZkProof = () => {
-    setZkpIsGenerating(true);
-    setTimeout(() => {
-      const isValid = zkpSecretValue >= zkpPublicThreshold;
-      setZkpVerifierResult(isValid);
-      setZkpProofHex('0x' + Math.random().toString(16).substring(2, 14) + '...' + Math.random().toString(16).substring(2, 6));
-      setZkpIsGenerating(false);
-    }, 600);
+    const isValid = zkpSecretValue >= zkpPublicThreshold;
+    const seed = Math.abs(zkpSecretValue * 37 + zkpPublicThreshold * 19);
+    const proof = '0x' + seed.toString(16).padStart(12, '0').slice(-12) + '...' + (seed * 53).toString(16).padStart(4, '0').slice(-4);
+    setZkpVerifierResult(isValid);
+    setZkpProofHex(proof);
+    setZkpIsGenerating(false);
   };
 
   return (

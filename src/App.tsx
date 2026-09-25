@@ -247,24 +247,12 @@ export default function App() {
 
     const accepted = offers.find(o => o.id === offerId);
     if (accepted) {
+      // Acceptance is not settlement. Keep it in pipeline state until external acceptance
+      // and qualifying payment evidence are observed by the authoritative revenue system.
       setStats(s => ({
         ...s,
-        monthlyPacingUsd: s.monthlyPacingUsd + accepted.offeredCompUsd,
-        totalEarnedUsd: s.totalEarnedUsd + 15.00
+        monthlyPacingUsd: s.monthlyPacingUsd + accepted.offeredCompUsd
       }));
-
-      // Add a settlement transaction
-      const newTx: CompensationTransaction = {
-        id: `tx-${Date.now().toString().slice(-4)}`,
-        timestamp: 'Just now',
-        buyerName: accepted.buyerName,
-        category: accepted.dataCategoriesNeeded[0] || 'browsing',
-        amountUsd: 15.00,
-        privacyTier: accepted.requiredPrivacyTier,
-        txHash: `0x${Math.random().toString(16).slice(2, 6)}...${Math.random().toString(16).slice(2, 6)}`,
-        status: 'settled'
-      };
-      setTransactions(t => [newTx, ...t]);
     }
   };
 

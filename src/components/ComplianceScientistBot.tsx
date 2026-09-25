@@ -176,19 +176,14 @@ How may I assist your compliance prosecution, statutory clawback demands, or DPI
       setAiHistory(prev => [...prev, assistantMsg]);
     } catch (err: any) {
       console.error('Compliance AI query error:', err);
-      const fallbackMsg: ComplianceChatMessage = {
+      const unavailableMsg: ComplianceChatMessage = {
         role: 'assistant',
-        text: `### STATUTORY NOTICE & REGULATORY MEMO (LOCAL VERIFIED ENCLAVE)
-**Target Statute:** GDPR Articles 17 & 25 | CCPA § 1798.105 | EU AI Act (Reg. 2024/1689)  
-
-1. **Lawful Basis & Privacy-by-Design:** Under GDPR Article 6(1)(a) and Recital 78, the user exercises sole proprietary ownership of digital telemetry. Outbound licensing adheres strictly to Laplacian differential privacy ($\varepsilon = ${policy?.globalEpsilon || 0.30}$), satisfying statistical non-re-identifiability under HIPAA § 164.514(b)(1).
-2. **Statutory Clawbacks:** Formal demand notices against commercial ad brokers are legally grounded under Cal. Civ. Code § 1798.105 and California SB 362 (Delete Act). Non-compliance beyond the 30-calendar-day window constitutes intentional non-feasance subject to statutory civil penalties of $7,500 per violation under § 1798.155.
-3. **AI Act Invariant:** Multi-provider failover across OpenAI GPT-4o and Gemini 3.8 Flash preserves model transparency with zero biometric or high-risk categorization.`,
+        text: 'Compliance AI backend unavailable. No regulatory conclusion or legal execution was generated locally.',
         mode: specialtyMode,
-        modelUsed: 'Regulatory Enclave Fallback',
+        modelUsed: 'Unavailable',
         timestamp: new Date().toLocaleTimeString()
       };
-      setAiHistory(prev => [...prev, fallbackMsg]);
+      setAiHistory(prev => [...prev, unavailableMsg]);
     } finally {
       setIsAiLoading(false);
     }

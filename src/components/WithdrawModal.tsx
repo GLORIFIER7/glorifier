@@ -61,12 +61,12 @@ const SUPPORTED_STABLECOINS: SupportedToken[] = [
 ];
 
 const NETWORKS: { id: CryptoNetwork; name: string; speed: string; gasSubsidy: string; chain: CryptoChain }[] = [
-  { id: 'Base', name: 'Base L2', speed: '~1 sec', gasSubsidy: 'Sponsored ($0 gas)', chain: 'ETH' },
-  { id: 'Solana', name: 'Solana SPL', speed: '~400 ms', gasSubsidy: 'Sponsored ($0 gas)', chain: 'SOL' },
-  { id: 'Polygon', name: 'Polygon PoS', speed: '~2 sec', gasSubsidy: 'Sponsored ($0 gas)', chain: 'ETH' },
-  { id: 'Arbitrum', name: 'Arbitrum One', speed: '~1 sec', gasSubsidy: 'Sponsored ($0 gas)', chain: 'ETH' },
+  { id: 'Base', name: 'Base L2', speed: '~1 sec', gasSubsidy: 'Provider-dependent fee', chain: 'ETH' },
+  { id: 'Solana', name: 'Solana SPL', speed: '~400 ms', gasSubsidy: 'Provider-dependent fee', chain: 'SOL' },
+  { id: 'Polygon', name: 'Polygon PoS', speed: '~2 sec', gasSubsidy: 'Provider-dependent fee', chain: 'ETH' },
+  { id: 'Arbitrum', name: 'Arbitrum One', speed: '~1 sec', gasSubsidy: 'Provider-dependent fee', chain: 'ETH' },
   { id: 'Ethereum', name: 'Ethereum Mainnet', speed: '~12 sec', gasSubsidy: 'Standard Relay', chain: 'ETH' },
-  { id: 'Bitcoin', name: 'BTC Lightning Relay', speed: '~2 sec', gasSubsidy: 'Zero-fee Taro', chain: 'BTC' }
+  { id: 'Bitcoin', name: 'BTC Lightning Relay', speed: '~2 sec', gasSubsidy: 'Provider-dependent fee', chain: 'BTC' }
 ];
 
 const DEFAULT_VERIFIED_WALLETS: VerifiedWallet[] = [
@@ -107,7 +107,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   onUpdatePolicy,
   userReference = 'anonymous'
 }) => {
-  const [amount, setAmount] = useState<number>(stats.totalEarnedUsd);
+  const [amount, setAmount] = useState<number>(Math.max(0, Number(stats.totalEarnedUsd) || 0));
   const [payoutCategory, setPayoutCategory] = useState<'crypto' | 'fiat'>('crypto');
 
   // Connected Wallets State
@@ -305,8 +305,16 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   };
 
   const handleWithdraw = async () => {
-    if (amount <= 0 || amount > stats.totalEarnedUsd) return;
-    if (!isCurrentAddressValid()) return;
+    if (!Number.isFinite(amount) || amount <= 0 || amount > Number(stats.totalEarnedUsd)) {
+      setPayoutError('Enter a valid amount within the verified available balance.');
+      return;
+    }
+    if (!isCurrentAddressValid()) {
+      setPayoutError(payoutCategory === 'crypto'
+        ? 'Select or enter a valid destination address.'
+        : 'Enter a valid payout account or provider destination.');
+      return;
+    }
 
     setIsProcessing(true);
     setPayoutError(null);
@@ -388,12 +396,12 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             </div>
             <div>
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                Disburse Sovereign Data Earnings
+                Disburse Verified Data Earnings
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   Governed Request
                 </span>
               </h3>
-              <p className="text-[11px] text-slate-400">Verified earnings request • no transfer is claimed until settlement evidence exists</p>
+              <p className="text-[11px] text-slate-400">Verified earnings request • payout remains pending until provider settlement evidence is confirmed</p>
             </div>
           </div>
           <button 
@@ -485,7 +493,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 </label>
                 {payoutCategory === 'crypto' && (
                   <span className="text-[10px] font-mono text-slate-400">
-                    Est. {amount.toFixed(2)} {selectedToken} (Zero Slippage • 1:1 Peg)
+                    Est. {amount.toFixed(2)} {selectedToken} (Indicative 1:1 target • final rate/provider terms apply)
                   </span>
                 )}
               </div>
@@ -878,11 +886,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                       <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
                       <span>Gasless Smart Contract Relayer</span>
                     </span>
-                    <span className="font-mono text-emerald-400 font-semibold">$0.00 Gas Fee</span>
+                    <span className="font-mono text-emerald-400 font-semibold">Provider fee shown at settlement</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px]">
                     <span>Exchange Conversion</span>
-                    <span className="font-mono text-slate-300">1 USD = 1.0000 {selectedToken}</span>
+                    <span className="font-mono text-slate-300">1 USD ≈ 1.0000 {selectedToken} (indicative)</span>
                   </div>
                 </div>
               </div>
@@ -965,11 +973,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <h4 className="text-base font-bold text-white">Payout Request Recorded</h4>
+              <h4 className="text-base font-bold text-white">Payout Request Submitted</h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {settledReceipt.isCrypto
-                  ? `Request recorded. No provider transfer has been executed.`
-                  : 'Request recorded. No provider transfer has been executed.'}
+                  ? `Request submitted. Provider settlement has not been confirmed.`
+                  : 'Request submitted. Provider settlement has not been confirmed.'}
               </p>
             </div>
 
@@ -995,7 +1003,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   <button
                     onClick={handleCopyTx}
                     className="p-1 hover:bg-slate-800 rounded text-slate-400 hover:text-white transition-colors"
-                    title="Copy Transaction Hash"
+                    title="Copy Payout Request ID"
                   >
                     {copiedTx ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
@@ -1003,7 +1011,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Provider Status:</span>
-                <span className="text-emerald-400">PENDING — no transfer claimed</span>
+                <span className="text-emerald-400">PENDING — settlement not confirmed</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-slate-500">Requested At:</span>

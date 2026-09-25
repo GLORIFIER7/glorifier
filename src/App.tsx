@@ -27,6 +27,7 @@ import { OpportunityDiscoveryDashboard } from './components/OpportunityDiscovery
 import { RevenueVerifiedDashboard } from './components/RevenueVerifiedDashboard';
 import { ConnectionAuthorizationDashboard } from './components/ConnectionAuthorizationDashboard';
 import { GlobalCollaborationDashboard } from './components/GlobalCollaborationDashboard';
+import { MonetizationSprint } from './components/MonetizationSprint';
 
 import { 
   initialStats, 
@@ -534,6 +535,7 @@ export default function App() {
         {activeTab === 'mediator' && <MediatorDashboard />}
         {activeTab === 'discovery' && <OpportunityDiscoveryDashboard />}
         {activeTab === 'revenue_verified' && <RevenueVerifiedDashboard />}
+        {activeTab === 'monetization_sprint' && <MonetizationSprint onOpenWithdraw={() => setIsWithdrawOpen(true)} userReference={currentUser?.uid || 'anonymous'} />
         {activeTab === 'connections' && <ConnectionAuthorizationDashboard />}
         {activeTab === 'global_collaboration' && <GlobalCollaborationDashboard />}
 

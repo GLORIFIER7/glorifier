@@ -1540,17 +1540,24 @@ app.post('/api/sentinel/crud', async (req: Request, res: Response) => {
     }
 
     if (action === 'autofix') {
-      // AUTOFIX: Apply collaborative GPT + Gemini self-healing patch
+      // No external code execution is performed here. A real patch must pass through
+      // the governed CI/deployment integration before GLORIFIER can claim execution.
       const fixLog = {
         id: `log-crud-${Date.now()}`,
         timestamp,
-        action: 'AUTO_FIX',
-        details: `Auto-fix hot-patch deployed for [${errorId}]. Fallback circuit breaker verified safe by OpenAI GPT-4o & Gemini.`,
+        action: 'AUTO_FIX_REQUESTED',
+        details: `Self-healing patch requested for [${errorId}]. Awaiting authorized CI/deployment execution and verification.`,
         errorId,
-        model: 'Dual-Consensus-Healer'
+        model: assignedBot || 'Dual-Consensus-Healer'
       };
       serverSentinelLogs.unshift(fixLog);
-      return res.json({ success: true, message: 'Automated collaborative hot-patch applied and verified', log: fixLog });
+      return res.status(202).json({
+        success: true,
+        executed: false,
+        status: 'pending_authorization',
+        message: 'Self-healing patch request recorded; no code change was executed.',
+        log: fixLog
+      });
     }
 
     // READ / SCAN: Default status scan
@@ -1960,6 +1967,34 @@ app.post('/api/scientists/monetization/claim', (_req: Request, res: Response) =>
 });
 
 // Unknown API routes must remain JSON. This prevents the SPA fallback from masquerading as an API response.
+app.post('/api/governed-actions', async (req: Request, res: Response) => {
+  try {
+    const userReference = String(req.body?.userReference || '').trim();
+    const action = String(req.body?.action || '').trim();
+    const actor = String(req.body?.actor || 'human-owner').trim();
+    if (!userReference || !action) return res.status(400).json({ error: 'userReference and action are required' });
+
+    const current = await readAppState(userReference);
+    const governanceEvent = {
+      id: `gov-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+      action,
+      actor,
+      status: 'recorded',
+      externalExecution: 'not_executed_without_authorized_integration',
+      authorizationRequired: true,
+      createdAt: new Date().toISOString(),
+      details: req.body?.details || {},
+      evidence: Array.isArray(req.body?.evidence) ? req.body.evidence : []
+    };
+    const existing = Array.isArray((current as any)?.governanceEvents) ? (current as any).governanceEvents : [];
+    const nextState = { ...(current || {}), governanceEvents: [governanceEvent, ...existing].slice(0, 500) };
+    await upsertState(userReference, nextState);
+    res.status(201).json({ ok: true, governanceEvent });
+  } catch (error) {
+    apiError(res, 400, error instanceof Error ? error.message : 'Unable to record governed action');
+  }
+});
+
 app.get('/api/app-state', async (req: Request, res: Response) => {
   try {
     await initializeAppState();

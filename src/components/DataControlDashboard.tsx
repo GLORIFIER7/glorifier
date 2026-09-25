@@ -51,10 +51,11 @@ export const DataControlDashboard: React.FC<DataControlDashboardProps> = ({
 
   const handleRevoke = (id: string) => {
     setRevokingId(id);
-    setTimeout(() => {
+    try {
       onRevokeGrant(id);
+    } finally {
       setRevokingId(null);
-    }, 500);
+    }
   };
 
   const activeGrantsCount = grants.filter(g => g.status === 'active').length;

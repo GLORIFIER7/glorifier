@@ -57,6 +57,7 @@ import {
 import { 
   auth, 
   loginWithGoogle, 
+  completeGoogleRedirectSignIn, 
   logout, 
   testFirestoreConnection 
 } from './lib/firebase';
@@ -92,6 +93,12 @@ export default function App() {
   // Initialize Firebase Auth listener and test Firestore connection
   useEffect(() => {
     testFirestoreConnection();
+
+    // Complete Google OAuth redirect sign-in after Firebase returns to the app.
+    // This is required for mobile browsers and popup-restricted environments.
+    completeGoogleRedirectSignIn().catch((error) => {
+      console.error('Google redirect sign-in completion failed:', error);
+    });
 
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);

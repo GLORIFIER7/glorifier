@@ -2,7 +2,40 @@ import crypto from 'node:crypto';
 import { getPostgresPool } from './db/postgres';
 import { governRevenueAction } from './revenue-control-plane';
 
-export const GLORIFIER_MONETIZATION_SPRINT_VERSION = 'GMS-1.0';
+export const GLORIFIER_MONETIZATION_SPRINT_VERSION = 'GMS-1.1';
+
+export type MonetizationPricingModel = 'fractional_pay_per_token' | 'outcome_based';
+
+export type MonetizationPricingPolicy = {
+  model: MonetizationPricingModel;
+  tokenUnit: '1K_tokens';
+  tokenRateUsd: number | null;
+  outcomeFeePercent: number | null;
+  outcomeEvidenceRequired: boolean;
+  settlementOnly: boolean;
+  humanApprovalRequired: boolean;
+};
+
+export const FRACTIONAL_PAY_PER_TOKEN_OUTCOME_POLICY: MonetizationPricingPolicy[] = [
+  {
+    model: 'fractional_pay_per_token',
+    tokenUnit: '1K_tokens',
+    tokenRateUsd: null,
+    outcomeFeePercent: null,
+    outcomeEvidenceRequired: false,
+    settlementOnly: true,
+    humanApprovalRequired: true,
+  },
+  {
+    model: 'outcome_based',
+    tokenUnit: '1K_tokens',
+    tokenRateUsd: null,
+    outcomeFeePercent: null,
+    outcomeEvidenceRequired: true,
+    settlementOnly: true,
+    humanApprovalRequired: true,
+  },
+];
 
 export type MonetizationStage =
   | 'observed'
@@ -38,6 +71,10 @@ export type MonetizationOpportunity = {
   revenueEventRef: string | null;
   settlementRef: string | null;
   payoutRail: PayoutRail | null;
+  pricingModel?: MonetizationPricingModel | null;
+  tokenUsage?: number | null;
+  outcomeMetric?: string | null;
+  outcomeValue?: number | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -80,6 +117,10 @@ export async function initializeMonetizationSprint() {
       revenue_event_ref TEXT,
       settlement_ref TEXT,
       payout_rail TEXT,
+      pricing_model TEXT,
+      token_usage NUMERIC,
+      outcome_metric TEXT,
+      outcome_value NUMERIC,
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     );
@@ -94,7 +135,11 @@ export async function initializeMonetizationSprint() {
       ADD COLUMN IF NOT EXISTS accepted_at TIMESTAMPTZ,
       ADD COLUMN IF NOT EXISTS revenue_event_ref TEXT,
       ADD COLUMN IF NOT EXISTS settlement_ref TEXT,
-      ADD COLUMN IF NOT EXISTS payout_rail TEXT;
+      ADD COLUMN IF NOT EXISTS payout_rail TEXT,
+      ADD COLUMN IF NOT EXISTS pricing_model TEXT,
+      ADD COLUMN IF NOT EXISTS token_usage NUMERIC,
+      ADD COLUMN IF NOT EXISTS outcome_metric TEXT,
+      ADD COLUMN IF NOT EXISTS outcome_value NUMERIC;
 
     UPDATE monetization_opportunities
       SET scientist_id=COALESCE(NULLIF(scientist_id,''),'business-intelligence-scientist'),
@@ -165,6 +210,10 @@ function mapOpportunity(row: any): MonetizationOpportunity {
     revenueEventRef: row.revenue_event_ref || null,
     settlementRef: row.settlement_ref || null,
     payoutRail: row.payout_rail || null,
+    pricingModel: row.pricing_model || null,
+    tokenUsage: row.token_usage == null ? null : Number(row.token_usage),
+    outcomeMetric: row.outcome_metric || null,
+    outcomeValue: row.outcome_value == null ? null : Number(row.outcome_value),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -336,6 +385,8 @@ export async function getMonetizationSprintSnapshot() {
     estimatedPipelineUsd,
     payoutReadyCount: payoutReady.length,
     payoutReady,
+    pricingModels: FRACTIONAL_PAY_PER_TOKEN_OUTCOME_POLICY,
+    monetizationScientistRule: 'Scientists may propose fractional token pricing or outcome-based pricing, but rates, outcomes, acceptance, invoices, and settlement must be backed by external evidence and authorized by the human owner.',
     truthBoundary: {
       estimatedPipeline: 'NOT VERIFIED',
       acceptedOffer: 'NOT REVENUE',

@@ -1,7 +1,7 @@
 {
-  "name": "GLORIFIER AI — Command Center",
-  "short_name": "GLORIFIER AI",
-  "description": "AI orchestration, privacy, security, data governance, collaboration, and verified monetization workflows.",
+  "name": "GLORIFIER",
+  "short_name": "GLORIFIER",
+  "description": "Provider-neutral intelligence orchestration, governed execution, evidence, and economic truth.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

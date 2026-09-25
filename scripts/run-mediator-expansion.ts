@@ -1,4 +1,6 @@
-import { buildGlorifierMediatorSnapshot } from '../src/lib/glorifier-mediator';
+import { buildGlorifierMediatorSnapshot, ensureCoreMediatorNodes } from '../src/lib/glorifier-mediator';
+
+await ensureCoreMediatorNodes();
 
 const snapshot = await buildGlorifierMediatorSnapshot();
 console.log(JSON.stringify({

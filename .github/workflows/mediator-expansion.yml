@@ -1,0 +1,29 @@
+name: GLORIFIER Mediator Expansion Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glorifier-mediator-expansion
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Refresh mediator registry snapshot
+        run: npx tsx scripts/run-mediator-expansion.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}

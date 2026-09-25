@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { BadgeDollarSign, Bot, CheckCircle2, Clock3, Gift, Landmark, RefreshCw, ShieldCheck, WalletCards, Zap } from 'lucide-react';
 
 type Channel = 'voucher' | 'crypto' | 'fiat' | 'gcash';
-interface MonetizationSprintProps { onOpenWithdraw: () => void; }
+interface MonetizationSprintProps { onOpenWithdraw: () => void; userReference?: string; }
 
 const channels: { id: Channel; label: string; icon: React.ReactNode; note: string }[] = [
   { id: 'voucher', label: 'Voucher', icon: <Gift className="w-4 h-4" />, note: 'Only a real buyer/provider settlement mechanism is valid.' },
@@ -17,11 +17,12 @@ const stageLabels: Record<string, string> = {
   settlement_confirmed: 'Settlement confirmed', payout_ready: 'Payout ready', closed: 'Closed', blocked: 'Blocked',
 };
 
-export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWithdraw }) => {
+export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWithdraw, userReference = 'anonymous' }) => {
   const [snapshot, setSnapshot] = useState<any>(null);
   const [controlPlane, setControlPlane] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Channel>('gcash');
+  const [payoutRequests, setPayoutRequests] = useState<any[]>([]);
 
   const load = async () => {
     setLoading(true);
@@ -29,14 +30,17 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
       const [sprintResponse, revenueResponse] = await Promise.all([
         fetch('/api/monetization/sprint'),
         fetch('/api/revenue/control-plane'),
+        fetch('/api/payouts?userReference=' + encodeURIComponent(userReference)),
       ]);
-      const [sprintPayload, revenuePayload] = await Promise.all([sprintResponse.json(), revenueResponse.json()]);
+      const [sprintPayload, revenuePayload, payoutPayload] = await Promise.all([sprintResponse.json(), revenueResponse.json(), payoutResponse.json()]);
       if (!sprintResponse.ok || !sprintPayload.ok) throw new Error(sprintPayload.error || 'Sprint unavailable');
       setSnapshot(sprintPayload.sprint);
       if (revenueResponse.ok && revenuePayload.ok) setControlPlane(revenuePayload.snapshot);
+      if (payoutResponse.ok && payoutPayload.ok) setPayoutRequests(Array.isArray(payoutPayload.payouts) ? payoutPayload.payouts : []);
     } catch {
       setSnapshot(null);
       setControlPlane(null);
+      setPayoutRequests([]);
     } finally { setLoading(false); }
   };
 
@@ -48,12 +52,14 @@ export const MonetizationSprint: React.FC<MonetizationSprintProps> = ({ onOpenWi
   const opportunities = Array.isArray(snapshot?.opportunities) ? snapshot.opportunities : [];
   const counts = snapshot?.counts || {};
 
+  const hasPendingPayout = payoutRequests.some((p: any) => ['pending','processing'].includes(p.status));
+
   const gates = useMemo(() => [
     { label: 'Verified evidence', done: opportunities.some((x: any) => ['revenue_verified','settlement_confirmed','payout_ready','closed'].includes(x.stage)) },
     { label: 'Buyer acceptance', done: opportunities.some((x: any) => ['accepted','revenue_verified','settlement_confirmed','payout_ready','closed'].includes(x.stage)) },
     { label: 'Settlement confirmed', done: opportunities.some((x: any) => ['settlement_confirmed','payout_ready','closed'].includes(x.stage)) },
-    { label: 'Payout request', done: false },
-  ], [opportunities]);
+    { label: 'Payout request', done: hasPendingPayout || opportunities.some((x: any) => ['payout_ready','closed'].includes(x.stage)) },
+  ], [opportunities, hasPendingPayout]);
 
   return (
     <section className="space-y-6">

@@ -1,123 +1,194 @@
-# GLORIFIER Artificial Intelligence
+# GLORIFIER
 
-**GLORIFIER AI** is a provider-neutral intelligence orchestration platform.
+**GLORIFIER** is a provider-neutral intelligence orchestration and governed value-execution system.
 
 > **No single AI is hard-coded like the brain.**
 
-GLORIFIER coordinates AI models, specialist agents, data, integrations, evidence, monetization, and governed execution while keeping the human owner as the final authority.
+GLORIFIER coordinates AI providers, specialist agents, opportunity discovery, connections, evidence, governed execution, settlement verification, and authoritative economic data while keeping the human owner as final authority.
 
-## What GLORIFIER Does
+## Current architecture
 
-- 🤖 **AI Orchestration** — coordinate Gemini, GPT, Codex, Meta, Claude, local models, and specialist agents.
-- 🧠 **AI CEO** — executive planning, routing, reconciliation, and coordination above individual providers.
-- 🔎 **24/7 Opportunity Discovery** — continuously discover potential monetizable work from configured public/API sources.
-- 💰 **Monetization Intelligence** — separate opportunities and estimates from verified revenue.
-- 📊 **Asset Intelligence** — organize crypto, fiat, gaming, stocks, bonds, ETFs, NFTs, data, IP, SaaS, and other assets.
-- 🔐 **Connections & Authentication** — manage integrations through a provider-neutral connection registry.
-- 🧾 **Evidence & Audit** — record provenance, verification, authorization, and economic evidence.
-- 🛡️ **Governance & Security** — high-risk and irreversible actions remain approval-controlled.
-- 🔄 **Self-Healing Operations** — monitoring, recovery, CI/CD, provider fallback, and continuous improvement.
+```
+HUMAN OWNER / FINAL AUTHORITY
+            │
+            ▼
+     GLORIFIER AI CEO
+            │
+            ▼
+     GLORIFIER MEDIATOR
+            │
+ ┌──────────┼───────────┐
+ ▼          ▼           ▼
+INTELLIGENCE GOVERNANCE CONNECTIONS
+ │          │           │
+AI Models   GEAS/GATS   Auth Registry
+Specialists Policy      Authorization
+Agent Fleet Risk        Revocation
+ │          │           │
+ └──────────┼───────────┘
+            ▼
+   OPPORTUNITY ENGINE
+            │
+ DISCOVER → FILTER → VERIFY
+            │
+            ▼
+ QUALIFY → EVIDENCE → ASSIGN
+            │
+            ▼
+      GOVERNED ACTION
+            │
+            ▼
+   DELIVERY / ACCEPTANCE
+            │
+            ▼
+      EVIDENCE LAYER
+            │
+            ▼
+ SETTLEMENT VERIFICATION
+            │
+            ▼
+ REVENUE CONTROL PLANE
+            │
+            ▼
+   NEON / POSTGRESQL
+            │
+            ▼
+  VERIFIED ECONOMIC DATA
+            │
+            ▼
+    LEARN → IMPROVE → REPEAT
+```
 
-## Core Rule
+## Six permanent planes
 
-**GLORIFIER never invents opportunities, contracts, earnings, payments, ownership, or settlement evidence.**
+### 1. Human Authority
+The human owner remains the final authority for consequential actions.
 
-Economic truth is separated into:
+### 2. Intelligence
+AI providers and specialist capabilities are interchangeable resources rather than hard-coded dependencies.
 
-**Observed → Estimated → Qualified → Proposed → Contracted → Revenue Verified → Settlement Confirmed → Paid**
+Current provider architecture includes Gemini, OpenAI/GPT, Codex, Meta, Anthropic/Claude, future local models, and the GLORIFIER specialist/agent fleet.
+
+### 3. Mediation + Governance
+The **GLORIFIER Mediator** is the provider-neutral coordination layer between intelligence and external systems.
+
+Mediator node types:
+- AI provider
+- Specialist
+- Demand source
+- Marketplace
+- Execution connector
+- Settlement rail
+- Evidence system
+- Revenue ledger
+
+Governance includes GEAS, GATS, Policy Scientist, Specialist Council, model identity, capability boundaries, authorization controls, risk controls, and human approval gates.
+
+### 4. Execution
+Authorized connections can support GitHub, GitHub Actions, Railway, Vercel, APIs, webhooks, marketplaces, and other governed connectors.
+
+Authentication does not imply authorization, and authorization does not imply permission for every action.
+
+### 5. Evidence + Economic Truth
+GLORIFIER separates observed information, estimates, qualification, proposals, contracts, invoices, settlements, and verified revenue.
+
+**Core rule: GLORIFIER never invents opportunities, contracts, earnings, payments, ownership, or settlement evidence.**
 
 - Market value ≠ revenue
-- Wallet balance ≠ revenue
 - Opportunity ≠ contract
 - Contract ≠ payment
-- Estimated revenue ≠ actual revenue
+- Wallet/account balance ≠ verified revenue
+- Estimate ≠ actual revenue
+- Model output ≠ evidence
 
-## 24/7 Discovery
+Verified revenue requires qualifying external settlement evidence recorded in the authoritative ledger.
 
-**DISCOVER → FILTER → VERIFY → QUALIFY → EVIDENCE → VALUE → ASSIGN → ACT → MEASURE → LEARN → REPEAT**
+### 6. Learning + Continuous Improvement
+Discovery, outcomes, telemetry, monitoring, recovery, and verified results feed the improvement cycle without bypassing governance.
 
-New findings can be delegated to all registered AI models/agents and monetization scientists, with specialist routing based on the opportunity category.
+## 24/7 Opportunity Discovery
 
-## Permanent Integration Model
+Current configured discovery architecture includes GitHub Issues, GitHub bounty signals, Hugging Face models, Hugging Face datasets, and configurable public/API sources.
 
-GLORIFIER is designed to expand across:
+Operating loop:
 
-**AI • Cloud • Finance • Crypto • Software • SaaS • Data • Social • Business • IoT • Digital Assets • Developer Ecosystems • Identity • Security • Compliance**
+**DISCOVER → FILTER → VERIFY → QUALIFY → EVIDENCE → VALUE → PRIORITIZE → ASSIGN → ACT → MEASURE → LEARN → REPEAT**
 
-Integration lifecycle:
+Findings can be delegated to registered models/agents and monetization scientists. Discovery is autonomous; consequential external actions remain governed.
 
-**Discover → Register → Authenticate → Authorize → Operate → Verify → Monitor → Reconcile → Substitute → Improve**
+## Economic truth lifecycle
+
+**OBSERVED → ESTIMATED → QUALIFIED → PROPOSED → CONTRACTED → INVOICED → SETTLEMENT EVIDENCE → VERIFIED REVENUE**
+
+The authoritative revenue ledger is Neon/PostgreSQL. Revenue records support paid, refunded, disputed, and voided states.
+
+## Connection lifecycle
+
+**DISCOVER → REGISTER → AUTHENTICATE → AUTHORIZE → OPERATE → VERIFY → MONITOR → RECONCILE → SUBSTITUTE → IMPROVE**
 
 Provider replacement is a first-class capability.
 
-## Architecture
+## Governance boundary
 
-```text
-Human Owner / Final Authority
-            │
-     GLORIFIER AI CEO
-            │
-    Orchestration Layer
-            │
- ┌──────────┼───────────┐
- │          │           │
-AI Models  Specialists  Integrations
- │          │           │
-Gemini     Finance      APIs
-GPT        Security     SaaS
-Codex      Data         GitHub
-Meta       Engineering  Cloud
-Claude     Compliance   IoT
-Local      BI           Crypto
-Models     Legal        Other
-            │
-     Evidence + Audit
-            │
-      Neon / PostgreSQL
-            │
-   Governed Execution
-```
+AI may continuously:
+- discover
+- analyze
+- coordinate
+- monitor
+- plan
+- prepare actions
+- recommend improvements
 
-## Human Authority
+Consequential or irreversible actions remain approval-controlled, including fund movement, withdrawals, trading, irreversible wallet operations, binding financial/legal commitments, ownership changes, and sensitive production actions.
 
-AI may continuously discover, analyze, coordinate, monitor, plan, and prepare actions.
+## Current control surfaces
 
-High-risk actions remain governed, including:
+The frontend is organized around focused GLORIFIER control surfaces, including:
 
-- Fund movement
-- Withdrawals
-- Trading
-- Irreversible wallet operations
-- Binding financial or legal commitments
-- Irreversible ownership changes
-- Sensitive production actions
+- Live Economic Data
+- AI CEO
+- Mediator
+- Intelligence
+- Collaboration
+- 24/7 Discovery
+- AI Models
+- Code Sentinel
+- Compute
+- Accounts & Data
+- Marketplace
+- Compensation
+- Monetization
+- Compliance
+- Patent / IP
+- Clawback Audit
+- Verified Revenue
+- Connections
+
+The primary landing surface is **GLORIFIER Live Economic Data**.
 
 ## Technology
 
-- React / TypeScript
-- Node.js / Express
+- React + TypeScript
+- Node.js + Express
 - Neon / PostgreSQL
 - GitHub
+- GitHub Actions
 - Railway
 - Vercel
 - AI provider adapters
 - API / OAuth / webhook integrations
+- Capacitor Android build support
 
-## Operating Objective
+Google Cloud is intentionally not a required part of the current architecture.
+
+## Operating objective
 
 **EARN → VERIFY → PAYOUT → REINVEST → GROW → MEASURE → IMPROVE → REPEAT**
 
-## Project
+## Repository
 
-Repository: https://github.com/GLORIFIER7/glorifier-artificial-intelligence
+**GitHub:** `GLORIFIER7/GLORIFIER`
 
-**GLORIFIER — provider-neutral AI orchestration, evidence, asset intelligence, and economic truth.**
+**Product:** **GLORIFIER**
 
-
-<!-- Deployment validation: 2026-09-25 -->
-
-<!-- GLORIFIER functional control surfaces deployment validation: 1790322889589 -->
-
-<!-- functional controls deployment 1790322949629 -->
-
-<!-- bespoke editorial frontend + unified control surfaces validation: 2026-09-25T15:56+07:00 -->
+**GLORIFIER — provider-neutral intelligence orchestration, governed execution, evidence, and economic truth.**

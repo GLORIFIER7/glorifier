@@ -83,6 +83,26 @@ export async function getRevenueSummary() {
   }));
 }
 
+export async function listRevenueEvents(limit = 100) {
+  const safeLimit = Math.min(Math.max(Number(limit) || 100, 1), 500);
+  const result = await getPostgresPool().query(
+    `SELECT id, event_id, provider, provider_transaction_id, customer_reference, user_reference,
+            currency, amount_minor, status, occurred_at, received_at, metadata
+       FROM revenue_ledger
+      WHERE status = 'paid'
+      ORDER BY occurred_at DESC
+      LIMIT $1`,
+    [safeLimit],
+  );
+  return result.rows.map((row) => ({
+    id: row.id, event_id: row.event_id, provider: row.provider,
+    provider_transaction_id: row.provider_transaction_id, customer_reference: row.customer_reference,
+    user_reference: row.user_reference, currency: row.currency,
+    amount_minor: Number(row.amount_minor), status: row.status,
+    created_at: row.occurred_at, received_at: row.received_at, metadata: row.metadata,
+  }));
+}
+
 export function verifyRevenueWebhook(rawBody: string, signature: string | undefined): boolean {
   const secret = process.env.REVENUE_WEBHOOK_SECRET;
   if (!secret || !signature) return false;

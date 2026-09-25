@@ -25,7 +25,8 @@ import {
   Cpu,
   Bot,
   FileText,
-  BrainCircuit
+  BrainCircuit,
+  BadgeDollarSign
 } from 'lucide-react';
 import { SovereignStats, MonetizationPolicy } from '../types';
 import { User } from 'firebase/auth';
@@ -70,6 +71,7 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'patent', label: 'Patent & IP Disclosure', icon: Scale, badge: 'AI Attorney Scientist' },
     { id: 'compute', label: 'Independent Compute', icon: Cpu, badge: 'Provider-Neutral' },
     { id: 'ai_ceo', label: 'AI CEO Command', icon: BrainCircuit, badge: 'Human Authority' },
+    { id: 'monetization_sprint', label: 'AI Monetization Sprint', icon: BadgeDollarSign, badge: '7-Day Payout' },
     { id: 'integrations', label: 'Intelligence Hub', icon: Globe2, badge: 'Global Reports' },
     { id: 'compliance', label: 'Compliance AI Scientist', icon: ShieldAlert, badge: 'GDPR / AI Act' },
     { id: 'exposures', label: 'Clawback Audit', icon: FileText },

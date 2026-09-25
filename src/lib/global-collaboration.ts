@@ -33,7 +33,7 @@ export const globalProviders = [
     name: 'Google Gemini',
     category: 'ai-ecosystem',
     capabilities: ['model-inference', 'multimodal', 'structured-output', 'agent-collaboration', 'model-discovery'],
-    auth: 'api_key',
+    auth: 'api_key' as const,
     defaultRisk: 'medium' as const,
     publicUrl: 'https://ai.google.dev/gemini-api'
   }

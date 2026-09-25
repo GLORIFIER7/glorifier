@@ -55,6 +55,7 @@ import { initializePayoutRegistry, createPayoutRequest, listPayoutRequests, getA
 import { initializeRevenueLedger } from './src/lib/revenue/engine';
 import { initializeAutonomousGrowth, runAutonomousGrowthCycle, getAutonomousGrowthStatus, getAutonomousGrowthPolicy } from './src/lib/autonomous-growth';
 import { initializeCryptographicTrustGateway, requestCryptographicOperation, listCryptographicTrustOperations, getCryptographicTrustPolicy } from './src/lib/cryptographic-trust-gateway';
+import { initializeUniversalAssetIntelligence, getUniversalAssetIntelligenceSnapshot, getUniversalAssetIntelligencePolicy, planUniversalAssetActions, requestUniversalAssetCryptoOperation } from './src/lib/universal-asset-intelligence';
 
 dotenv.config();
 
@@ -87,7 +88,9 @@ void Promise.allSettled([
   initializeBusinessIntelligenceScientist(),
   initializeEnterpriseArchitectureScientist(),
   initializeRevenueControlPlane(),
-  initializeAutonomousGrowth()
+  initializeAutonomousGrowth(),
+  initializeCryptographicTrustGateway(),
+  initializeUniversalAssetIntelligence()
 ]).then(async (results) => {
   const failures = results.filter((result) => result.status === 'rejected');
     await initializeMarketplaceTransactions();
@@ -3226,6 +3229,48 @@ app.post('/api/growth/cycle', async (_req: Request, res: Response) => {
   } catch (error: any) {
     res.status(503).json({ ok: false, error: error?.message || 'Autonomous growth cycle failed' });
   }
+});
+
+// ============================================================================
+// GLORIFIER UNIVERSAL ASSET INTELLIGENCE & TREASURY GATEWAY
+// Provider-neutral inventory, verification, valuation, monetization and investment planning.
+// Irreversible execution remains outside the AI context.
+// ============================================================================
+app.get('/api/assets/universal', async (_req: Request, res: Response) => {
+  try { res.json({ ok: true, snapshot: await getUniversalAssetIntelligenceSnapshot() }); }
+  catch (error: any) { res.status(503).json({ ok: false, error: error?.message || 'Universal asset intelligence unavailable' }); }
+});
+
+app.get('/api/assets/universal/policy', (_req: Request, res: Response) => {
+  res.json({ ok: true, policy: getUniversalAssetIntelligencePolicy() });
+});
+
+app.post('/api/assets/universal/plan', async (req: Request, res: Response) => {
+  try {
+    const result = await planUniversalAssetActions({
+      actor: String(req.body?.actor || 'ai-ceo'),
+      objective: req.body?.objective || 'grow',
+      assetAccountId: req.body?.assetAccountId ? String(req.body.assetAccountId) : undefined,
+      holdingId: req.body?.holdingId ? String(req.body.holdingId) : undefined
+    });
+    res.status(202).json({ ok: true, ...result });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Universal asset planning failed' }); }
+});
+
+app.post('/api/assets/universal/crypto-operation', async (req: Request, res: Response) => {
+  try {
+    const result = await requestUniversalAssetCryptoOperation({
+      operation: String(req.body?.operation || '') as any,
+      requester: String(req.body?.requester || 'ai-ceo'),
+      connectionId: req.body?.connectionId ? String(req.body.connectionId) : null,
+      walletRef: req.body?.walletRef ? String(req.body.walletRef) : null,
+      network: req.body?.network || null,
+      payload: req.body?.payload == null ? null : String(req.body.payload),
+      humanApproved: req.body?.humanApproved === true,
+      evidenceRefs: Array.isArray(req.body?.evidenceRefs) ? req.body.evidenceRefs.map(String) : []
+    });
+    res.status(result.status === 'approval-required' ? 202 : 200).json({ ok: true, ...result });
+  } catch (error: any) { res.status(400).json({ ok: false, error: error?.message || 'Universal asset cryptographic operation failed' }); }
 });
 
 // ============================================================================

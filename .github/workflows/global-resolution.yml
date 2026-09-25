@@ -1,0 +1,30 @@
+name: GLORIFIER Global Issue Resolution
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: glorifier-global-resolution
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Discover and queue global resolution candidates
+        run: npx tsx scripts/run-global-resolution.ts
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GLORIFIER_RESOLUTION_LIMIT: "200"

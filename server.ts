@@ -1029,8 +1029,9 @@ Data streams summary: ${footprintsSummary || 'Browsing, E-Commerce, Developer, H
     let replyText = execution.text;
 
     if (!replyText) {
-      // High quality fallback
-      replyText = `[Autonomous Broker via ${chosenModel}]: I have analyzed your command "${message}". Under your configured threshold ($${currentPolicy?.minimumMonthlyFloorUsd || 35}/mo floor, \u03b5=${currentPolicy?.globalEpsilon || 0.35}), your active data streams are securely shielded. Academic research and sovereign frontier AI pre-training licensing remain enabled, while ad-targeting and shadow brokers are quarantined.`;
+      return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', providerStatus: 'No live broker response was returned; no synthetic answer was generated.' });
+      /* replyText = `[Autonomous Broker via ${chosenModel}]: I have analyzed your command "${message}". Under your configured threshold ($${currentPolicy?.minimumMonthlyFloorUsd || 35}/mo floor, \u03b5=${currentPolicy?.globalEpsilon || 0.35}), your active data streams are securely shielded. Academic research and sovereign frontier AI pre-training licensing remain enabled, while ad-targeting and shadow brokers are quarantined.`;
+    */
     }
 
     // Determine context-driven suggested action
@@ -1106,8 +1107,8 @@ Return a valid JSON object with:
       }
     }
 
-    // Fallback valuation
-    const isRisky = offer.offeredCompUsd < (userPolicy?.minimumMonthlyFloorUsd || 30) || (offer.maxEpsilonAllowed || 0) > 1.0;
+    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', providerStatus: 'No live offer-evaluation response was returned; no synthetic score or verdict was generated.' });
+    /* const isRisky = offer.offeredCompUsd < (userPolicy?.minimumMonthlyFloorUsd || 30) || (offer.maxEpsilonAllowed || 0) > 1.0;
     res.json({
       score: isRisky ? 35 : 92,
       verdict: isRisky ? 'CAUTION' : 'RECOMMEND',
@@ -1116,7 +1117,7 @@ Return a valid JSON object with:
         : `Audited buyer with strict retention boundaries (${offer.retentionWindowDays} days) and fair market compensation.`,
       modelUsed: chosenModel,
       provider: 'GPT Valuation Engine'
-    });
+    }); */
   } catch (err: any) {
     console.error('Offer evaluation error:', err);
     res.status(500).json({ error: 'Evaluation failed', details: err.message });
@@ -1164,7 +1165,8 @@ Format as JSON with keys:
       }
     }
 
-    res.json({
+    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', providerStatus: 'No live privacy-audit response was returned; no synthetic metrics were generated.' });
+    /* res.json({
       reidentificationRisk: 'Moderate (28%)',
       recommendedEpsilon: 0.35,
       kAnonymityMin: 50,
@@ -1172,7 +1174,7 @@ Format as JSON with keys:
       sanitizationReport: 'High-entropy identifiers detected (IP, timestamp offsets). Recommend Laplacian noise perturbation on temporal features and postal code 3-digit aggregation.',
       modelUsed: chosenModel,
       provider: 'GPT Privacy Pipeline'
-    });
+    }); */
   } catch (err: any) {
     console.error('Audit footprint error:', err);
     res.status(500).json({ error: 'Audit failed' });
@@ -1218,12 +1220,13 @@ Return JSON with { documentTitle: string, legalNotice: string }`;
       }
     }
 
-    res.json({
+    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', providerStatus: 'No live legal-drafting response was returned; no synthetic statutory notice was generated.' });
+    /* res.json({
       documentTitle: `STATUTORY NOTICE OF DATA ERASURE & ACCOUNTING OF PROFITS`,
       legalNotice: `DEMAND FOR IMMEDIATE EXPUNGEMENT AND STATUTORY ACCOUNTING\n\nTo: Compliance Officer, ${brokerName}\n\nPursuant to ${complianceStatute || 'CCPA § 1798.105, GDPR Art. 17, and the California Delete Act'}:\n\n1. You are hereby formally notified to immediately purge, delete, and cease commercial syndication of all consumer profiles, device telemetry, and identity graphs associated with the undersigned (estimated ${recordCount || 350} records held).\n2. Provide a cryptographic Certificate of Deletion within thirty (30) calendar days.\n3. Disclose all third-party downstream licensees who received telemetry for financial gain.`,
       modelUsed: chosenModel,
       provider: 'GPT Legal Synthesis'
-    });
+    }); */
   } catch (err: any) {
     console.error('Clawback error:', err);
     res.status(500).json({ error: 'Notice generation failed' });

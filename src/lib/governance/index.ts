@@ -4,3 +4,4 @@ export * from './evidence-graph';
 export * from './agent-observability';
 
 export * from './provenance';
+export * from './linux-philosophy';

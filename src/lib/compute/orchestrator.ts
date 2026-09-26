@@ -79,22 +79,49 @@ async function runOllama(resource: ReturnType<typeof listComputeResources>[numbe
 }
 
 export async function executeComputeTask(task: ComputeTask): Promise<ComputeTaskResult> {
-  const resource = chooseResource(task);
-  if (!resource) {
+  const resources = listComputeResources()
+    .filter(r => r.status === 'ready' && r.capabilities.includes('llm-inference'))
+    .sort((a, b) => {
+      const preferredA = task.preferredModel && a.models.includes(task.preferredModel) ? 1 : 0;
+      const preferredB = task.preferredModel && b.models.includes(task.preferredModel) ? 1 : 0;
+      if (preferredA !== preferredB) return preferredB - preferredA;
+      return (b.kind === 'gpu' ? 1 : 0) - (a.kind === 'gpu' ? 1 : 0);
+    });
+
+  if (!resources.length) {
     queuedTasks += 1;
-    return { taskId: task.id, resourceId: 'none', status: 'queued', error: 'No authenticated independent compute resource is currently configured.' };
+    return {
+      taskId: task.id,
+      resourceId: 'none',
+      status: 'failed',
+      error: 'No authenticated independent LLM compute resource is currently ready.'
+    };
   }
 
   activeTasks += 1;
+  const errors: string[] = [];
   try {
-    const result = resource.id === 'ollama-gpu' || resource.id === 'remote-gpu-worker'
-      ? await (resource.id === 'ollama-gpu' ? runOllama(resource, task) : runRemote(resource, task))
-      : { taskId: task.id, resourceId: resource.id, status: 'completed' as const, text: 'CPU worker accepted the orchestration task.', latencyMs: 0 };
-    counters.completed += 1;
-    return result;
-  } catch (error) {
+    for (const resource of resources) {
+      try {
+        const result = resource.id === 'ollama-gpu'
+          ? await runOllama(resource, task)
+          : await runRemote(resource, task);
+        if (result.status === 'completed' && result.text?.trim()) {
+          counters.completed += 1;
+          return result;
+        }
+        errors.push(`${resource.name}: empty response`);
+      } catch (error) {
+        errors.push(`${resource.name}: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
     counters.failed += 1;
-    return { taskId: task.id, resourceId: resource.id, status: 'failed', error: error instanceof Error ? error.message : String(error) };
+    return {
+      taskId: task.id,
+      resourceId: 'none',
+      status: 'failed',
+      error: `All authenticated independent compute resources failed. ${errors.join(' | ')}`
+    };
   } finally {
     activeTasks = Math.max(0, activeTasks - 1);
   }

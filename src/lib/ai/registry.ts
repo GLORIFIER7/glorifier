@@ -22,6 +22,52 @@ const providers: AIProvider[] = [
   ...compatibleProviders.map((config) => new OpenAICompatibleProvider(config)),
 ];
 
+// Provider-neutral circuit breaker state. Cooldowns prevent repeated calls against
+// known-exhausted providers while preserving automatic recovery after the window.
+const providerCooldownUntil = new Map<string, number>();
+const providerLastFailure = new Map<string, string>();
+
+function parseRetryAfterMs(error: unknown): number | null {
+  const message = error instanceof Error ? error.message : String(error);
+  const match = message.match(/retry(?: after| in)?\s+(\d+(?:\.\d+)?)\s*s/i);
+  if (!match) return null;
+  return Math.min(Math.max(Number(match[1]) * 1000, 5_000), 15 * 60_000);
+}
+
+function cooldownFor(error: unknown): number {
+  const message = error instanceof Error ? error.message : String(error);
+  const retryAfter = parseRetryAfterMs(error);
+  if (retryAfter) return retryAfter;
+  if (/429|RESOURCE_EXHAUSTED|quota|rate.?limit/i.test(message)) return 60_000;
+  if (/402|insufficient_quota|credit_balance_exhausted|no credits/i.test(message)) return 15 * 60_000;
+  if (/503|UNAVAILABLE|overloaded|high demand/i.test(message)) return 30_000;
+  return 10_000;
+}
+
+function isCoolingDown(providerId: string): boolean {
+  const until = providerCooldownUntil.get(providerId) || 0;
+  if (until <= Date.now()) {
+    providerCooldownUntil.delete(providerId);
+    return false;
+  }
+  return true;
+}
+
+export function getProviderCircuitStatus() {
+  const now = Date.now();
+  return providers.map((provider) => {
+    const cooldownUntil = providerCooldownUntil.get(provider.id) || 0;
+    return {
+      id: provider.id,
+      name: provider.name,
+      configured: provider.status() === 'connected',
+      circuit: cooldownUntil > now ? 'cooldown' : 'available',
+      cooldownUntil: cooldownUntil > now ? new Date(cooldownUntil).toISOString() : null,
+      lastFailure: providerLastFailure.get(provider.id) || null,
+    };
+  });
+}
+
 export function listProviders(): ProviderRegistryEntry[] {
   return providers.map((provider) => ({
     id: provider.id,
@@ -40,7 +86,6 @@ export function getProvider(id: AIProviderId): AIProvider {
 export function getConnectedProviders(): AIProvider[] {
   return providers.filter((provider) => provider.status() === 'connected');
 }
-
 
 export interface ProviderExecutionRequest {
   messages: import('./types').AIMessage[];
@@ -88,8 +133,16 @@ export async function executeThroughProviderRegistry(
   const providerStatuses: Record<string, 'connected' | 'unavailable' | 'error'> = {};
 
   for (const provider of ordered) {
+    if (isCoolingDown(provider.id)) {
+      attemptedProviders.push(provider.id);
+      providerStatuses[provider.id] = 'unavailable';
+      errors.push(`${provider.id}: circuit cooldown active until ${providerCooldownUntil.get(provider.id)}`);
+      continue;
+    }
+
     attemptedProviders.push(provider.id);
     providerStatuses[provider.id] = 'connected';
+
     try {
       const providerRequest = {
         ...request,
@@ -100,14 +153,23 @@ export async function executeThroughProviderRegistry(
             : request.model,
       };
       const response = await provider.generate(providerRequest);
+
       if (response.text?.trim()) {
+        providerCooldownUntil.delete(provider.id);
+        providerLastFailure.delete(provider.id);
         return { response, provider: provider.id, attemptedProviders, errors, providerStatuses };
       }
+
       errors.push(`${provider.id}: empty response`);
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
       const availability = (error as any)?.providerAvailability;
       providerStatuses[provider.id] = availability === 'unavailable' ? 'unavailable' : 'error';
-      errors.push(`${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
+      errors.push(`${provider.id}: ${message}`);
+
+      const cooldownMs = cooldownFor(error);
+      providerCooldownUntil.set(provider.id, Date.now() + cooldownMs);
+      providerLastFailure.set(provider.id, message.slice(0, 1000));
     }
   }
 

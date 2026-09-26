@@ -36,7 +36,21 @@ let latestReport: IntelligenceReport | null = null;
 
 function getPool() {
   if (!process.env.DATABASE_URL) return null;
-  if (!pool) pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 3 });
+  if (!pool) {
+    let connectionString = process.env.DATABASE_URL;
+    try {
+      const parsed = new URL(connectionString);
+      parsed.searchParams.delete('sslmode');
+      connectionString = parsed.toString();
+    } catch {
+      connectionString = connectionString.replace(/([?&])sslmode=[^&]*&?/i, '$1').replace(/[?&]$/, '');
+    }
+    pool = new Pool({
+      connectionString,
+      max: 3,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : undefined,
+    });
+  }
   return pool;
 }
 

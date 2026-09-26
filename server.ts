@@ -1988,7 +1988,7 @@ app.post('/api/sync/global', requireOwner, async (req: Request, res: Response) =
     const manifest = await performGlobalGlorifierSync({
       runSynthesisModel: runIntelligenceModel
     });
-    const integrationControl = await reconcileIntegrationControlPlane(String(req.body?.actor || req.auth?.uid || 'human-owner'));
+    const integrationControl = await reconcileIntegrationControlPlane(String(req.body?.actor || (req as any).auth?.uid || 'human-owner'));
     res.json({ ok: true, manifest, integrationControl: integrationControl.snapshot, status: 'synchronized' });
   } catch (error: any) {
     console.error('[GlobalSync] execution failed:', error);
@@ -2011,7 +2011,7 @@ app.get('/api/agents/registry', async (_req: Request, res: Response) => {
 
 app.post('/api/agents/synchronize', requireOwner, async (req: Request, res: Response) => {
   try {
-    const actor = req.auth?.uid || 'human-owner';
+    const actor = (req as any).auth?.uid || 'human-owner';
     const results = await synchronizeRegisteredAgents(actor);
     res.json({ ok: true, agentCount: results.length, results });
   } catch (error: any) {
@@ -2311,7 +2311,7 @@ app.get('/api/control-plane/integrations', (_req: Request, res: Response) => {
 
 app.post('/api/control-plane/integrations/reconcile', requireOwner, async (req: Request, res: Response) => {
   try {
-    const result = await reconcileIntegrationControlPlane(String(req.body?.actor || req.auth?.uid || 'human-owner'));
+    const result = await reconcileIntegrationControlPlane(String(req.body?.actor || (req as any).auth?.uid || 'human-owner'));
     return res.json({ ok: true, ...result });
   } catch (error) {
     return apiError(res, 503, 'Integration reconciliation unavailable', error);

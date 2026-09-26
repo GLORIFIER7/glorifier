@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   ShieldCheck, 
   Wallet, 
@@ -51,6 +51,8 @@ export const Header: React.FC<HeaderProps> = ({
   pendingOffersCount,
   currentUser,
 }) => {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Layers },
     { id: 'ai_ceo', label: 'AI CEO', icon: BrainCircuit },
@@ -79,6 +81,8 @@ export const Header: React.FC<HeaderProps> = ({
     { id: 'broker', label: 'AI Broker', icon: Scale },
     { id: 'gpt_cowork', label: 'GPT Co-Work', icon: BrainCircuit },
   ];
+
+  const handleTab = (tab: string) => { setActiveTab(tab); setMobileNavOpen(false); };
 
   return (
     <header className="sticky top-0 z-40 bg-[#080808]/95 backdrop-blur-sm border-b border-slate-800">
@@ -110,8 +114,10 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
+        <div className="md:hidden border-t border-slate-900 py-2 flex justify-end"><button type="button" aria-expanded={mobileNavOpen} aria-controls="mobile-navigation" onClick={() => setMobileNavOpen(v => !v)} className="min-h-10 rounded-lg border border-slate-700 bg-slate-900 px-3 text-xs font-semibold text-slate-200">{mobileNavOpen ? "Close" : "Menu"}</button></div>
+        {mobileNavOpen && <div id="mobile-navigation" className="md:hidden border-t border-slate-900 py-2"><div className="grid grid-cols-2 gap-2 max-h-[60vh] overflow-y-auto pb-2">{tabs.map((tab) => { const Icon = tab.icon; const isActive = activeTab === tab.id; return <button key={tab.id} onClick={() => handleTab(tab.id)} className={"flex min-h-11 items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium " + (isActive ? "border-slate-700 bg-slate-900 text-white" : "border-slate-800 bg-slate-950 text-slate-400")}><Icon className={"h-4 w-4 shrink-0 " + (isActive ? "text-emerald-400" : "text-slate-500")} /><span className="truncate">{tab.label}</span>{tab.badge ? <span className="ml-auto rounded border border-slate-800 px-1 text-[9px]">{tab.badge}</span> : null}</button>; })}</div></div>}
         {/* Navigation Tabs */}
-        <nav className="flex space-x-1 overflow-x-auto py-2 border-t border-slate-900">
+        <nav className="hidden md:flex space-x-1 overflow-x-auto py-2 border-t border-slate-900">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -119,7 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 key={tab.id}
                 id={`tab-btn-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTab(tab.id)}
                 className={`flex items-center gap-2 px-3 py-2 text-[11px] font-medium rounded-md whitespace-nowrap transition-all ${
                   isActive
                     ? 'bg-slate-900 text-white border border-slate-700'

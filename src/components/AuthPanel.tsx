@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, LogOut, Mail, UserPlus, X } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { loginWithEmail, loginWithGoogle, registerWithEmail, resetPassword, logout } from '../lib/firebase';
+import { loginWithEmail, loginWithSocialProvider, registerWithEmail, resetPassword, logout, SOCIAL_PROVIDER_REGISTRY, SocialProviderId } from '../lib/firebase';
 
 interface AuthPanelProps {
   currentUser: User | null;
@@ -75,12 +75,12 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ currentUser }) => {
     }
   };
 
-  const google = async () => {
+  const socialLogin = async (provider: SocialProviderId) => {
     setBusy(true);
     setMessage(null);
     try {
-      await loginWithGoogle();
-      setMessage({ type: 'success', text: 'Google sign-in successful.' });
+      await loginWithSocialProvider(provider);
+      setMessage({ type: 'success', text: `${SOCIAL_PROVIDER_REGISTRY[provider].label} sign-in successful.` });
       setTimeout(() => setOpen(false), 500);
     } catch (error) {
       setMessage({ type: 'error', text: friendlyAuthError(error) });
@@ -147,13 +147,19 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ currentUser }) => {
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-white"><X className="h-5 w-5" /></button>
             </div>
 
-            <button
-              onClick={google}
-              disabled={busy}
-              className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-white px-4 py-3 text-sm font-semibold text-slate-900 disabled:opacity-50"
-            >
-              <span className="font-bold">G</span> Continue with Google
-            </button>
+            <div className="mt-6 grid grid-cols-1 gap-2">
+              {(Object.entries(SOCIAL_PROVIDER_REGISTRY) as [SocialProviderId, {label:string; enabled:boolean}][]).map(([id, config]) => (
+                <button
+                  key={id}
+                  onClick={() => socialLogin(id)}
+                  disabled={busy || !config.enabled}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-white px-4 py-3 text-sm font-semibold text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <span className="font-bold">{config.label === 'Google' ? 'G' : config.label[0]}</span>
+                  {config.enabled ? `Continue with ${config.label}` : `${config.label} — coming soon`}
+                </button>
+              ))}
+            </div>
 
             <div className="my-5 flex items-center gap-3 text-[10px] uppercase tracking-widest text-slate-500">
               <span className="h-px flex-1 bg-slate-800" /> or email/password <span className="h-px flex-1 bg-slate-800" />

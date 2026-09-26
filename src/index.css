@@ -174,3 +174,22 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
   }
 }
+
+
+/* Responsive application shell hardening */
+html, body, #root { width: 100%; max-width: 100%; overflow-x: hidden; }
+img, svg, video, canvas { max-width: 100%; }
+button, a { -webkit-tap-highlight-color: transparent; }
+main { width: 100%; min-width: 0; }
+main > * { min-width: 0; }
+main table { display: block; max-width: 100%; overflow-x: auto; }
+@media (max-width: 767px) {
+  header .max-w-7xl { padding-left: .75rem; padding-right: .75rem; }
+  main { padding-left: .75rem; padding-right: .75rem; }
+  main input, main textarea, main select, main button { min-height: 40px; }
+}
+@media (max-width: 420px) {
+  main { font-size: .9rem; }
+  main h1 { font-size: 1.5rem; }
+  main h2 { font-size: 1.2rem; }
+}

@@ -93,7 +93,18 @@ app.use((req: Request, res: Response, next) => {
 // unauthenticated writes into orchestration, integrations, finance, evidence,
 // synchronization, or AI execution.
 app.use('/api', (req: Request, res: Response, next) => {
-  if (req.method === 'OPTIONS' || req.method === 'GET' || req.method === 'HEAD') return next();
+  if (req.method === 'OPTIONS') return next();
+  const pathName = req.path || '';
+  const protectedRead = [
+    '/payouts',
+    '/monetization/subscription',
+    '/connections',
+    '/agents',
+    '/governance',
+    '/control-plane',
+    '/app-state'
+  ].some(prefix => pathName === prefix || pathName.startsWith(prefix + '/'));
+  if ((req.method === 'GET' || req.method === 'HEAD') && !protectedRead) return next();
   return requireAuthentication(req as any, res, next);
 });
 
@@ -173,7 +184,7 @@ app.get('/api/payouts', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/payouts/request', async (req: Request, res: Response) => {
+app.post('/api/payouts/request', requireOwner, async (req: Request, res: Response) => {
   try {
     const result = await createPayoutRequest({
       userReference: String(req.body?.userReference || ''),
@@ -243,7 +254,7 @@ app.get('/api/connections/:id', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(503).json({ error: 'Connection lookup failed', details: error?.message }); }
 });
 
-app.post('/api/connections', async (req: Request, res: Response) => {
+app.post('/api/connections', requireOwner, async (req: Request, res: Response) => {
   try {
     const connection = await registerConnection({
       provider: String(req.body?.provider || '').trim(),
@@ -263,7 +274,7 @@ app.post('/api/connections', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(400).json({ error: 'Unable to register connection', details: error?.message }); }
 });
 
-app.post('/api/connections/:id/verify', async (req: Request, res: Response) => {
+app.post('/api/connections/:id/verify', requireOwner, async (req: Request, res: Response) => {
   try {
     const connection = await verifyConnection(req.params.id, String(req.body?.actor || 'connection-manager'));
     if (!connection) return res.status(404).json({ error: 'Connection not found' });
@@ -271,7 +282,7 @@ app.post('/api/connections/:id/verify', async (req: Request, res: Response) => {
   } catch (error: any) { res.status(503).json({ error: 'Connection verification failed', details: error?.message }); }
 });
 
-app.post('/api/connections/:id/approval', async (req: Request, res: Response) => {
+app.post('/api/connections/:id/approval', requireOwner, async (req: Request, res: Response) => {
   try {
     const approval = await requestConnectionApproval(
       req.params.id,
@@ -2406,7 +2417,7 @@ app.get('/api/governance/observability', (_req: Request, res: Response) => {
 });
 
 // Unknown API routes must remain JSON. This prevents the SPA fallback from masquerading as an API response.
-app.post('/api/governed-actions', async (req: Request, res: Response) => {
+app.post('/api/governed-actions', requireOwner, async (req: Request, res: Response) => {
   try {
     const userReference = String(req.body?.userReference || '').trim();
     const action = String(req.body?.action || '').trim();

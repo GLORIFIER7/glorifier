@@ -219,6 +219,7 @@ const socialProvider = (id: SocialProviderId) => {
 };
 
 export const loginWithSocialProvider = async (id: SocialProviderId) => {
+  if (!SOCIAL_PROVIDER_REGISTRY[id].enabled) throw new Error(`${SOCIAL_PROVIDER_REGISTRY[id].label} sign-in is not enabled in Firebase yet.`);
   const provider = socialProvider(id);
   await authPersistenceReady;
   const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);

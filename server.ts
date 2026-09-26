@@ -2399,17 +2399,21 @@ app.get('/api/governance/evidence-graph', (_req: Request, res: Response) => {
   return res.json({ ok:true, graph:getEvidenceGraph() });
 });
 
-app.post('/api/governance/evidence-graph/nodes', requireAuthentication, (req: Request, res: Response) => {
+app.post('/api/governance/evidence-graph/nodes', requireAuthentication, async (req: Request, res: Response) => {
   try {
     const node=addEvidenceNode(req.body?.type, req.body?.payload || {}, req.body?.ref ? String(req.body.ref) : undefined);
-    return res.status(201).json({ok:true,node});
+    const actorId = String((req as any).auth?.uid || 'authenticated-actor');
+    const provenance = await appendProvenanceEvent(node.type, actorId, { evidenceNodeId: node.id, payload: node.payload }, { sourceRef: node.ref });
+    return res.status(201).json({ok:true,node,provenance});
   } catch(error) { return apiError(res,400,'Unable to add evidence node',error); }
 });
 
-app.post('/api/governance/evidence-graph/edges', requireAuthentication, (req: Request, res: Response) => {
+app.post('/api/governance/evidence-graph/edges', requireAuthentication, async (req: Request, res: Response) => {
   try {
     const edge=linkEvidence(String(req.body?.from || ''),String(req.body?.to || ''),String(req.body?.relation || 'supports'));
-    return res.status(201).json({ok:true,edge});
+    const actorId = String((req as any).auth?.uid || 'authenticated-actor');
+    const provenance = await appendProvenanceEvent('evidence', actorId, { evidenceEdge: edge });
+    return res.status(201).json({ok:true,edge,provenance});
   } catch(error) { return apiError(res,400,'Unable to link evidence',error); }
 });
 

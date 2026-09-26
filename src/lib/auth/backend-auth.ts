@@ -42,7 +42,17 @@ export async function verifyBearerToken(req: Request): Promise<DecodedIdToken | 
   }
 }
 
+export function isInternalServiceRequest(req: Request): boolean {
+  const configured = process.env.GLORIFIER_INTERNAL_SERVICE_TOKEN?.trim();
+  const supplied = req.get('x-glorifier-internal-token')?.trim();
+  return Boolean(configured && supplied && supplied === configured);
+}
+
 export function requireAuthentication(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (isInternalServiceRequest(req)) {
+    req.auth = undefined;
+    return next();
+  }
   verifyBearerToken(req).then((decoded) => {
     if (!decoded) return res.status(401).json({ ok: false, error: 'Authentication required' });
     req.auth = decoded;

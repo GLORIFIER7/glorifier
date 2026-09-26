@@ -34,7 +34,7 @@ import { initializeAppState, readAppState, upsertState } from './src/lib/db/app-
 import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/verified-outcomes';
 import { initializeMonetizationTables, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
 import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
-import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot } from './src/lib/governance';
+import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot, appendProvenanceEvent, listProvenanceEvents, verifyProvenanceChain, getProvenanceArchitecture } from './src/lib/governance';
 import { requireAuthentication, requireOwner, authenticationStatus } from './src/lib/auth/backend-auth';
 import { reconcileIntegrationControlPlane, getIntegrationControlSnapshot } from './src/lib/integration-control-plane';
 
@@ -2321,8 +2321,8 @@ app.post('/api/control-plane/integrations/reconcile', requireOwner, async (req: 
 app.get('/api/governance/architecture', (_req: Request, res: Response) => {
   return res.json({ ok: true, version: 'GLORIFIER-ARCH-3.0', controlPlanes: [
     'human-authority','ai-ceo','geas-governance','agent-control','provider-control',
-    'compute-control','tool-integration','evidence-truth','economic-control','reliability-security'
-  ], principles: getGeasPolicy().principles });
+    'compute-control','tool-integration','evidence-truth','cryptographic-provenance','economic-control','reliability-security'
+  ], trustLayer: { databaseAuthority: 'Neon', externalBlockchainAnchoring: 'optional', privateDataOnChain: false }, principles: getGeasPolicy().principles });
 });
 
 app.get('/api/governance/policy', (_req: Request, res: Response) => {
@@ -2411,6 +2411,44 @@ app.post('/api/governance/evidence-graph/edges', requireAuthentication, (req: Re
     const edge=linkEvidence(String(req.body?.from || ''),String(req.body?.to || ''),String(req.body?.relation || 'supports'));
     return res.status(201).json({ok:true,edge});
   } catch(error) { return apiError(res,400,'Unable to link evidence',error); }
+});
+
+app.get('/api/governance/provenance/architecture', (_req: Request, res: Response) => {
+  return res.json({ ok: true, architecture: getProvenanceArchitecture() });
+});
+
+app.get('/api/governance/provenance/events', requireAuthentication, async (req: Request, res: Response) => {
+  try {
+    const limit = Number(req.query.limit || 100);
+    return res.json({ ok: true, events: await listProvenanceEvents(Number.isFinite(limit) ? limit : 100) });
+  } catch (error) {
+    return apiError(res, 503, 'Provenance event store unavailable', error);
+  }
+});
+
+app.get('/api/governance/provenance/verify', requireAuthentication, async (_req: Request, res: Response) => {
+  try {
+    return res.json({ ok: true, verification: await verifyProvenanceChain() });
+  } catch (error) {
+    return apiError(res, 503, 'Provenance verification unavailable', error);
+  }
+});
+
+app.post('/api/governance/provenance/events', requireAuthentication, async (req: Request, res: Response) => {
+  try {
+    const type = String(req.body?.type || '').trim();
+    const actorId = String(req.body?.actorId || (req as any).auth?.uid || 'authenticated-actor').trim();
+    if (!type || !actorId) return apiError(res, 400, 'type and actorId are required');
+    const allowed = ['observation','opportunity','analysis','decision','authorization','action','external-result','evidence','verification','economic-outcome','trust-anchor'];
+    if (!allowed.includes(type)) return apiError(res, 400, 'Unsupported provenance event type');
+    const event = await appendProvenanceEvent(type as any, actorId, req.body?.payload && typeof req.body.payload === 'object' ? req.body.payload : {}, {
+      sourceRef: req.body?.sourceRef ? String(req.body.sourceRef) : undefined,
+      externalRef: req.body?.externalRef ? String(req.body.externalRef) : undefined
+    });
+    return res.status(201).json({ ok: true, event });
+  } catch (error) {
+    return apiError(res, 400, 'Unable to append provenance event', error);
+  }
 });
 
 app.get('/api/governance/observability', (_req: Request, res: Response) => {

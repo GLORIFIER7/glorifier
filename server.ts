@@ -32,6 +32,8 @@ import { getGlobalCollaborationPolicy, runGlobalCollaborationCycle } from './src
 import { getPostgresPool } from './src/lib/db/postgres';
 import { initializeAppState, readAppState, upsertState } from './src/lib/db/app-state';
 import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/verified-outcomes';
+import { initializeMonetizationTables, getPlan, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
+import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
 
 import { 
   getScientistFleet, 
@@ -46,6 +48,9 @@ import {
 } from './src/lib/scientist-fleet';
 
 dotenv.config();
+
+void initializeMonetizationTables().catch((error) => console.warn('[Monetization] initialization deferred:', error?.message));
+void initializePayoutRegistry().catch((error) => console.warn('[Payouts] initialization deferred:', error?.message));
 
 void initializeConnectionRegistry().then(() => ensureGlobalProviderConnections()).catch((error) => console.warn('[ConnectionRegistry] initialization deferred:', error?.message));
 
@@ -105,6 +110,96 @@ function classifyIntegration(item: { status: string; detail: string; id: string 
     truthRule: 'Only qualifying external evidence may change verificationStatus to verified.'
   };
 }
+
+
+// Monetization and payout API contracts.
+app.post('/api/monetization/checkout', async (req: Request, res: Response) => {
+  try {
+    const customerReference = String(req.body?.customerReference || '').trim();
+    const planId = String(req.body?.planId || '').trim();
+    const result = await createCheckout(customerReference, planId);
+    res.status(201).json({ ok: true, checkout: result });
+  } catch (error: any) {
+    const message = error?.message || 'Unable to create checkout';
+    res.status(400).json({ ok: false, error: message });
+  }
+});
+
+app.post('/api/monetization/capture', async (req: Request, res: Response) => {
+  try {
+    const customerReference = String(req.body?.customerReference || '').trim();
+    const orderId = String(req.body?.orderId || '').trim();
+    const result = await captureCheckout(customerReference, orderId);
+    res.json({ ok: true, subscription: result });
+  } catch (error: any) {
+    const message = error?.message || 'Unable to capture checkout';
+    res.status(400).json({ ok: false, error: message });
+  }
+});
+
+app.get('/api/monetization/subscription', async (req: Request, res: Response) => {
+  try {
+    const customerReference = String(req.query.customerReference || '').trim();
+    if (!customerReference) return res.status(400).json({ ok: false, error: 'customerReference is required' });
+    res.json({ ok: true, subscription: await getSubscription(customerReference) });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Subscription lookup unavailable' });
+  }
+});
+
+app.get('/api/payouts', async (req: Request, res: Response) => {
+  try {
+    const userReference = String(req.query.userReference || '').trim();
+    const [balance, requests] = await Promise.all([
+      getAvailablePayoutBalance(userReference),
+      listPayoutRequests(userReference),
+    ]);
+    res.json({ ok: true, balance, requests });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Payout data unavailable' });
+  }
+});
+
+app.post('/api/payouts/request', async (req: Request, res: Response) => {
+  try {
+    const result = await createPayoutRequest({
+      userReference: String(req.body?.userReference || ''),
+      amountUsd: Number(req.body?.amount),
+      method: String(req.body?.method || ''),
+      destination: String(req.body?.destination || ''),
+      actor: req.body?.actor ? String(req.body.actor) : undefined,
+    });
+    res.status(201).json({ ok: true, payout: result });
+  } catch (error: any) {
+    res.status(400).json({ ok: false, error: error?.message || 'Unable to create payout request' });
+  }
+});
+
+// Specialist API contracts use the provider-neutral council. They never fabricate
+// specialist output when no verified AI provider is available.
+app.post('/api/ai/finance-scientists', async (req: Request, res: Response) => {
+  try {
+    const objective = 'Analyze the supplied financial/asset information with evidence-first financial reasoning. Do not invent prices, earnings, ownership, or transactions. Data: ' + JSON.stringify(req.body?.assets ?? []);
+    const result = await runSpecialistCouncil({ objective, roles: ['finance-scientist'], standingMission: false, temperature: 0.2 });
+    const findings = result.result?.findings || [];
+    if (!findings.length) return res.status(503).json({ ok: false, error: 'No verified finance-scientist provider response was available.' });
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Finance scientist execution unavailable' });
+  }
+});
+
+app.post('/api/ai/compliance-scientist', async (req: Request, res: Response) => {
+  try {
+    const objective = 'Analyze the supplied compliance context against evidence and identify controls, gaps, and uncertainties. Do not invent legal facts or claim legal representation. Context: ' + JSON.stringify(req.body || {});
+    const result = await runSpecialistCouncil({ objective, roles: ['compliance-scientist'], standingMission: false, temperature: 0.2 });
+    const findings = result.result?.findings || [];
+    if (!findings.length) return res.status(503).json({ ok: false, error: 'No verified compliance-scientist provider response was available.' });
+    res.json({ ok: true, result });
+  } catch (error: any) {
+    res.status(503).json({ ok: false, error: 'Compliance scientist execution unavailable' });
+  }
+});
 
 const integrationStatus = [
   { id: 'github', name: 'GitHub', category: 'code', status: 'connected', detail: 'Repository control and CI source', publicUrl: 'https://github.com/GLORIFIER7/glorifier-artificial-intelligence' },

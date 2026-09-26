@@ -1982,9 +1982,9 @@ app.get('/api/sync/global', async (_req: Request, res: Response) => {
   }
 });
 
-app.post('/api/sync/global', async (_req: Request, res: Response) => {
+app.post('/api/sync/global', requireOwner, async (req: Request, res: Response) => {
   try {
-    console.log('[GlobalSync] Executing full-spectrum synchronization across internet & all AI agents...');
+    console.log('[GlobalSync] Executing provider-neutral synchronization across authenticated integrations, agents, compute, and evidence...');
     const manifest = await performGlobalGlorifierSync({
       runSynthesisModel: runIntelligenceModel
     });

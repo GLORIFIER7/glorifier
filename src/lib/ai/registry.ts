@@ -55,6 +55,7 @@ export interface ProviderExecutionResult {
   provider: string;
   attemptedProviders: string[];
   errors: string[];
+  providerStatuses: Record<string, 'connected' | 'unavailable' | 'error'>;
 }
 
 /**
@@ -84,9 +85,11 @@ export async function executeThroughProviderRegistry(
 
   const attemptedProviders: string[] = [];
   const errors: string[] = [];
+  const providerStatuses: Record<string, 'connected' | 'unavailable' | 'error'> = {};
 
   for (const provider of ordered) {
     attemptedProviders.push(provider.id);
+    providerStatuses[provider.id] = 'connected';
     try {
       const providerRequest = {
         ...request,
@@ -98,10 +101,12 @@ export async function executeThroughProviderRegistry(
       };
       const response = await provider.generate(providerRequest);
       if (response.text?.trim()) {
-        return { response, provider: provider.id, attemptedProviders, errors };
+        return { response, provider: provider.id, attemptedProviders, errors, providerStatuses };
       }
       errors.push(`${provider.id}: empty response`);
     } catch (error) {
+      const availability = (error as any)?.providerAvailability;
+      providerStatuses[provider.id] = availability === 'unavailable' ? 'unavailable' : 'error';
       errors.push(`${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
@@ -110,5 +115,6 @@ export async function executeThroughProviderRegistry(
     provider: 'provider-registry-exhausted',
     attemptedProviders,
     errors,
+    providerStatuses,
   };
 }

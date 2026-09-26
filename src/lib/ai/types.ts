@@ -1,5 +1,5 @@
 export type AIProviderId = 'openai' | 'gemini' | 'meta' | string;
-export type AIProviderStatus = 'connected' | 'disconnected' | 'error';
+export type AIProviderStatus = 'connected' | 'disconnected' | 'error' | 'unavailable';
 
 export interface AIMessage { role: 'system' | 'user' | 'assistant'; content: string; }
 export interface AIRequest { messages: AIMessage[]; model?: string; temperature?: number; maxTokens?: number; }
@@ -13,6 +13,8 @@ export interface AIResponse {
   requestId?: string;
   latencyMs?: number;
   evaluation?: ResponseEvaluation;
+  availability?: 'available' | 'unavailable';
+  unavailableReason?: 'quota_exhausted' | 'rate_limited' | 'provider_error' | 'not_configured';
   usage?: { inputTokens?: number; outputTokens?: number; totalTokens?: number; };
 }
 

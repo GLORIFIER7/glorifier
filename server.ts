@@ -1659,64 +1659,23 @@ async function runIntelligenceModel(
     : 'You are an AI engineering agent participating in the GLORIFIER AI-to-AI runtime. Provide concise, factual, actionable results.';
   const systemInstruction = options?.systemInstruction || defaultSystem;
 
-  if (provider === 'openai') {
-    const client = getOpenAI();
-    if (client) {
-      try {
-        const response = await client.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: systemInstruction },
-            { role: 'user', content: prompt }
-          ],
-          temperature: 0.1,
-          ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-        });
-        return { text: response.choices[0]?.message?.content || '', model: 'gpt-4o' };
-      } catch (err) {
-        console.warn('[Intelligence] OpenAI synthesis failed, attempting fallback to Gemini:', err);
-      }
-    }
-    // Fallback to Gemini if OpenAI failed or is unavailable
-    const fallback = await callGeminiSafe({
-      contents: prompt,
-      systemInstruction,
-      temperature: 0.1,
-      ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
-      preferredModel: 'gemini-3.8-flash'
-    });
-    return fallback ? { text: fallback.text, model: fallback.modelUsed } : null;
-  }
+  const preferredProvider = provider === 'openai' ? 'openai' : 'gemini';
+  const requestPrompt = jsonMode
+    ? systemInstruction + '\\nReturn valid JSON only.\\n\\n' + prompt
+    : systemInstruction + '\\n\\n' + prompt;
 
-  // provider === 'gemini'
-  const result = await callGeminiSafe({
-    contents: prompt,
-    systemInstruction,
+  const result = await executeThroughProviderRegistry({
+    messages: [{ role: 'user', content: requestPrompt }],
+    preferredProvider,
+    model: preferredProvider === 'openai' ? 'gpt-4o' : 'gemini-3.8-flash',
     temperature: 0.1,
-    ...(jsonMode ? { responseMimeType: 'application/json' } : {}),
-    preferredModel: 'gemini-3.8-flash'
   });
-  if (result) return { text: result.text, model: result.modelUsed };
 
-  // Fallback to OpenAI if Gemini failed or is unavailable
-  const client = getOpenAI();
-  if (client) {
-    try {
-      const response = await client.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemInstruction },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        ...(jsonMode ? { response_format: { type: 'json_object' } } : {})
-      });
-      return { text: response.choices[0]?.message?.content || '', model: 'gpt-4o' };
-    } catch (err) {
-      console.warn('[Intelligence] Gemini fallback to OpenAI failed:', err);
-    }
+  if (result.response?.text?.trim()) {
+    return { text: result.response.text, model: result.response.model || result.provider };
   }
 
+  console.warn('[Intelligence] Provider registry exhausted:', result.errors);
   return null;
 }
 

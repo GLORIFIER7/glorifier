@@ -5,6 +5,8 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
+  setPersistence,
+  browserLocalPersistence,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -21,6 +23,10 @@ const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 const firestoreDbId = (firebaseConfig as any).firestoreDatabaseId || 'ai-studio-personaldatamone-2569f3c8-4865-4a6a-b7cf-da9a1de696fc';
 export const db = getFirestore(app, firestoreDbId);
 export const auth = getAuth(app);
+
+// Keep the Firebase session across Vercel reloads/mobile browser navigation.
+// This is especially important when Google OAuth returns through a full-page redirect.
+export const authPersistenceReady = setPersistence(auth, browserLocalPersistence);
 
 export const GMAIL_SCOPES = [
   'https://mail.google.com/',
@@ -88,6 +94,12 @@ export const authenticatedFetch = async (input: RequestInfo | URL, init: Request
 export const loginWithGoogle = async () => {
   try {
     isSigningIn = true;
+    await authPersistenceReady;
+    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (isMobile) {
+      await signInWithRedirect(auth, googleAuthProvider);
+      return { user: null, accessToken: null };
+    }
     const result = await signInWithPopup(auth, googleAuthProvider);
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
@@ -97,7 +109,8 @@ export const loginWithGoogle = async () => {
     if (
       code === 'auth/popup-blocked' ||
       code === 'auth/popup-closed-by-user' ||
-      code === 'auth/cancelled-popup-request'
+      code === 'auth/cancelled-popup-request' ||
+      code === 'auth/internal-error'
     ) {
       await signInWithRedirect(auth, googleAuthProvider);
       return { user: null, accessToken: null };
@@ -110,6 +123,7 @@ export const loginWithGoogle = async () => {
 
 export const completeGoogleRedirectSignIn = async () => {
   try {
+    await authPersistenceReady;
     const result = await getRedirectResult(auth);
     if (!result) return null;
     const credential = GoogleAuthProvider.credentialFromResult(result);
@@ -122,11 +136,13 @@ export const completeGoogleRedirectSignIn = async () => {
 };
 
 export const loginWithEmail = async (email: string, password: string) => {
+  await authPersistenceReady;
   const result = await signInWithEmailAndPassword(auth, email.trim(), password);
   return result.user;
 };
 
 export const registerWithEmail = async (email: string, password: string, displayName?: string) => {
+  await authPersistenceReady;
   const result = await createUserWithEmailAndPassword(auth, email.trim(), password);
   if (displayName?.trim()) {
     await updateProfile(result.user, { displayName: displayName.trim() });
@@ -135,6 +151,7 @@ export const registerWithEmail = async (email: string, password: string, display
 };
 
 export const resetPassword = async (email: string) => {
+  await authPersistenceReady;
   await sendPasswordResetEmail(auth, email.trim());
 };
 

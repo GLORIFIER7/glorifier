@@ -59,6 +59,42 @@ Agent Fleet Risk        Revocation
     LEARN → IMPROVE → REPEAT
 ```
 
+## Linux philosophy as the organizational and architectural role model
+
+**Linux / Unix philosophy is GLORIFIER's architectural role model for intelligence orchestration.**
+
+GLORIFIER applies the same separation-of-concerns pattern to intelligence that operating systems apply to software processes and hardware:
+
+- **Kernel/control plane →** GLORIFIER Control Plane + GEAS
+- **Processes →** AI agents, scientists, coding workers, and autonomous services
+- **Scheduler →** provider, agent, and compute orchestration
+- **Drivers →** provider and integration adapters
+- **System calls →** governed GLORIFIER APIs
+- **Capabilities →** scoped agent capabilities, tools, and data permissions
+- **Isolation →** agent, data, and execution boundaries
+- **IPC →** structured agent collaboration and evidence events
+- **Filesystem/state →** Neon/PostgreSQL authoritative state and registries
+- **Daemons →** 24/7 discovery, monitoring, coding, and recovery workers
+- **Signals/events →** event-driven orchestration and evidence triggers
+- **Tracing →** observability and cryptographic provenance
+- **Hardware abstraction →** replaceable compute resources
+- **User/root authority →** human owner final authority
+
+### Linux-inspired design laws
+
+1. Build small, specialized components.
+2. Connect components through stable interfaces.
+3. Keep providers and infrastructure replaceable.
+4. Give every agent only the capabilities it needs.
+5. Isolate processes, tools, and data scopes.
+6. Prefer observable, event-driven coordination.
+7. Keep authoritative state durable and explicit.
+8. Fail truthfully rather than inventing a result.
+9. Separate intelligence from governance and execution.
+10. Keep humans above consequential and irreversible actions.
+
+**Core identity:** GLORIFIER is not a Linux kernel and does not replace an operating system. It is a human-governed, provider-neutral intelligence operating architecture inspired by Linux/Unix principles.
+
 ## Six permanent planes
 
 ### 1. Human Authority

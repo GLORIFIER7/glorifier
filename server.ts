@@ -36,6 +36,7 @@ import { initializeMonetizationTables, createCheckout, captureCheckout, getSubsc
 import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
 import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot } from './src/lib/governance';
 import { requireAuthentication, requireOwner, authenticationStatus } from './src/lib/auth/backend-auth';
+import { reconcileIntegrationControlPlane, getIntegrationControlSnapshot } from './src/lib/integration-control-plane';
 
 import { 
   getScientistFleet, 
@@ -2292,6 +2293,19 @@ app.get('/api/assets/providers/binance-public/quote/:symbol', async (req: Reques
 // ============================================================================
 app.get('/api/auth/status', (_req: Request, res: Response) => res.json({ ok: true, authentication: authenticationStatus() }));
 
+app.get('/api/control-plane/integrations', (_req: Request, res: Response) => {
+  getIntegrationControlSnapshot().then(snapshot => res.json({ ok: true, snapshot })).catch(error => apiError(res, 503, 'Integration control plane unavailable', error));
+});
+
+app.post('/api/control-plane/integrations/reconcile', requireOwner, async (req: Request, res: Response) => {
+  try {
+    const result = await reconcileIntegrationControlPlane(String(req.body?.actor || req.auth?.uid || 'human-owner'));
+    return res.json({ ok: true, ...result });
+  } catch (error) {
+    return apiError(res, 503, 'Integration reconciliation unavailable', error);
+  }
+});
+
 app.get('/api/governance/architecture', (_req: Request, res: Response) => {
   return res.json({ ok: true, version: 'GLORIFIER-ARCH-3.0', controlPlanes: [
     'human-authority','ai-ceo','geas-governance','agent-control','provider-control',
@@ -2472,6 +2486,7 @@ async function initializeBackend() {
 // Vite middleware for dev or static serving for prod
 async function startServer() {
   await initializeBackend();
+  try { await reconcileIntegrationControlPlane('backend-startup'); } catch (error) { console.warn('[IntegrationControlPlane] startup reconciliation deferred:', error); }
   // Start the 24/7 autonomous scientist multi-agent daemon in the background
   try {
     start247ScientistDaemon(runIntelligenceModel);

@@ -32,8 +32,9 @@ import { getGlobalCollaborationPolicy, runGlobalCollaborationCycle } from './src
 import { getPostgresPool } from './src/lib/db/postgres';
 import { initializeAppState, readAppState, upsertState } from './src/lib/db/app-state';
 import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/verified-outcomes';
-import { initializeMonetizationTables, getPlan, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
+import { initializeMonetizationTables, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
 import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
+import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot } from './src/lib/governance';
 
 import { 
   getScientistFleet, 
@@ -2270,6 +2271,111 @@ app.get('/api/assets/providers/binance-public/quote/:symbol', async (req: Reques
     const quote = await getBinancePublicQuote(String(req.params.symbol));
     return res.json({ ok: true, ...quote });
   } catch (error) { return apiError(res, 502, 'Binance public quote unavailable', error); }
+});
+
+
+// ============================================================================
+// GEAS AGENT CONTROL PLANE
+// Every consequential agent action is identity-, capability-, policy-, and
+// evidence-gated. These endpoints never expose secrets.
+// ============================================================================
+app.get('/api/governance/architecture', (_req: Request, res: Response) => {
+  return res.json({ ok: true, version: 'GLORIFIER-ARCH-3.0', controlPlanes: [
+    'human-authority','ai-ceo','geas-governance','agent-control','provider-control',
+    'compute-control','tool-integration','evidence-truth','economic-control','reliability-security'
+  ], principles: getGeasPolicy().principles });
+});
+
+app.get('/api/governance/policy', (_req: Request, res: Response) => {
+  return res.json({ ok: true, policy: getGeasPolicy() });
+});
+
+app.get('/api/agents/control-plane', (_req: Request, res: Response) => {
+  return res.json({ ok: true, agents: listControlledAgents() });
+});
+
+app.post('/api/agents/control-plane/register', (req: Request, res: Response) => {
+  try {
+    const agent = registerAgent({
+      agentId: String(req.body?.agentId || '').trim(),
+      role: String(req.body?.role || '').trim(),
+      capabilities: Array.isArray(req.body?.capabilities) ? req.body.capabilities.map(String) : [],
+      allowedTools: Array.isArray(req.body?.allowedTools) ? req.body.allowedTools.map(String) : [],
+      allowedDataScopes: Array.isArray(req.body?.allowedDataScopes) ? req.body.allowedDataScopes.map(String) : [],
+      riskLevel: req.body?.riskLevel || 'medium',
+      lifecycle: req.body?.lifecycle || 'registered',
+      humanApprovalRequired: req.body?.humanApprovalRequired !== false
+    });
+    if (!agent.agentId || !agent.role) return res.status(400).json({ ok:false, error:'agentId and role are required' });
+    return res.status(201).json({ ok:true, agent });
+  } catch (error) { return apiError(res,400,'Unable to register agent',error); }
+});
+
+app.get('/api/agents/control-plane/:agentId', (req: Request, res: Response) => {
+  const agent = getAgent(req.params.agentId);
+  if (!agent) return res.status(404).json({ ok:false, error:'Agent not found' });
+  return res.json({ ok:true, agent });
+});
+
+app.post('/api/agents/control-plane/:agentId/authorize', (req: Request, res: Response) => {
+  const result = authorizeAgentAction(req.params.agentId, {
+    capability: String(req.body?.capability || ''),
+    tool: req.body?.tool ? String(req.body.tool) : undefined,
+    dataScope: req.body?.dataScope ? String(req.body.dataScope) : undefined,
+    risk: req.body?.risk || 'medium',
+    externallyIrreversible: Boolean(req.body?.externallyIrreversible),
+    humanAuthorized: Boolean(req.body?.humanAuthorized)
+  });
+  recordAgentTrace({
+    traceId: String(req.body?.traceId || randomUUID()),
+    agentId: req.params.agentId,
+    event: 'authorization-check',
+    status: result.allowed ? 'completed' : 'denied',
+    metadata: result
+  });
+  return res.status(result.allowed ? 200 : 403).json({ ok: result.allowed, authorization: result });
+});
+
+app.post('/api/agents/control-plane/:agentId/quarantine', (req: Request, res: Response) => {
+  const agent = quarantineAgent(req.params.agentId);
+  if (!agent) return res.status(404).json({ ok:false, error:'Agent not found' });
+  recordAgentTrace({ traceId: randomUUID(), agentId: agent.agentId, event:'quarantine', status:'completed', metadata:{actor:String(req.body?.actor || 'human-owner')} });
+  return res.json({ ok:true, agent });
+});
+
+app.post('/api/governance/evaluate', (req: Request, res: Response) => {
+  return res.json({ ok:true, result:evaluateGeasPolicy({
+    actorType:req.body?.actorType || 'agent',
+    action:String(req.body?.action || ''),
+    risk:req.body?.risk || 'medium',
+    hasEvidence:Boolean(req.body?.hasEvidence),
+    evidenceVerified:Boolean(req.body?.evidenceVerified),
+    externallyIrreversible:Boolean(req.body?.externallyIrreversible),
+    estimatedRevenue:Boolean(req.body?.estimatedRevenue),
+    verifiedRevenue:Boolean(req.body?.verifiedRevenue)
+  })});
+});
+
+app.get('/api/governance/evidence-graph', (_req: Request, res: Response) => {
+  return res.json({ ok:true, graph:getEvidenceGraph() });
+});
+
+app.post('/api/governance/evidence-graph/nodes', (req: Request, res: Response) => {
+  try {
+    const node=addEvidenceNode(req.body?.type, req.body?.payload || {}, req.body?.ref ? String(req.body.ref) : undefined);
+    return res.status(201).json({ok:true,node});
+  } catch(error) { return apiError(res,400,'Unable to add evidence node',error); }
+});
+
+app.post('/api/governance/evidence-graph/edges', (req: Request, res: Response) => {
+  try {
+    const edge=linkEvidence(String(req.body?.from || ''),String(req.body?.to || ''),String(req.body?.relation || 'supports'));
+    return res.status(201).json({ok:true,edge});
+  } catch(error) { return apiError(res,400,'Unable to link evidence',error); }
+});
+
+app.get('/api/governance/observability', (_req: Request, res: Response) => {
+  return res.json({ok:true, snapshot:getAgentObservabilitySnapshot()});
 });
 
 // Unknown API routes must remain JSON. This prevents the SPA fallback from masquerading as an API response.

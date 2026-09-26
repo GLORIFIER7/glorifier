@@ -35,6 +35,7 @@ import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/ver
 import { initializeMonetizationTables, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
 import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
 import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot } from './src/lib/governance';
+import { requireAuthentication, requireOwner, authenticationStatus } from './src/lib/auth/backend-auth';
 
 import { 
   getScientistFleet, 
@@ -83,6 +84,16 @@ app.use((req: Request, res: Response, next) => {
   res.setHeader('Access-Control-Max-Age', '600');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
+});
+
+// All state-changing API operations require a verified Firebase ID token.
+// Read-only public health/status surfaces remain reachable without login.
+// This keeps authentication and authorization separate while preventing
+// unauthenticated writes into orchestration, integrations, finance, evidence,
+// synchronization, or AI execution.
+app.use('/api', (req: Request, res: Response, next) => {
+  if (req.method === 'OPTIONS' || req.method === 'GET' || req.method === 'HEAD') return next();
+  return requireAuthentication(req as any, res, next);
 });
 
 function apiError(res: Response, status: number, error: string, details?: unknown) {
@@ -2279,6 +2290,8 @@ app.get('/api/assets/providers/binance-public/quote/:symbol', async (req: Reques
 // Every consequential agent action is identity-, capability-, policy-, and
 // evidence-gated. These endpoints never expose secrets.
 // ============================================================================
+app.get('/api/auth/status', (_req: Request, res: Response) => res.json({ ok: true, authentication: authenticationStatus() }));
+
 app.get('/api/governance/architecture', (_req: Request, res: Response) => {
   return res.json({ ok: true, version: 'GLORIFIER-ARCH-3.0', controlPlanes: [
     'human-authority','ai-ceo','geas-governance','agent-control','provider-control',
@@ -2294,7 +2307,7 @@ app.get('/api/agents/control-plane', (_req: Request, res: Response) => {
   return res.json({ ok: true, agents: listControlledAgents() });
 });
 
-app.post('/api/agents/control-plane/register', (req: Request, res: Response) => {
+app.post('/api/agents/control-plane/register', requireOwner, (req: Request, res: Response) => {
   try {
     const agent = registerAgent({
       agentId: String(req.body?.agentId || '').trim(),
@@ -2336,14 +2349,14 @@ app.post('/api/agents/control-plane/:agentId/authorize', (req: Request, res: Res
   return res.status(result.allowed ? 200 : 403).json({ ok: result.allowed, authorization: result });
 });
 
-app.post('/api/agents/control-plane/:agentId/quarantine', (req: Request, res: Response) => {
+app.post('/api/agents/control-plane/:agentId/quarantine', requireOwner, (req: Request, res: Response) => {
   const agent = quarantineAgent(req.params.agentId);
   if (!agent) return res.status(404).json({ ok:false, error:'Agent not found' });
   recordAgentTrace({ traceId: randomUUID(), agentId: agent.agentId, event:'quarantine', status:'completed', metadata:{actor:String(req.body?.actor || 'human-owner')} });
   return res.json({ ok:true, agent });
 });
 
-app.post('/api/governance/evaluate', (req: Request, res: Response) => {
+app.post('/api/governance/evaluate', requireAuthentication, (req: Request, res: Response) => {
   return res.json({ ok:true, result:evaluateGeasPolicy({
     actorType:req.body?.actorType || 'agent',
     action:String(req.body?.action || ''),
@@ -2360,14 +2373,14 @@ app.get('/api/governance/evidence-graph', (_req: Request, res: Response) => {
   return res.json({ ok:true, graph:getEvidenceGraph() });
 });
 
-app.post('/api/governance/evidence-graph/nodes', (req: Request, res: Response) => {
+app.post('/api/governance/evidence-graph/nodes', requireAuthentication, (req: Request, res: Response) => {
   try {
     const node=addEvidenceNode(req.body?.type, req.body?.payload || {}, req.body?.ref ? String(req.body.ref) : undefined);
     return res.status(201).json({ok:true,node});
   } catch(error) { return apiError(res,400,'Unable to add evidence node',error); }
 });
 
-app.post('/api/governance/evidence-graph/edges', (req: Request, res: Response) => {
+app.post('/api/governance/evidence-graph/edges', requireAuthentication, (req: Request, res: Response) => {
   try {
     const edge=linkEvidence(String(req.body?.from || ''),String(req.body?.to || ''),String(req.body?.relation || 'supports'));
     return res.status(201).json({ok:true,edge});

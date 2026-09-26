@@ -10,6 +10,7 @@ const WATCHDOG_MS = Math.max(30_000, Number(process.env.ORCHESTRATOR_WATCHDOG_MS
 const IMPROVEMENT_MS = Math.max(5 * 60_000, Number(process.env.ORCHESTRATOR_IMPROVEMENT_MS || 30 * 60_000));
 const MAX_FAILURES = Math.max(1, Number(process.env.ORCHESTRATOR_MAX_HEALTH_FAILURES || 3));
 const REVENUE_MILESTONE_VERIFIED = process.env.GLORIFIER_REVENUE_MILESTONE_VERIFIED === 'true';
+const INTERNAL_SERVICE_TOKEN = process.env.GLORIFIER_INTERNAL_SERVICE_TOKEN || '';
 let running = false;
 let healthFailures = 0;
 let stopping = false;
@@ -71,7 +72,7 @@ async function standingSpecialistMission() {
   try {
     const response = await fetch(SPECIALIST_COUNCIL_URL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
       body: JSON.stringify({
         objective: 'Continuously identify, validate, prioritize, measure, and improve lawful opportunities that can generate real settled revenue for GLORIFIER. Review product, market, growth, revenue, finance, risk, legal, compliance, cybersecurity, data, engineering, operations, and frontier opportunities. Focus on evidence, conversion paths, customer value, unit economics, bottlenecks, and the next highest-leverage authorized action.',
         standingMission: true,
@@ -98,7 +99,7 @@ async function standingAgentRuntimeMission() {
   try {
     const response = await fetch(AGENT_TASK_URL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
       body: JSON.stringify({
         requester: 'ai-ceo',
         capability: 'synthesis',
@@ -121,7 +122,7 @@ async function standingGptCoWorkingMission() {
   try {
     const response = await fetch(WORK_TOGETHER_GPT_URL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
       body: JSON.stringify({
         taskPrompt: '24/7 standing continuous engineering and value-optimization review: audit system circuit breakers, privacy budgets, commercial data licensing floors, provider health, independent compute capacity, orchestration resilience, and measurable business outcomes. Learn from available ecosystems without becoming dependent on any single provider or platform.',
         domain: 'code_engineering',
@@ -147,7 +148,7 @@ async function standingGlobalSyncMission() {
   try {
     const response = await fetch(GLOBAL_SYNC_URL, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
       signal: AbortSignal.timeout(10 * 60_000),
     });
     const body = await response.text();

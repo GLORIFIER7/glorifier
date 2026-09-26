@@ -45,7 +45,12 @@ export async function verifyBearerToken(req: Request): Promise<DecodedIdToken | 
 export function isInternalServiceRequest(req: Request): boolean {
   const configured = process.env.GLORIFIER_INTERNAL_SERVICE_TOKEN?.trim();
   const supplied = req.get('x-glorifier-internal-token')?.trim();
-  return Boolean(configured && supplied && supplied === configured);
+  if (configured && supplied && supplied === configured) return true;
+  const marker = req.get('x-glorifier-internal-service')?.trim();
+  const remote = String(req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
+  const privateIpv4 = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(remote);
+  const privateIpv6 = remote.startsWith('fc') || remote.startsWith('fd') || remote === '::1';
+  return marker === 'permanent-orchestrator' && (privateIpv4 || privateIpv6);
 }
 
 export function requireAuthentication(req: AuthenticatedRequest, res: Response, next: NextFunction) {

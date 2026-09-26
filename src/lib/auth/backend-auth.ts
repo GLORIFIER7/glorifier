@@ -81,6 +81,14 @@ export function isOwner(decoded: DecodedIdToken): boolean {
   );
 }
 
+export function requireOwnerOrInternalService(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+  if (isInternalServiceRequest(req)) {
+    req.auth = undefined;
+    return next();
+  }
+  return requireOwner(req, res, next);
+}
+
 export function requireOwner(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   verifyBearerToken(req).then((decoded) => {
     if (!decoded) return res.status(401).json({ ok: false, error: 'Authentication required' });

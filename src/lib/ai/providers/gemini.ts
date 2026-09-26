@@ -90,6 +90,14 @@ export class GeminiProvider implements AIProvider {
       }
     }
 
-    throw lastError || new Error('Gemini generation failed');
+    const finalError: any = lastError || new Error('Gemini generation failed');
+    const message = finalError?.message || String(finalError);
+    if (finalError && (finalError.status === 429 || finalError.code === 429 || /quota|resource_exhausted|rate.?limit/i.test(message))) {
+      const unavailable = new Error(`Gemini unavailable: quota exhausted or rate limited (429). ${message}`);
+      (unavailable as any).providerAvailability = 'unavailable';
+      (unavailable as any).unavailableReason = 'quota_exhausted';
+      throw unavailable;
+    }
+    throw finalError;
   }
 }

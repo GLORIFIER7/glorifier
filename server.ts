@@ -35,7 +35,7 @@ import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/ver
 import { initializeMonetizationTables, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
 import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
 import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot, appendProvenanceEvent, listProvenanceEvents, verifyProvenanceChain, getProvenanceArchitecture } from './src/lib/governance';
-import { requireAuthentication, requireOwner, authenticationStatus } from './src/lib/auth/backend-auth';
+import { requireAuthentication, requireOwner, authenticationStatus, isOwner } from './src/lib/auth/backend-auth';
 import { reconcileIntegrationControlPlane, getIntegrationControlSnapshot } from './src/lib/integration-control-plane';
 
 import { 

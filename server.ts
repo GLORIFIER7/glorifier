@@ -374,7 +374,7 @@ async function runModelExecution({
   userPrompt,
   temperature = 0.4,
   jsonMode = false
-}: ModelExecutionParams): Promise<{ text: string; modelUsed: string; provider: string }> {
+}: ModelExecutionParams): Promise<{ text: string; modelUsed: string; provider: string; executionStatus: 'success' | 'unavailable'; providerStatus: Record<string, 'connected' | 'unavailable' | 'error'>; providerErrors: string[]; computeError?: string }> {
   const chosenModel = model || 'gpt-4o';
 
   // AI CEO -> Provider Registry -> authenticated providers.
@@ -393,7 +393,10 @@ async function runModelExecution({
     return {
       text: registryResult.response.text,
       modelUsed: registryResult.response.model,
-      provider: registryResult.response.provider
+      provider: registryResult.response.provider,
+      executionStatus: 'success',
+      providerStatus: registryResult.providerStatuses,
+      providerErrors: registryResult.errors
     };
   }
 
@@ -411,7 +414,10 @@ async function runModelExecution({
     return {
       text: compute.text,
       modelUsed: compute.model || chosenModel,
-      provider: compute.resourceId === 'ollama-gpu' ? 'Authenticated Ollama' : 'Independent Compute'
+      provider: compute.resourceId === 'ollama-gpu' ? 'Authenticated Ollama' : 'Independent Compute',
+      executionStatus: 'success',
+      providerStatus: registryResult.providerStatuses,
+      providerErrors: registryResult.errors
     };
   }
 
@@ -425,7 +431,11 @@ async function runModelExecution({
   return {
     text: '',
     modelUsed: chosenModel,
-    provider: 'No verified provider response'
+    provider: 'No verified provider response',
+    executionStatus: 'unavailable',
+    providerStatus: registryResult.providerStatuses,
+    providerErrors: registryResult.errors,
+    computeError: compute.error || 'Independent compute unavailable'
   };
 }
 
@@ -960,7 +970,11 @@ Data streams summary: ${footprintsSummary || 'Browsing, E-Commerce, Developer, H
       reply: replyText,
       suggestedAction,
       modelUsed: execution.modelUsed,
-      provider: execution.provider
+      provider: execution.provider,
+      executionStatus: execution.executionStatus,
+      providerStatus: execution.providerStatus,
+      providerErrors: execution.providerErrors,
+      computeError: execution.computeError
     });
   } catch (error: any) {
     console.error('AI Broker Chat error:', error);
@@ -1018,7 +1032,7 @@ Return a valid JSON object with:
       }
     }
 
-    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', providerStatus: 'No live offer-evaluation response was returned; no synthetic score or verdict was generated.' });
+    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', executionStatus: execution.executionStatus, providerStatus: execution.providerStatus, providerErrors: execution.providerErrors, computeError: execution.computeError, truth: 'AI execution did not succeed; no synthetic score or verdict was generated.' });
     /* const isRisky = offer.offeredCompUsd < (userPolicy?.minimumMonthlyFloorUsd || 30) || (offer.maxEpsilonAllowed || 0) > 1.0;
     res.json({
       score: isRisky ? 35 : 92,
@@ -1076,7 +1090,7 @@ Format as JSON with keys:
       }
     }
 
-    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', providerStatus: 'No live privacy-audit response was returned; no synthetic metrics were generated.' });
+    return res.status(503).json({ ok: false, error: 'No verified AI/provider response is currently available.', executionStatus: execution.executionStatus, providerStatus: execution.providerStatus, providerErrors: execution.providerErrors, computeError: execution.computeError, truth: 'AI execution did not succeed; no synthetic metrics were generated.' });
     /* res.json({
       reidentificationRisk: 'Moderate (28%)',
       recommendedEpsilon: 0.35,

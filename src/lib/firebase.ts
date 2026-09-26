@@ -131,6 +131,12 @@ export const completeGoogleRedirectSignIn = async () => {
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error) {
     console.error('Google redirect sign-in failed:', error);
+    try {
+      sessionStorage.setItem('glorifier_google_auth_error', JSON.stringify({
+        code: (error as any)?.code || 'auth/unknown',
+        message: (error as any)?.message || 'Google sign-in failed.'
+      }));
+    } catch {}
     throw error;
   }
 };

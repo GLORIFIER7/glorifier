@@ -66,6 +66,7 @@ app.use((req: Request, res: Response, next) => {
   const configured = String(process.env.GLORIFIER_ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean);
   const allowedOrigins = configured.length ? configured : [
     'https://glorifier-glorifier.vercel.app',
+    'https://glorifier.vercel.app',
     'https://glorifier-git-main-glorifier.vercel.app',
     'https://glorifier-sepia.vercel.app',
     'http://localhost:5173',
@@ -81,7 +82,7 @@ app.use((req: Request, res: Response, next) => {
     res.setHeader('Vary', 'Origin');
   }
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Brand-Monitor-Secret');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Brand-Monitor-Secret, X-Glorifier-Internal-Token');
   res.setHeader('Access-Control-Max-Age', '600');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();

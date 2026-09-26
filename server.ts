@@ -2363,7 +2363,7 @@ app.post('/api/agents/control-plane/:agentId/authorize', requireAuthentication, 
     dataScope: req.body?.dataScope ? String(req.body.dataScope) : undefined,
     risk: req.body?.risk || 'medium',
     externallyIrreversible: Boolean(req.body?.externallyIrreversible),
-    humanAuthorized: Boolean(req.body?.humanAuthorized) && Boolean((req as any).auth?.isOwner)
+    humanAuthorized: Boolean(req.body?.humanAuthorized) && isOwner((req as any).auth)
   });
   recordAgentTrace({
     traceId: String(req.body?.traceId || randomUUID()),

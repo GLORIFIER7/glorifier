@@ -18,7 +18,7 @@ export interface SynchronizedAgent {
   name: string;
   role: string;
   tier: 'orchestrator' | 'reasoning' | 'engineering' | 'code-fleet' | 'specialist';
-  status: 'active' | 'synchronized' | 'ready';
+  status: 'active' | 'synchronized' | 'ready' | 'configured';
   lastHeartbeat: string;
   capabilities: string[];
   consensusContribution: string;

@@ -394,6 +394,15 @@ export default function App() {
     });
   };
 
+  // Settlement controls are evidence-first: UI actions never fabricate a payment.
+  const handleClearSettlement = async () => {
+    await recordGovernedAction('settlement-clear-request', {
+      requestedAmountUsd: stats.pendingSettlementUsd,
+      executionStatus: 'pending_authorized_settlement',
+      reason: 'Settlement can only be cleared after qualifying external payment evidence is recorded.'
+    });
+  };
+
   // Batch clear settlement
 
   // Accounts handlers

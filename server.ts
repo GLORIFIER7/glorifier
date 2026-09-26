@@ -22,8 +22,12 @@ import { buildRevenueControlPlaneSnapshot, getRevenueControlPlanePolicy, listRev
 import { listEconomicOperatingSnapshot, getEconomicOperatingSystemPolicy } from './src/lib/economic-operating-system';
 import { calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
 import { getBinancePublicQuote } from './src/lib/asset-provider-adapters';
-import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-discovery';
-import { initializeGlorifierMediator } from './src/lib/glorifier-mediator';
+import { initialize24x7OpportunityDiscovery, get24x7OpportunityDiscoveryStatus, run24x7OpportunityDiscoveryCycle, get24x7OpportunityDiscoveryPolicy } from './src/lib/24x7-opportunity-discovery';
+import { initializeGlorifierMediator, buildGlorifierMediatorSnapshot, getGlorifierMediatorPolicy } from './src/lib/glorifier-mediator';
+import { listMonetizationSprintOpportunities, FRACTIONAL_PAY_PER_TOKEN_OUTCOME_POLICY } from './src/lib/monetization-sprint';
+import { listGithubBountyOpportunities, discoverGithubBounties, getGithubBountyPipelinePolicy } from './src/lib/github-bounty-pipeline';
+import { listGlobalResolutionCases, runGlobalResolutionCycle, getGlobalResolutionPolicy } from './src/lib/global-resolution-engine';
+import { getGlobalCollaborationPolicy, runGlobalCollaborationCycle } from './src/lib/global-collaboration-orchestrator';
 import { getPostgresPool } from './src/lib/db/postgres';
 import { initializeAppState, readAppState, upsertState } from './src/lib/db/app-state';
 import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/verified-outcomes';
@@ -2119,6 +2123,109 @@ app.get('/api/reports/summary', async (_req: Request, res: Response) => {
       recentGovernanceEvents: governance
     });
   } catch (error) { return apiError(res, 503, 'Reports summary unavailable', error); }
+});
+
+
+// ============================================================================
+// RESTORE/ALIGN SECONDARY FRONTEND CONTRACTS
+// Connector-backed endpoints return observed/available state only. They never
+// turn catalog metadata, estimates, or public signals into verified revenue.
+// ============================================================================
+
+app.get('/api/business-intelligence/report', async (_req: Request, res: Response) => {
+  try {
+    const report = await getLatestIntelligenceReport() || await generateIntelligenceReport({ runModel: runIntelligenceModel, windowHours: 24 });
+    const insights = [
+      { id:'web_mentions', title:'Public web intelligence', status: report ? 'live' : 'connector', summary: report ? 'Evidence collected from configured public intelligence sources.' : 'Public-source intelligence connector is ready.', metrics:[{label:'Sources',value:String(report?.sourceCount ?? 0)},{label:'Evidence',value:String(report?.evidenceCount ?? 0)}], actions:['Review source-backed signals before acting.'] },
+      { id:'github', title:'Engineering activity', status:'connector', summary:'GitHub activity is available through authenticated repository and public-source connectors.', metrics:[{label:'State',value:'Connector-backed'},{label:'Truth',value:'Evidence required'}], actions:['Review repository evidence and CI outcomes.'] },
+      { id:'competitors', title:'Competitive intelligence', status:'connector', summary:'Competitive signals require source-backed collection and are kept separate from verified revenue.', metrics:[{label:'State',value:'Connector-backed'},{label:'Truth',value:'Not verified'}], actions:['Collect and review documented competitor evidence.'] },
+      { id:'trends', title:'AI/software trends', status:'live', summary:'Current public intelligence can be refreshed from configured sources.', metrics:[{label:'Window',value:'24h'},{label:'Evidence',value:String(report?.evidenceCount ?? 0)}], actions:['Inspect evidence IDs and source URLs.'] },
+      { id:'search', title:'Search signals', status:'connector', summary:'Search-derived signals remain observations until independently verified.', metrics:[{label:'Status',value:'Available'},{label:'Revenue',value:'Not inferred'}], actions:['Validate source and commercial relevance.'] },
+      { id:'telemetry', title:'First-party telemetry', status:'protected', summary:'Private telemetry remains inside authorized systems and is not exposed as public evidence.', metrics:[{label:'Access',value:'Governed'},{label:'Truth',value:'Evidence required'}], actions:['Use authorized telemetry only.'] },
+      { id:'revenue', title:'Verified revenue', status:'live', summary:'Revenue is sourced from the authoritative ledger and qualifying external evidence.', metrics:[{label:'Source',value:'Neon'},{label:'Rule',value:'Verified evidence'}], actions:['Do not treat estimates or pipeline as revenue.'] },
+      { id:'opportunities', title:'Opportunity intelligence', status:'live', summary:'Opportunity discovery is evidence-first and remains separate from verified earnings.', metrics:[{label:'Rule',value:'Evidence-first'},{label:'Execution',value:'Human authorization'}], actions:['Qualify opportunities before consequential action.'] }
+    ];
+    return res.json({ ok:true, generatedAt:report?.generatedAt || new Date().toISOString(), executiveSummary:report?.executiveSummary || 'No intelligence report is currently available.', insights, evidence:report?.evidence || [], analyses:report?.analyses || [] });
+  } catch (error) { return apiError(res,503,'Business intelligence report unavailable',error); }
+});
+
+app.get('/api/business-intelligence/competitive', async (_req: Request, res: Response) => {
+  try {
+    const report = await getLatestIntelligenceReport();
+    const evidence = (report?.evidence || []).filter((x:any) => /competitor|company|market|product|pricing|funding|acquisition/i.test(String(x.title)+' '+String(x.summary))).slice(0,25);
+    return res.json({ ok:true, generatedAt:new Date().toISOString(), status:'evidence-backed', evidence, economicTruth:'Observed intelligence is not verified revenue.' });
+  } catch (error) { return apiError(res,503,'Competitive intelligence unavailable',error); }
+});
+
+app.get('/api/game-assets', (_req: Request, res: Response) => {
+  return res.json({ ok:true, status:'connector-ready', assets:[
+    {id:'game-public-opengameart',title:'Public game UI/icon references',game:'Open-source game ecosystem',assetType:'2D / UI',sourceName:'OpenGameArt',sourceUrl:'https://opengameart.org/',license:'Verify source license',status:'indexed-reference',observedAt:new Date().toISOString()},
+    {id:'game-public-kenney',title:'Public game asset references',game:'Open-source game ecosystem',assetType:'3D / 2D models',sourceName:'Kenney',sourceUrl:'https://kenney.nl/assets',license:'Verify source license',status:'indexed-reference',observedAt:new Date().toISOString()}
+  ], policy:'References and metadata only; restricted game files are not copied.'});
+});
+
+app.get('/api/crypto-fiat-assets', (_req: Request, res: Response) => {
+  return res.json({ ok:true, status:'connector-ready', assets:[
+    {id:'cf-btc',name:'Bitcoin',symbol:'BTC',category:'Crypto',network:'Bitcoin',source:'Public blockchain',status:'watch-only'},
+    {id:'cf-eth',name:'Ethereum',symbol:'ETH',category:'Crypto',network:'Ethereum',source:'Public blockchain',status:'watch-only'},
+    {id:'cf-usdt',name:'Tether USD',symbol:'USDT',category:'Stablecoin',network:'Multi-chain',source:'Public token metadata',status:'indexed'},
+    {id:'cf-usd',name:'US Dollar',symbol:'USD',category:'Fiat',network:'FX market',source:'Public FX data',status:'market-data'},
+    {id:'cf-eur',name:'Euro',symbol:'EUR',category:'Fiat',network:'FX market',source:'Public FX data',status:'market-data'}
+  ], policy:'Public/watch-only metadata only unless an authorized connector is separately verified.'});
+});
+
+app.get('/api/monetization/sprint', async (req: Request, res: Response) => {
+  try {
+    const opportunities = await listMonetizationSprintOpportunities(Number(req.query.limit || 100));
+    return res.json({ok:true, version:'GMS-1.1', opportunities, pricingPolicies:FRACTIONAL_PAY_PER_TOKEN_OUTCOME_POLICY, economicTruth:'Estimated opportunity value is NOT VERIFIED REVENUE.'});
+  } catch (error) { return apiError(res,503,'Monetization sprint unavailable',error); }
+});
+
+app.get('/api/global-collaboration/status', async (_req: Request, res: Response) => {
+  try { return res.json({ok:true,status:'ACTIVE',version:'GCR-1.0',providers:await getGlobalCollaborationStatus(),policy:getGlobalCollaborationPolicy()}); }
+  catch (error) { return apiError(res,503,'Global collaboration status unavailable',error); }
+});
+
+app.get('/api/global-collaboration/policy', (_req: Request, res: Response) => res.json({ok:true,policy:getGlobalCollaborationPolicy()}));
+
+app.post('/api/global-collaboration/run', async (req: Request, res: Response) => {
+  try { return res.json({ok:true,result:await runGlobalCollaborationCycle(String(req.body?.actor || 'human-owner-command-center'),Number(req.body?.limit || 100))}); }
+  catch (error) { return apiError(res,503,'Global collaboration cycle unavailable',error); }
+});
+
+app.get('/api/opportunities/24x7/status', async (_req: Request, res: Response) => {
+  try { return res.json({ok:true,...await get24x7OpportunityDiscoveryStatus()}); }
+  catch (error) { return apiError(res,503,'24/7 discovery status unavailable',error); }
+});
+
+app.post('/api/opportunities/24x7/run', async (req: Request, res: Response) => {
+  try { return res.json({ok:true,result:await run24x7OpportunityDiscoveryCycle(String(req.body?.actor || 'human-owner'))}); }
+  catch (error) { return apiError(res,503,'24/7 discovery cycle unavailable',error); }
+});
+
+app.get('/api/opportunities/github-bounties', async (req: Request, res: Response) => {
+  try { return res.json({ok:true,opportunities:await listGithubBountyOpportunities(req.query.stage as any,Number(req.query.limit || 100)),policy:getGithubBountyPipelinePolicy()}); }
+  catch (error) { return apiError(res,503,'GitHub bounty registry unavailable',error); }
+});
+
+app.post('/api/opportunities/github-bounties/discover', async (req: Request, res: Response) => {
+  try { return res.json({ok:true,opportunities:await discoverGithubBounties(Number(req.body?.limit || 30)),policy:getGithubBountyPipelinePolicy()}); }
+  catch (error) { return apiError(res,503,'GitHub bounty discovery unavailable',error); }
+});
+
+app.get('/api/global-resolution/cases', async (req: Request, res: Response) => {
+  try { return res.json({ok:true,cases:await listGlobalResolutionCases(req.query.stage as any,Number(req.query.limit || 100)),policy:getGlobalResolutionPolicy()}); }
+  catch (error) { return apiError(res,503,'Global resolution cases unavailable',error); }
+});
+
+app.post('/api/global-resolution/run', async (req: Request, res: Response) => {
+  try { return res.json({ok:true,result:await runGlobalResolutionCycle(String(req.body?.actor || 'human-owner'),Number(req.body?.limit || 100))}); }
+  catch (error) { return apiError(res,503,'Global resolution cycle unavailable',error); }
+});
+
+app.get('/api/mediator/snapshot', async (_req: Request, res: Response) => {
+  try { return res.json({ok:true,snapshot:await buildGlorifierMediatorSnapshot(),policy:getGlorifierMediatorPolicy()}); }
+  catch (error) { return apiError(res,503,'Mediator snapshot unavailable',error); }
 });
 
 app.get('/api/business-intelligence/architecture', (_req: Request, res: Response) => {

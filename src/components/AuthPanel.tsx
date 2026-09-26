@@ -76,6 +76,7 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ currentUser }) => {
   };
 
   const socialLogin = async (provider: SocialProviderId) => {
+    if (!SOCIAL_PROVIDER_REGISTRY[provider].enabled) { setMessage({ type: 'error', text: `${SOCIAL_PROVIDER_REGISTRY[provider].label} sign-in is not enabled yet.` }); return; }
     setBusy(true);
     setMessage(null);
     try {

@@ -2319,7 +2319,7 @@ app.post('/api/control-plane/integrations/reconcile', requireOwner, async (req: 
 });
 
 app.get('/api/governance/architecture', (_req: Request, res: Response) => {
-  return res.json({ ok: true, version: 'GLORIFIER-ARCH-3.0', controlPlanes: [
+  return res.json({ ok: true, version: 'GLORIFIER-ARCH-3.1', roleModel: LINUX_PHILOSOPHY_ARCHITECTURE, controlPlanes: [
     'human-authority','ai-ceo','geas-governance','agent-control','provider-control',
     'compute-control','tool-integration','evidence-truth','cryptographic-provenance','economic-control','reliability-security'
   ], trustLayer: { databaseAuthority: 'Neon', externalBlockchainAnchoring: 'optional', privateDataOnChain: false }, principles: getGeasPolicy().principles });
@@ -2356,14 +2356,14 @@ app.get('/api/agents/control-plane/:agentId', (req: Request, res: Response) => {
   return res.json({ ok:true, agent });
 });
 
-app.post('/api/agents/control-plane/:agentId/authorize', (req: Request, res: Response) => {
+app.post('/api/agents/control-plane/:agentId/authorize', requireAuthentication, (req: Request, res: Response) => {
   const result = authorizeAgentAction(req.params.agentId, {
     capability: String(req.body?.capability || ''),
     tool: req.body?.tool ? String(req.body.tool) : undefined,
     dataScope: req.body?.dataScope ? String(req.body.dataScope) : undefined,
     risk: req.body?.risk || 'medium',
     externallyIrreversible: Boolean(req.body?.externallyIrreversible),
-    humanAuthorized: Boolean(req.body?.humanAuthorized)
+    humanAuthorized: Boolean(req.body?.humanAuthorized) && Boolean((req as any).auth?.isOwner)
   });
   recordAgentTrace({
     traceId: String(req.body?.traceId || randomUUID()),

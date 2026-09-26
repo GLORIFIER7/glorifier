@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
 
-const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app/api/health';
+const INTERNAL_APP_BASE_URL = String(process.env.RAILWAY_SERVICE_GLORIFIER_ARTIFICIAL_INTELLIGENCE_URL || '').replace(/\/$/, '');
+const APP_BASE_URL = INTERNAL_APP_BASE_URL || 'https://glorifier-artificial-intelligence-production.up.railway.app';
+const APP_HEALTH_URL = process.env.GLORIFIER_APP_HEALTH_URL || `${APP_BASE_URL}/api/health`;
 const SPECIALIST_COUNCIL_URL = process.env.GLORIFIER_SPECIALIST_COUNCIL_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/specialist-council');
 const WORK_TOGETHER_GPT_URL = process.env.GLORIFIER_WORK_TOGETHER_GPT_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/ai/work-together-gpt');
 const AGENT_TASK_URL = process.env.GLORIFIER_AGENT_TASK_URL || APP_HEALTH_URL.replace(/\/api\/health$/, '/api/agents/tasks');
@@ -11,6 +13,9 @@ const IMPROVEMENT_MS = Math.max(5 * 60_000, Number(process.env.ORCHESTRATOR_IMPR
 const MAX_FAILURES = Math.max(1, Number(process.env.ORCHESTRATOR_MAX_HEALTH_FAILURES || 3));
 const REVENUE_MILESTONE_VERIFIED = process.env.GLORIFIER_REVENUE_MILESTONE_VERIFIED === 'true';
 const INTERNAL_SERVICE_TOKEN = process.env.GLORIFIER_INTERNAL_SERVICE_TOKEN || '';
+const INTERNAL_SERVICE_HEADERS = INTERNAL_SERVICE_TOKEN
+  ? { 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN }
+  : { 'x-glorifier-internal-service': 'permanent-orchestrator' };
 let running = false;
 let healthFailures = 0;
 let stopping = false;
@@ -72,7 +77,7 @@ async function standingSpecialistMission() {
   try {
     const response = await fetch(SPECIALIST_COUNCIL_URL, {
       method: 'POST',
-      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...INTERNAL_SERVICE_HEADERS },
       body: JSON.stringify({
         objective: 'Continuously identify, validate, prioritize, measure, and improve lawful opportunities that can generate real settled revenue for GLORIFIER. Review product, market, growth, revenue, finance, risk, legal, compliance, cybersecurity, data, engineering, operations, and frontier opportunities. Focus on evidence, conversion paths, customer value, unit economics, bottlenecks, and the next highest-leverage authorized action.',
         standingMission: true,
@@ -99,7 +104,7 @@ async function standingAgentRuntimeMission() {
   try {
     const response = await fetch(AGENT_TASK_URL, {
       method: 'POST',
-      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...INTERNAL_SERVICE_HEADERS },
       body: JSON.stringify({
         requester: 'ai-ceo',
         capability: 'synthesis',
@@ -122,7 +127,7 @@ async function standingGptCoWorkingMission() {
   try {
     const response = await fetch(WORK_TOGETHER_GPT_URL, {
       method: 'POST',
-      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...INTERNAL_SERVICE_HEADERS },
       body: JSON.stringify({
         taskPrompt: '24/7 standing continuous engineering and value-optimization review: audit system circuit breakers, privacy budgets, commercial data licensing floors, provider health, independent compute capacity, orchestration resilience, and measurable business outcomes. Learn from available ecosystems without becoming dependent on any single provider or platform.',
         domain: 'code_engineering',
@@ -148,7 +153,7 @@ async function standingGlobalSyncMission() {
   try {
     const response = await fetch(GLOBAL_SYNC_URL, {
       method: 'POST',
-      headers: INTERNAL_SERVICE_TOKEN ? { 'content-type': 'application/json', 'x-glorifier-internal-token': INTERNAL_SERVICE_TOKEN } : { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', ...INTERNAL_SERVICE_HEADERS },
       signal: AbortSignal.timeout(10 * 60_000),
     });
     const body = await response.text();

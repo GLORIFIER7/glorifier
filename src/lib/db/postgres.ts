@@ -5,7 +5,16 @@ let pool: Pool | null = null;
 function getDatabaseUrl(): string {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL is not configured');
-  return url;
+  // pg-connection-string v3 warns that legacy sslmode values change semantics.
+  // The application supplies the TLS policy explicitly via the Pool `ssl` option,
+  // so remove sslmode from the connection string to avoid conflicting settings.
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.delete('sslmode');
+    return parsed.toString();
+  } catch {
+    return url.replace(/([?&])sslmode=[^&]*&?/i, '$1').replace(/[?&]$/, '');
+  }
 }
 
 export function getPostgresPool(): Pool {

@@ -86,6 +86,24 @@ export const getIdToken = async (): Promise<string | null> => {
   return user.getIdToken();
 };
 
+// Central API authentication bridge: every same-origin /api request automatically
+// receives the current Firebase ID token. Existing UI modules can continue using
+// fetch(), while privileged backend routes still enforce verification server-side.
+const nativeFetch = typeof window !== 'undefined' ? window.fetch.bind(window) : null;
+if (typeof window !== 'undefined' && nativeFetch) {
+  window.fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+    const sameOriginApi = url.startsWith('/api/') || (url.startsWith(window.location.origin + '/api/'));
+    if (!sameOriginApi) return nativeFetch(input, init);
+    const headers = new Headers(init.headers || (typeof input !== 'string' && !(input instanceof URL) ? input.headers : undefined));
+    if (!headers.has('Authorization')) {
+      const token = await getIdToken();
+      if (token) headers.set('Authorization', 'Bearer ' + token);
+    }
+    return nativeFetch(input, { ...init, headers });
+  };
+}
+
 export const authenticatedFetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
   const token = await getIdToken();
   if (!token) throw new Error('Authentication required. Please sign in again.');

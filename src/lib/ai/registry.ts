@@ -40,3 +40,67 @@ export function getProvider(id: AIProviderId): AIProvider {
 export function getConnectedProviders(): AIProvider[] {
   return providers.filter((provider) => provider.status() === 'connected');
 }
+
+
+export interface ProviderExecutionRequest {
+  messages: import('./types').AIMessage[];
+  model?: string;
+  temperature?: number;
+  maxTokens?: number;
+  preferredProvider?: AIProviderId;
+}
+
+export interface ProviderExecutionResult {
+  response?: import('./types').AIResponse;
+  provider: string;
+  attemptedProviders: string[];
+  errors: string[];
+}
+
+/**
+ * GLORIFIER AI CEO provider-routing boundary.
+ * The registry is authoritative for provider selection; provider failures are
+ * recorded and execution continues to another authenticated provider.
+ * No synthetic response is ever produced here.
+ */
+export async function executeThroughProviderRegistry(
+  request: ProviderExecutionRequest
+): Promise<ProviderExecutionResult> {
+  const connected = getConnectedProviders();
+  const preferredProvider = request.preferredProvider
+    || (request.model?.startsWith('gemini') ? 'gemini' : request.model?.startsWith('gpt') ? 'openai' : undefined);
+
+  const ordered = [...connected].sort((a, b) => {
+    if (preferredProvider) {
+      if (a.id === preferredProvider && b.id !== preferredProvider) return -1;
+      if (b.id === preferredProvider && a.id !== preferredProvider) return 1;
+    }
+    if (a.id === 'gemini' && b.id !== 'gemini') return -1;
+    if (b.id === 'gemini' && a.id !== 'gemini') return 1;
+    if (a.id === 'openai' && b.id !== 'openai') return -1;
+    if (b.id === 'openai' && a.id !== 'openai') return 1;
+    return 0;
+  });
+
+  const attemptedProviders: string[] = [];
+  const errors: string[] = [];
+
+  for (const provider of ordered) {
+    attemptedProviders.push(provider.id);
+    try {
+      const response = await provider.generate(request);
+      if (response.text?.trim()) {
+        return { response, provider: provider.id, attemptedProviders, errors };
+      }
+      errors.push(`${provider.id}: empty response`);
+    } catch (error) {
+      errors.push(`${provider.id}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  return {
+    provider: 'provider-registry-exhausted',
+    attemptedProviders,
+    errors,
+  };
+}

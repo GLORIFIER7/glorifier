@@ -54,6 +54,30 @@ const PORT = Number(process.env.PORT) || 3000;
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '10mb' }));
+app.use((req: Request, res: Response, next) => {
+  const configured = String(process.env.GLORIFIER_ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean);
+  const allowedOrigins = configured.length ? configured : [
+    'https://glorifier-glorifier.vercel.app',
+    'https://glorifier-git-main-glorifier.vercel.app',
+    'https://glorifier-sepia.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'capacitor://localhost',
+    'http://localhost'
+  ];
+  const origin = req.get('origin');
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Brand-Monitor-Secret');
+  res.setHeader('Access-Control-Max-Age', '600');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 function apiError(res: Response, status: number, error: string, details?: unknown) {
   const payload: Record<string, unknown> = { ok: false, error };

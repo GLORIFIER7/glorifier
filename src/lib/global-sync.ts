@@ -8,7 +8,7 @@ export interface InternetNode {
   name: string;
   category: 'production' | 'staging' | 'repository' | 'ecosystem' | 'telemetry';
   url: string;
-  status: 'synchronized' | 'reachable' | 'standby' | 'external';
+  status: 'configured' | 'reachable' | 'standby' | 'external' | 'configured';
   lastPingAt: string;
   metadata?: Record<string, unknown>;
 }
@@ -54,7 +54,7 @@ export const canonicalInternetNodes: InternetNode[] = [
     name: 'Railway Global Production',
     category: 'production',
     url: 'https://glorifier-artificial-intelligence-production.up.railway.app',
-    status: 'synchronized',
+    status: 'configured',
     lastPingAt: new Date().toISOString()
   },
   {
@@ -62,7 +62,7 @@ export const canonicalInternetNodes: InternetNode[] = [
     name: 'Vercel Edge Deployment',
     category: 'production',
     url: 'https://glorifier-artificial-intelligence.vercel.app',
-    status: 'synchronized',
+    status: 'configured',
     lastPingAt: new Date().toISOString()
   },
   {
@@ -70,7 +70,7 @@ export const canonicalInternetNodes: InternetNode[] = [
     name: 'Google AI Studio Active Run',
     category: 'staging',
     url: 'https://ais-dev-jp7xpsanaaoh3n6534u57c-688419001352.asia-east1.run.app',
-    status: 'synchronized',
+    status: 'configured',
     lastPingAt: new Date().toISOString()
   },
   {
@@ -78,7 +78,7 @@ export const canonicalInternetNodes: InternetNode[] = [
     name: 'GitHub Source & Actions Fleet',
     category: 'repository',
     url: 'https://github.com/GLORIFIER7/glorifier-artificial-intelligence',
-    status: 'synchronized',
+    status: 'configured',
     lastPingAt: new Date().toISOString()
   },
   {
@@ -135,7 +135,7 @@ export async function performGlobalGlorifierSync(deps?: {
       name: 'GLORIFIER AI CEO',
       role: 'Executive Orchestrator',
       tier: 'orchestrator',
-      status: 'synchronized',
+      status: 'configured',
       lastHeartbeat: timestamp,
       capabilities: ['delegate', 'prioritize', 'synthesize', 'govern'],
       consensusContribution: 'Synchronizing multi-agent reasoning, internet telemetry, and evidence verification under Human Owner authority.'
@@ -145,7 +145,7 @@ export async function performGlobalGlorifierSync(deps?: {
       name: 'OpenAI GPT-4o',
       role: 'Frontier Strategy & Reasoning Architect',
       tier: 'reasoning',
-      status: 'synchronized',
+      status: 'configured',
       lastHeartbeat: timestamp,
       capabilities: ['commercial-valuation', 'contract-negotiation', 'counter-offers', 'code-review'],
       consensusContribution: 'Provides reasoning and strategy analysis when authorized; no standing commercial directive is asserted.'
@@ -155,7 +155,7 @@ export async function performGlobalGlorifierSync(deps?: {
       name: 'Google Gemini 3.8 Flash',
       role: 'Multimodal Research & Differential Privacy Co-Pilot',
       tier: 'engineering',
-      status: 'synchronized',
+      status: 'configured',
       lastHeartbeat: timestamp,
       capabilities: ['cryptographic-bounds', 'laplace-perturbation', 'zero-downtime-failover', 'multimodal-audit'],
       consensusContribution: 'Provides multimodal research and engineering analysis when authorized; numerical privacy claims require explicit evidence.'
@@ -165,7 +165,7 @@ export async function performGlobalGlorifierSync(deps?: {
       name: 'GLORIFIER Codex & AI Coding Fleet',
       role: 'Autonomous QA, Continuous Refactoring & Healing',
       tier: 'code-fleet',
-      status: 'synchronized',
+      status: 'configured',
       lastHeartbeat: timestamp,
       capabilities: ['continuous-improvement', 'self-healing', 'type-checking', 'ci-cd-safeguards'],
       consensusContribution: 'Performs repository QA and refactoring workflows; deployment health must be verified from live CI/deployment evidence.'
@@ -175,7 +175,7 @@ export async function performGlobalGlorifierSync(deps?: {
       name: 'A.I. Bot Patent Attorney Scientist',
       role: 'Patent Prosecution & Scientific Enablement',
       tier: 'specialist',
-      status: 'synchronized',
+      status: 'configured',
       lastHeartbeat: timestamp,
       capabilities: ['35-usc-101-defense', '35-usc-112-enablement', 'claim-prosecution', 'prior-art-differentiation'],
       consensusContribution: 'Provides patent and scientific research support; legal conclusions require qualified human review.'
@@ -185,7 +185,7 @@ export async function performGlobalGlorifierSync(deps?: {
       name: 'A.I. Bot Chief Compliance Scientist',
       role: 'Regulatory Privacy & Statutory Enforcement',
       tier: 'specialist',
-      status: 'synchronized',
+      status: 'configured',
       lastHeartbeat: timestamp,
       capabilities: ['gdpr-art-17-erasure', 'ccpa-sb-362-clawbacks', 'eu-ai-act-class-1', 'hipaa-expert-determination'],
       consensusContribution: 'Provides compliance and privacy research support; jurisdiction-specific conclusions require source-backed review.'
@@ -222,9 +222,8 @@ Return a concise 2-sentence executive summary emphasizing cross-agent consensus 
 
   // 5. Prioritized directives aligned with AI CEO and Human Governance
   const prioritizedDirectives = [
-    'Maintain continuous 24/7 autonomous monitoring across all internet nodes (Railway, Vercel, Google AI Studio, GitHub).',
-    'Enforce mathematical differential privacy (ε ≤ 0.35) and quarantine unconsented shadow data brokers.',
-    'Execute bidirectional agent-to-agent task delegation without monolithic bottlenecks.',
+    'Continuously reconcile configured integrations and record observed authentication, authorization, and availability state.',
+    'Execute agent-to-agent delegation only through authenticated, capability-scoped control paths.',
     'Preserve inspectable evidence ledgers with SHA-256 cryptographic proof before any consequential action.',
     'Human Owner retains supreme authority over deployment, merges, secrets, and financial commitments.'
   ];

@@ -15,5 +15,8 @@
       "source": "/auth/:path*",
       "destination": "https://glorifier-artificial-intelligence-production.up.railway.app/auth/:path*"
     }
-  ]
+  ],
+  "env": {
+    "VITE_API_BASE_URL": "https://glorifier-artificial-intelligence-production.up.railway.app"
+  }
 }

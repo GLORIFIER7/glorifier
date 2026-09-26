@@ -35,7 +35,7 @@ import { initializeVerifiedOutcomes, recordVerifiedOutcome } from './src/lib/ver
 import { initializeMonetizationTables, createCheckout, captureCheckout, getSubscription } from './src/lib/revenue/monetization';
 import { initializePayoutRegistry, createPayoutRequest, getAvailablePayoutBalance, listPayoutRequests } from './src/lib/payouts';
 import { getGeasPolicy, evaluateGeasPolicy, registerAgent, getAgent, listControlledAgents, authorizeAgentAction, quarantineAgent, getEvidenceGraph, addEvidenceNode, linkEvidence, recordAgentTrace, getAgentObservabilitySnapshot, appendProvenanceEvent, listProvenanceEvents, verifyProvenanceChain, getProvenanceArchitecture } from './src/lib/governance';
-import { requireAuthentication, requireOwner, authenticationStatus, isOwner } from './src/lib/auth/backend-auth';
+import { requireAuthentication, requireOwner, requireOwnerOrInternalService, authenticationStatus, isOwner, isInternalServiceRequest } from './src/lib/auth/backend-auth';
 import { reconcileIntegrationControlPlane, getIntegrationControlSnapshot } from './src/lib/integration-control-plane';
 
 import { 
@@ -1983,13 +1983,13 @@ app.get('/api/sync/global', async (_req: Request, res: Response) => {
   }
 });
 
-app.post('/api/sync/global', requireOwner, async (req: Request, res: Response) => {
+app.post('/api/sync/global', requireOwnerOrInternalService, async (req: Request, res: Response) => {
   try {
     console.log('[GlobalSync] Executing provider-neutral synchronization across authenticated integrations, agents, compute, and evidence...');
     const manifest = await performGlobalGlorifierSync({
       runSynthesisModel: runIntelligenceModel
     });
-    const integrationControl = await reconcileIntegrationControlPlane(String(req.body?.actor || (req as any).auth?.uid || 'human-owner'));
+    const integrationControl = await reconcileIntegrationControlPlane(String(req.body?.actor || (req as any).auth?.uid || (isInternalServiceRequest(req) ? 'ai-ceo' : 'human-owner')));
     res.json({ ok: true, manifest, integrationControl: integrationControl.snapshot, status: 'synchronized' });
   } catch (error: any) {
     console.error('[GlobalSync] execution failed:', error);

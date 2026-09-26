@@ -55,7 +55,11 @@ export function requireOwner(req: AuthenticatedRequest, res: Response, next: Nex
     if (!decoded) return res.status(401).json({ ok: false, error: 'Authentication required' });
     const ownerUid = process.env.GLORIFIER_OWNER_UID?.trim();
     const ownerEmail = process.env.GLORIFIER_OWNER_EMAIL?.trim().toLowerCase();
+    const claims = decoded as DecodedIdToken & { owner?: boolean; admin?: boolean; role?: string };
     const matchesOwner = Boolean(
+      claims.owner === true ||
+      claims.admin === true ||
+      claims.role === 'owner' ||
       (ownerUid && decoded.uid === ownerUid) ||
       (ownerEmail && decoded.email?.toLowerCase() === ownerEmail)
     );

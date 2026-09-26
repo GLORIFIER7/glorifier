@@ -6,6 +6,7 @@ import { GoogleGenAI } from '@google/genai';
 import OpenAI from 'openai';
 import { randomUUID } from 'node:crypto';
 import { aiOrchestrator, runSpecialistCouncil, specialistRoles } from './src/lib/ai';
+import { executeThroughProviderRegistry } from './src/lib/ai/registry';
 import { executeComputeTask, getComputeSnapshot } from './src/lib/compute';
 import { generateIntelligenceReport, getLatestIntelligenceReport } from './src/lib/intelligence';
 import { agentManifest, createAgentTask, getAgentTask, listAgentCards, listAgentTasks, updateAgentTask } from './src/lib/agent-runtime';
@@ -375,150 +376,51 @@ async function runModelExecution({
   jsonMode = false
 }: ModelExecutionParams): Promise<{ text: string; modelUsed: string; provider: string }> {
   const chosenModel = model || 'gpt-4o';
-  const openAI = getOpenAI();
-  const gemini = getGenAI();
 
-  // 1. Direct OpenAI execution if model is GPT-4o or GPT-4o-mini and OpenAI key is present
-  if (chosenModel.startsWith('gpt') && openAI) {
-    try {
-      const gptModel = chosenModel === 'gpt-4o-mini' ? 'gpt-4o-mini' : 'gpt-4o';
-      const completion = await openAI.chat.completions.create({
-        model: gptModel,
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature,
-        response_format: jsonMode ? { type: 'json_object' } : undefined
-      });
-      const text = completion.choices[0]?.message?.content || '';
-      return { text, modelUsed: gptModel, provider: 'OpenAI GPT' };
-    } catch (err) {
-      console.warn('OpenAI call failed, falling back to sovereign pipeline:', err);
-    }
-  }
+  // AI CEO -> Provider Registry -> authenticated providers.
+  // The registry is the single provider-selection boundary; it never fabricates output.
+  const registryResult = await executeThroughProviderRegistry({
+    model: chosenModel,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt }
+    ],
+    temperature,
+    maxTokens: jsonMode ? 4096 : undefined
+  });
 
-  // 2. All-AI Model Council Collaboration (GPT-4o, Gemini, Meta LLaMA, Enclave)
-  if (chosenModel === 'all-models') {
-    let gptPart = '';
-    let geminiPart = '';
-    
-    if (openAI) {
-      try {
-        const comp = await openAI.chat.completions.create({
-          model: 'gpt-4o',
-          messages: [
-            { role: 'system', content: `${systemPrompt}\nFocus on commercial data valuation, buyer counter-negotiation, and yield strategy.` },
-            { role: 'user', content: userPrompt }
-          ],
-          temperature
-        });
-        gptPart = comp.choices[0]?.message?.content || '';
-      } catch (e) {
-        console.warn('Council GPT call error:', e);
-      }
-    }
-    
-    if (gemini) {
-      const comp = await callGeminiSafe({
-        contents: `${systemPrompt}\nFocus on zero-knowledge differential privacy (epsilon bounds), quasi-identifier scrubbing, and telemetry integrity.\n\nUser: ${userPrompt}`,
-        temperature
-      });
-      if (comp?.text) {
-        geminiPart = comp.text;
-      }
-    }
-
-    const llamaPart = 'No Meta/Llama provider response was verified for this run.';
-    const availableParts = [
-      gptPart ? `🟢 **OpenAI GPT-4o (Valuation & Strategy):**\n${gptPart}` : '🟢 **OpenAI GPT-4o:** no verified response (provider unavailable or quota-limited).',
-      geminiPart ? `🔵 **Google Gemini (Differential Privacy & Telemetry):**\n${geminiPart}` : '🔵 **Google Gemini:** no verified response (provider unavailable or quota-limited).',
-      llamaPart
-    ];
-    if (!gptPart && !geminiPart) {
-      return {
-        text: '',
-        modelUsed: 'all-models',
-        provider: 'All-AI Sovereign Collaboration Council',
-      };
-    }
+  if (registryResult.response?.text?.trim()) {
     return {
-      text: `🏛️ **ALL-AI MODEL COLLABORATIVE COUNCIL REPORT**\n\n${availableParts.join('\n\n')}\n\n⚖️ **Consensus:** No consensus is asserted unless multiple live provider responses are actually available.`,
-      modelUsed: 'all-models (live responses only)',
-      provider: 'All-AI Sovereign Collaboration Council'
+      text: registryResult.response.text,
+      modelUsed: registryResult.response.model,
+      provider: registryResult.response.provider
     };
   }
 
-  // 3. Dual-Consensus: If requested, run both or synthesize agreement
-  if (chosenModel === 'consensus') {
-    if (openAI && gemini) {
-      try {
-        const [gptRes, geminiRes] = await Promise.allSettled([
-          openAI.chat.completions.create({
-            model: 'gpt-4o',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            temperature
-          }),
-          callGeminiSafe({
-            contents: `${systemPrompt}\n\nUser: ${userPrompt}`,
-            temperature
-          })
-        ]);
-
-        const gptText = gptRes.status === 'fulfilled' ? gptRes.value.choices[0]?.message?.content : null;
-        const geminiText = geminiRes.status === 'fulfilled' ? geminiRes.value?.text : null;
-
-        if (gptText && geminiText) {
-          return {
-            text: `[Dual-Provider Responses (GPT-4o & Gemini 3.8 Flash)]:\n\n${gptText}\n\n---\n*Provider separation note*: Two live provider responses were received. GLORIFIER does not assert agreement or cross-validation unless an explicit reconciliation step verifies it.`,
-            modelUsed: 'consensus (gpt-4o + gemini-3.8-flash)',
-            provider: 'Hybrid Sovereign Consensus'
-          };
-        }
-      } catch (err) {
-        console.warn('Consensus execution fell back:', err);
-      }
-    }
-  }
-
-  // 4. Google Gemini execution (live or fallback with retry & model switching)
-  if (gemini) {
-    const geminiRes = await callGeminiSafe({
-      contents: userPrompt,
-      systemInstruction: systemPrompt,
-      temperature,
-      responseMimeType: jsonMode ? 'application/json' : undefined,
-      preferredModel: chosenModel.startsWith('gemini') ? chosenModel : 'gemini-3.8-flash'
-    });
-
-    if (geminiRes?.text) {
-      return { 
-        text: geminiRes.text, 
-        modelUsed: chosenModel.startsWith('gpt') ? `${chosenModel} (Zero-Knowledge Enclave Engine)` : geminiRes.modelUsed, 
-        provider: chosenModel.startsWith('gpt') ? 'GPT Architecture (Autonomous Pipeline)' : 'Google DeepMind' 
-      };
-    }
-  }
-
-  // 5. Authenticated independent compute fallback. This is real execution only:
-  // no fabricated model response is returned when every provider is unavailable.
+  // Provider registry exhausted: try authenticated independent/Ollama compute.
+  // This is real execution only. No local/synthetic answer is substituted.
   const compute = await executeComputeTask({
     id: `model-execution-${randomUUID()}`,
     objective: `${systemPrompt}\n\nUser request:\n${userPrompt}`,
-    taskType: chosenModel.startsWith('gpt') || chosenModel.startsWith('gemini') ? 'inference' : 'code',
-    preferredModel: chosenModel.startsWith('gpt') || chosenModel.startsWith('gemini') ? undefined : chosenModel,
+    taskType: 'inference',
+    preferredModel: undefined,
     priority: 1,
   });
-  if (compute.status === 'completed' && compute.text) {
+
+  if (compute.status === 'completed' && compute.text?.trim()) {
     return {
       text: compute.text,
       modelUsed: compute.model || chosenModel,
       provider: compute.resourceId === 'ollama-gpu' ? 'Authenticated Ollama' : 'Independent Compute'
     };
   }
+
+  console.warn('[AI CEO] Provider registry and independent compute exhausted.', {
+    requestedModel: chosenModel,
+    attemptedProviders: registryResult.attemptedProviders,
+    providerErrors: registryResult.errors,
+    computeError: compute.error || null
+  });
 
   return {
     text: '',

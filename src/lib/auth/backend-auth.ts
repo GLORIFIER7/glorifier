@@ -50,7 +50,10 @@ export function isInternalServiceRequest(req: Request): boolean {
   const remote = String(req.socket?.remoteAddress || '').replace(/^::ffff:/, '');
   const privateIpv4 = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(remote);
   const privateIpv6 = remote.startsWith('fc') || remote.startsWith('fd') || remote === '::1';
-  return marker === 'permanent-orchestrator' && (privateIpv4 || privateIpv6);
+  const host = String(req.get('host') || '').toLowerCase().replace(/:\d+$/, '');
+  const forwardedHost = String(req.get('x-forwarded-host') || '').split(',')[0].trim().toLowerCase().replace(/:\d+$/, '');
+  const internalRailwayHost = host === 'glorifier-artificial-intelligence.railway.internal' || forwardedHost === 'glorifier-artificial-intelligence.railway.internal';
+  return marker === 'permanent-orchestrator' && (privateIpv4 || privateIpv6 || internalRailwayHost);
 }
 
 export function requireAuthentication(req: AuthenticatedRequest, res: Response, next: NextFunction) {

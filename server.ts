@@ -16,7 +16,12 @@ import { performGlobalGlorifierSync, getLatestGlobalSyncManifest } from './src/l
 import { listRegisteredAgents, synchronizeRegisteredAgents } from './src/lib/agent-registry';
 import { initializeRevenueLedger, getRevenueSummary, listRevenueEvents } from './src/lib/revenue/engine';
 import { initializeEconomicOperatingSystem } from './src/lib/economic-operating-system';
-import { initializeBusinessModel } from './src/lib/business-model';
+import { initializeBusinessModel, getBusinessModel, getWorkUnitSummary } from './src/lib/business-model';
+import { buildMonetizationDashboard } from './src/lib/monetization-engine';
+import { buildRevenueControlPlaneSnapshot, getRevenueControlPlanePolicy, listRevenueGovernanceEvents } from './src/lib/revenue-control-plane';
+import { listEconomicOperatingSnapshot, getEconomicOperatingSystemPolicy } from './src/lib/economic-operating-system';
+import { calculateGlorifierValuation, getLatestGlorifierValuation } from './src/lib/valuation-engine';
+import { getBinancePublicQuote } from './src/lib/asset-provider-adapters';
 import { initialize24x7OpportunityDiscovery } from './src/lib/24x7-opportunity-discovery';
 import { initializeGlorifierMediator } from './src/lib/glorifier-mediator';
 import { getPostgresPool } from './src/lib/db/postgres';
@@ -2054,6 +2059,116 @@ app.post('/api/scientists/loop/toggle', (req: Request, res: Response) => {
 app.post('/api/scientists/monetization/claim', (_req: Request, res: Response) => {
   const claim = claimAccruedScientistYield();
   res.json({ ok: true, ...claim, state: getScientistMonetizationState() });
+});
+
+// ============================================================================
+// RESTORE/ALIGN FRONTEND DATA CONTRACTS
+// These routes expose the authoritative backend modules already used by GLORIFIER.
+// They intentionally return evidence/truth labels and never fabricate economic results.
+// ============================================================================
+
+app.get('/api/business-model', (_req: Request, res: Response) => {
+  try { return res.json({ ok: true, model: getBusinessModel() }); }
+  catch (error) { return apiError(res, 503, 'Business model unavailable', error); }
+});
+
+app.get('/api/work-units/summary', async (req: Request, res: Response) => {
+  try {
+    const tenantId = req.query.tenantId ? String(req.query.tenantId) : undefined;
+    return res.json({ ok: true, summary: await getWorkUnitSummary(tenantId) });
+  } catch (error) { return apiError(res, 503, 'Work-unit summary unavailable', error); }
+});
+
+app.get('/api/monetization/dashboard', async (_req: Request, res: Response) => {
+  try { return res.json({ ok: true, ...(await buildMonetizationDashboard()) }); }
+  catch (error) { return apiError(res, 503, 'Monetization dashboard unavailable', error); }
+});
+
+app.get('/api/revenue/control-plane', async (_req: Request, res: Response) => {
+  try { return res.json({ ok: true, snapshot: await buildRevenueControlPlaneSnapshot(), policy: getRevenueControlPlanePolicy() }); }
+  catch (error) { return apiError(res, 503, 'Revenue control plane unavailable', error); }
+});
+
+app.get('/api/economic-os', async (_req: Request, res: Response) => {
+  try { return res.json({ ok: true, snapshot: await listEconomicOperatingSnapshot(), policy: getEconomicOperatingSystemPolicy() }); }
+  catch (error) { return apiError(res, 503, 'Economic operating system unavailable', error); }
+});
+
+app.get('/api/reports/summary', async (_req: Request, res: Response) => {
+  try {
+    const [economic, revenue, governance] = await Promise.all([
+      listEconomicOperatingSnapshot(),
+      getRevenueControlPlanePolicy(),
+      listRevenueGovernanceEvents(25)
+    ]);
+    return res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      summary: {
+        verifiedRevenueUsd: economic.verifiedRevenue.usd,
+        verifiedRevenueLabel: 'VERIFIED',
+        workUnits: economic.counts.gwuQuantity,
+        workUnitEvents: economic.counts.gwuEvents,
+        activeCustomers: economic.counts.activeCustomers,
+        contracts: economic.counts.contracts,
+        invoices: economic.counts.invoices,
+        verifiedPayments: economic.counts.verifiedPayments
+      },
+      economicTruth: economic.policy.economicTruth,
+      revenueControlPolicy: revenue,
+      recentGovernanceEvents: governance
+    });
+  } catch (error) { return apiError(res, 503, 'Reports summary unavailable', error); }
+});
+
+app.get('/api/business-intelligence/architecture', (_req: Request, res: Response) => {
+  return res.json({
+    ok: true,
+    architecture: {
+      version: 'GBIS-2.0',
+      identity: 'Continuous business intelligence operating system for evidence-backed decision support.',
+      layers: [
+        'source systems',
+        'ingestion and connectors',
+        'data foundation and lineage',
+        'semantic business layer',
+        'intelligence and analytics',
+        'AI orchestration and specialist scientists',
+        'opportunity and monetization evidence',
+        'governance, security and compliance',
+        'human decision and authorized execution',
+        'outcome verification and economic truth'
+      ],
+      principles: [
+        'provider-neutral orchestration',
+        'evidence provenance',
+        'semantic consistency',
+        'security and privacy by design',
+        'estimated value is not verified revenue',
+        'human authority for consequential actions',
+        'measurable verified outcomes'
+      ],
+      sourceOfTruth: {
+        revenue: 'Neon/PostgreSQL authoritative ledger',
+        verification: 'Evidence-backed outcome records',
+        orchestration: 'GLORIFIER provider-neutral AI layer'
+      }
+    }
+  });
+});
+
+app.get('/api/valuation', async (_req: Request, res: Response) => {
+  try {
+    const valuation = await calculateGlorifierValuation();
+    return res.json({ ok: true, valuation });
+  } catch (error) { return apiError(res, 503, 'Valuation engine unavailable', error); }
+});
+
+app.get('/api/assets/providers/binance-public/quote/:symbol', async (req: Request, res: Response) => {
+  try {
+    const quote = await getBinancePublicQuote(String(req.params.symbol));
+    return res.json({ ok: true, ...quote });
+  } catch (error) { return apiError(res, 502, 'Binance public quote unavailable', error); }
 });
 
 // Unknown API routes must remain JSON. This prevents the SPA fallback from masquerading as an API response.

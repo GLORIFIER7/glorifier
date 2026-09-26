@@ -20,7 +20,10 @@ const friendlyAuthError = (error: any) => {
     'auth/too-many-requests': 'Too many attempts. Please wait and try again.',
     'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
     'auth/popup-blocked': 'Your browser blocked the Google sign-in popup. Allow popups and try again.',
-    'auth/operation-not-allowed': 'Email/password authentication is not enabled in the Firebase project yet.',
+    'auth/operation-not-allowed': 'This sign-in method is not enabled in Firebase yet.',
+    'auth/unauthorized-domain': `Google sign-in is not authorized for ${window.location.hostname}. Add this production domain to Firebase Authentication > Settings > Authorized domains.`,
+    'auth/invalid-api-key': 'Firebase configuration is invalid. Please check the production Firebase configuration.',
+    'auth/network-request-failed': 'Network connection to Firebase failed. Check your connection and try again.',
   };
   return map[code] || error?.message || 'Authentication failed. Please try again.';
 };

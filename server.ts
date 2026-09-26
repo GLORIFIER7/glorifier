@@ -2499,6 +2499,9 @@ async function initializeBackend() {
 async function startServer() {
   await initializeBackend();
   try { await reconcileIntegrationControlPlane('backend-startup'); } catch (error) { console.warn('[IntegrationControlPlane] startup reconciliation deferred:', error); }
+  setInterval(() => {
+    void reconcileIntegrationControlPlane('scheduled-reconciliation').catch(error => console.warn('[IntegrationControlPlane] scheduled reconciliation deferred:', error));
+  }, 5 * 60 * 1000);
   // Start the 24/7 autonomous scientist multi-agent daemon in the background
   try {
     start247ScientistDaemon(runIntelligenceModel);

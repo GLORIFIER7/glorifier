@@ -14,6 +14,9 @@ import {
   onAuthStateChanged,
   User,
   updateProfile,
+  GithubAuthProvider,
+  FacebookAuthProvider,
+  OAuthProvider,
 } from 'firebase/auth';
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -193,3 +196,36 @@ export async function testFirestoreConnection() {
 }
 
 export type { User };
+
+
+export type SocialProviderId = 'google' | 'microsoft' | 'github' | 'facebook' | 'apple';
+
+export const SOCIAL_PROVIDER_REGISTRY: Record<SocialProviderId, { label: string; enabled: boolean }> = {
+  google: { label: 'Google', enabled: true },
+  microsoft: { label: 'Microsoft', enabled: false },
+  github: { label: 'GitHub', enabled: false },
+  facebook: { label: 'Facebook', enabled: false },
+  apple: { label: 'Apple', enabled: false },
+};
+
+const socialProvider = (id: SocialProviderId) => {
+  switch (id) {
+    case 'google': return googleAuthProvider;
+    case 'microsoft': return new OAuthProvider('microsoft.com');
+    case 'github': return new GithubAuthProvider();
+    case 'facebook': return new FacebookAuthProvider();
+    case 'apple': return new OAuthProvider('apple.com');
+  }
+};
+
+export const loginWithSocialProvider = async (id: SocialProviderId) => {
+  const provider = socialProvider(id);
+  await authPersistenceReady;
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    await signInWithRedirect(auth, provider);
+    return { user: null, accessToken: null };
+  }
+  const result = await signInWithPopup(auth, provider);
+  return { user: result.user, accessToken: cachedAccessToken };
+};

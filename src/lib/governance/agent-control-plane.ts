@@ -20,7 +20,7 @@ export function authorizeAgentAction(agentId: string, action: {
 }) {
   const agent = agents.get(agentId);
   if (!agent) return { allowed: false, reason: 'agent_not_registered' as const };
-  if (agent.lifecycle !== 'active') return { allowed: false, reason: 'agent_' + agent.lifecycle as const };
+  if (agent.lifecycle !== 'active') return { allowed: false, reason: `agent_${agent.lifecycle}` };
   if (!agent.capabilities.includes(action.capability)) return { allowed: false, reason: 'capability_denied' as const };
   if (action.tool && !agent.allowedTools.includes(action.tool)) return { allowed: false, reason: 'tool_denied' as const };
   if (action.dataScope && !agent.allowedDataScopes.includes(action.dataScope)) return { allowed: false, reason: 'data_scope_denied' as const };

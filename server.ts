@@ -1988,7 +1988,8 @@ app.post('/api/sync/global', requireOwner, async (req: Request, res: Response) =
     const manifest = await performGlobalGlorifierSync({
       runSynthesisModel: runIntelligenceModel
     });
-    res.json({ ok: true, manifest, status: 'synchronized' });
+    const integrationControl = await reconcileIntegrationControlPlane(String(req.body?.actor || req.auth?.uid || 'human-owner'));
+    res.json({ ok: true, manifest, integrationControl: integrationControl.snapshot, status: 'synchronized' });
   } catch (error: any) {
     console.error('[GlobalSync] execution failed:', error);
     res.status(500).json({ ok: false, error: 'Global synchronization failed', details: error?.message });
@@ -2008,9 +2009,9 @@ app.get('/api/agents/registry', async (_req: Request, res: Response) => {
   }
 });
 
-app.post('/api/agents/synchronize', async (req: Request, res: Response) => {
+app.post('/api/agents/synchronize', requireOwner, async (req: Request, res: Response) => {
   try {
-    const actor = req.body?.actor || 'human-owner';
+    const actor = req.auth?.uid || 'human-owner';
     const results = await synchronizeRegisteredAgents(actor);
     res.json({ ok: true, agentCount: results.length, results });
   } catch (error: any) {

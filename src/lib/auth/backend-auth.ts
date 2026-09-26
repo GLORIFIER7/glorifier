@@ -50,6 +50,19 @@ export function requireAuthentication(req: AuthenticatedRequest, res: Response, 
   }).catch(() => res.status(401).json({ ok: false, error: 'Authentication unavailable' }));
 }
 
+export function isOwner(decoded: DecodedIdToken): boolean {
+  const ownerUid = process.env.GLORIFIER_OWNER_UID?.trim();
+  const ownerEmail = process.env.GLORIFIER_OWNER_EMAIL?.trim().toLowerCase();
+  const claims = decoded as DecodedIdToken & { owner?: boolean; admin?: boolean; role?: string };
+  return Boolean(
+    claims.owner === true ||
+    claims.admin === true ||
+    claims.role === 'owner' ||
+    (ownerUid && decoded.uid === ownerUid) ||
+    (ownerEmail && decoded.email?.toLowerCase() === ownerEmail)
+  );
+}
+
 export function requireOwner(req: AuthenticatedRequest, res: Response, next: NextFunction) {
   verifyBearerToken(req).then((decoded) => {
     if (!decoded) return res.status(401).json({ ok: false, error: 'Authentication required' });

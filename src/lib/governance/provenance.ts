@@ -27,9 +27,6 @@ export interface ProvenanceEvent {
   createdAt: string;
 }
 
-let memorySequence = 0;
-let memoryPreviousHash: string | null = null;
-
 function canonicalize(value: unknown): string {
   if (value === null || typeof value !== 'object') return JSON.stringify(value);
   if (Array.isArray(value)) return '[' + value.map(canonicalize).join(',') + ']';
@@ -75,8 +72,9 @@ export async function appendProvenanceEvent(
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query("SELECT pg_advisory_xact_lock(hashtext('glorifier:provenance-chain'))");
     const previous = await client.query(
-      'SELECT sequence, event_hash FROM glorifier_provenance_events ORDER BY sequence DESC LIMIT 1 FOR UPDATE'
+      'SELECT sequence, event_hash FROM glorifier_provenance_events ORDER BY sequence DESC LIMIT 1'
     );
     const sequence = Number(previous.rows[0]?.sequence || 0) + 1;
     const previousHash = previous.rows[0]?.event_hash || null;
@@ -100,8 +98,6 @@ export async function appendProvenanceEvent(
        base.sourceRef || null, base.externalRef || null, base.previousHash, eventHash, base.createdAt]
     );
     await client.query('COMMIT');
-    memorySequence = sequence;
-    memoryPreviousHash = eventHash;
     return { ...base, eventHash };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -121,7 +117,7 @@ export async function listProvenanceEvents(limit = 100): Promise<ProvenanceEvent
   return result.rows.map(row => ({
     id: row.id,
     sequence: Number(row.sequence),
-    type: row.event_type,
+    type: row.event_type as ProvenanceEventType,
     actorId: row.actor_id,
     payload: row.payload || {},
     sourceRef: row.source_ref || undefined,
@@ -134,7 +130,7 @@ export async function listProvenanceEvents(limit = 100): Promise<ProvenanceEvent
 
 export async function verifyProvenanceChain(limit = 1000) {
   const events = (await listProvenanceEvents(limit)).sort((a, b) => a.sequence - b.sequence);
-  let previousHash: string | null = null;
+  let previousHash: string | null = events[0]?.previousHash || null;
   const failures: Array<{ id: string; sequence: number; reason: string }> = [];
   for (const event of events) {
     const { eventHash, ...base } = event;

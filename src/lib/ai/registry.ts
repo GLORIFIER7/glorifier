@@ -88,7 +88,15 @@ export async function executeThroughProviderRegistry(
   for (const provider of ordered) {
     attemptedProviders.push(provider.id);
     try {
-      const response = await provider.generate(request);
+      const providerRequest = {
+        ...request,
+        model: provider.id === 'gemini'
+          ? (request.model?.startsWith('gemini') ? request.model : undefined)
+          : provider.id === 'openai'
+            ? (request.model?.startsWith('gpt') ? request.model : undefined)
+            : request.model,
+      };
+      const response = await provider.generate(providerRequest);
       if (response.text?.trim()) {
         return { response, provider: provider.id, attemptedProviders, errors };
       }

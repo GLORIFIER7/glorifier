@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AlertCircle, CheckCircle2, Eye, EyeOff, KeyRound, LogIn, LogOut, Mail, UserPlus, X } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { loginWithEmail, loginWithGoogle, registerWithEmail, resetPassword, logout } from '../lib/firebase';
@@ -37,6 +37,17 @@ export const AuthPanel: React.FC<AuthPanelProps> = ({ currentUser }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{type:'error'|'success'; text:string} | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('glorifier_google_auth_error');
+      if (!raw) return;
+      sessionStorage.removeItem('glorifier_google_auth_error');
+      const parsed = JSON.parse(raw);
+      setMessage({ type: 'error', text: friendlyAuthError({ code: parsed?.code, message: parsed?.message }) });
+      setOpen(true);
+    } catch {}
+  }, []);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
